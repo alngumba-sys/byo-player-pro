@@ -7,9 +7,13 @@ byo-android-tv/local.properties
 # Netlify local deploy cache
 byo-pairing/phone/.netlify/
 
-# Packaged binaries (sent to the user directly; rebuild via build.py + gradle)
-*.apk
-*.zip
+# Packaged release archives at the repo root (sent to the user directly; rebuild via build.py + gradle)
+/BYO-Player-Pro-*.apk
+/ByoPlayer-*.zip
+
+# byo-pairing/phone/*.apk are NOT ignored: Netlify's linked continuous deployment
+# builds the live pairing site straight from byo-pairing/phone, so those two APKs
+# must be committed and pushed with every release or the live download breaks.
 
 # OS / editor cruft
 .DS_Store
