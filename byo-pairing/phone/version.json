@@ -1,6 +1,6 @@
 {
-  "versionCode": 148,
-  "versionName": "3.36.36",
+  "versionCode": 149,
+  "versionName": "3.36.37",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Movie/series details screen: removed the big backdrop photo (it never matched well) in favor of a clean gradient panel, and the poster artwork is now much larger, filling the full height of the hero next to the title and buttons."
+  "notes": "Home screen: added left/right arrow buttons to the Featured Today hero so you can manually browse through all 4 featured picks, instead of only waiting for them to auto-rotate."
 }

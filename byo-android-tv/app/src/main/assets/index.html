@@ -4608,6 +4608,14 @@ html.no-topbar #app{ padding-top:0 !important; }
 .h2-dot{ width:10px; height:10px; padding:0; border-radius:999px; border:0; background:rgba(242,245,248,.3); cursor:pointer; outline:none; transition:width .2s, background .2s; }
 .h2-dot.on{ width:28px; background:var(--h2-accent); }
 .h2-dot.focused{ box-shadow:0 0 0 3px #fff; }
+.h2-feat-nav{ position:absolute; top:50%; transform:translateY(-50%); height:96px; width:56px; border:none; background:none; padding:0; margin:0; cursor:pointer; outline:none;
+    display:flex; align-items:center; z-index:4; color:#fff; }
+.h2-feat-prev{ left:0; justify-content:flex-start; padding-left:8px; }
+.h2-feat-next{ right:0; justify-content:flex-end; padding-right:8px; }
+.h2-feat-nav .ic{ width:42px; height:42px; border-radius:50%; background:rgba(10,13,19,.78); box-shadow:0 4px 16px rgba(0,0,0,.45);
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto; transition:background .15s, transform .15s; }
+.h2-feat-nav:hover .ic{ background:var(--h2-accent); color:#03141a; }
+.h2-feat-nav.focused .ic, .h2-feat-nav:focus-visible .ic{ background:var(--h2-accent); color:#03141a; box-shadow:0 0 0 3px #fff, 0 4px 16px rgba(0,0,0,.45); transform:scale(1.08); }
 /* what's on now */
 .h2-now{ background:#0f151d; border:1px solid #1a2330; padding:22px 22px 18px; display:flex; flex-direction:column; gap:14px; }
 .h2-now-head{ display:flex; align-items:center; justify-content:space-between; }
@@ -12970,10 +12978,18 @@ var Pin=(function(){
         var el=document.createElement('section'); el.className='h2-feat';
         el.innerHTML='<div class="h2-feat-poster"></div><div class="h2-feat-body"><div class="h2-feat-top"><span class="h2-pill">FEATURED TODAY</span><span class="h2-count"></span></div>'+
             '<h2 class="h2-feat-title"></h2><div class="h2-feat-meta"></div><p class="h2-feat-desc"></p>'+
-            '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button><button class="h2-btn h2-btn-info" data-focusable="true" tabindex="0">'+icon('i-info')+'More info</button><div class="h2-dots"></div></div></div>';
+            '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button><button class="h2-btn h2-btn-info" data-focusable="true" tabindex="0">'+icon('i-info')+'More info</button><div class="h2-dots"></div></div></div>'+
+            // Prev/Next: lets the viewer step through the featured picks on demand (mouse click, remote
+            // OK, or arrow keys) instead of only via the tiny dots or waiting out the 9s auto-rotate.
+            '<button class="h2-feat-nav h2-feat-prev" data-focusable="true" tabindex="0" aria-label="Previous featured title">'+icon('i-chev-l')+'</button>'+
+            '<button class="h2-feat-nav h2-feat-next" data-focusable="true" tabindex="0" aria-label="Next featured title">'+icon('i-chev-r')+'</button>';
         var idx=0, dots=el.querySelector('.h2-dots');
         picks.forEach(function(m,i){ var d=document.createElement('button'); d.className='h2-dot'; d.tabIndex=-1; d.setAttribute('aria-label','Featured '+(i+1));
             d.addEventListener('click',function(){ show(i); }); d.addEventListener('focus',function(){ show(i); }); dots.appendChild(d); });
+        if(picks.length>1){
+            el.querySelector('.h2-feat-prev').addEventListener('click',function(){ show((idx-1+picks.length)%picks.length); });
+            el.querySelector('.h2-feat-next').addEventListener('click',function(){ show((idx+1)%picks.length); });
+        } else { [].forEach.call(el.querySelectorAll('.h2-feat-nav'),function(b){ b.remove(); }); }
         function show(i){ idx=i; var m=picks[i]; S._h2FeatIdx=i;
             el.querySelector('.h2-feat-poster').innerHTML='<div class="h2-feat-ph" style="background:'+g(m.gi)+'"><span>'+esc(m.title)+'</span></div>'+h2Img(m.logo,'h2-feat-img');
             el.querySelector('.h2-count').textContent=(i+1)+' of '+picks.length;

@@ -8023,10 +8023,18 @@ var Pin=(function(){
         var el=document.createElement('section'); el.className='h2-feat';
         el.innerHTML='<div class="h2-feat-poster"></div><div class="h2-feat-body"><div class="h2-feat-top"><span class="h2-pill">FEATURED TODAY</span><span class="h2-count"></span></div>'+
             '<h2 class="h2-feat-title"></h2><div class="h2-feat-meta"></div><p class="h2-feat-desc"></p>'+
-            '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button><button class="h2-btn h2-btn-info" data-focusable="true" tabindex="0">'+icon('i-info')+'More info</button><div class="h2-dots"></div></div></div>';
+            '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button><button class="h2-btn h2-btn-info" data-focusable="true" tabindex="0">'+icon('i-info')+'More info</button><div class="h2-dots"></div></div></div>'+
+            // Prev/Next: lets the viewer step through the featured picks on demand (mouse click, remote
+            // OK, or arrow keys) instead of only via the tiny dots or waiting out the 9s auto-rotate.
+            '<button class="h2-feat-nav h2-feat-prev" data-focusable="true" tabindex="0" aria-label="Previous featured title">'+icon('i-chev-l')+'</button>'+
+            '<button class="h2-feat-nav h2-feat-next" data-focusable="true" tabindex="0" aria-label="Next featured title">'+icon('i-chev-r')+'</button>';
         var idx=0, dots=el.querySelector('.h2-dots');
         picks.forEach(function(m,i){ var d=document.createElement('button'); d.className='h2-dot'; d.tabIndex=-1; d.setAttribute('aria-label','Featured '+(i+1));
             d.addEventListener('click',function(){ show(i); }); d.addEventListener('focus',function(){ show(i); }); dots.appendChild(d); });
+        if(picks.length>1){
+            el.querySelector('.h2-feat-prev').addEventListener('click',function(){ show((idx-1+picks.length)%picks.length); });
+            el.querySelector('.h2-feat-next').addEventListener('click',function(){ show((idx+1)%picks.length); });
+        } else { [].forEach.call(el.querySelectorAll('.h2-feat-nav'),function(b){ b.remove(); }); }
         function show(i){ idx=i; var m=picks[i]; S._h2FeatIdx=i;
             el.querySelector('.h2-feat-poster').innerHTML='<div class="h2-feat-ph" style="background:'+g(m.gi)+'"><span>'+esc(m.title)+'</span></div>'+h2Img(m.logo,'h2-feat-img');
             el.querySelector('.h2-count').textContent=(i+1)+' of '+picks.length;

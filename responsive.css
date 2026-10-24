@@ -2655,6 +2655,14 @@ html.no-topbar #app{ padding-top:0 !important; }
 .h2-dot{ width:10px; height:10px; padding:0; border-radius:999px; border:0; background:rgba(242,245,248,.3); cursor:pointer; outline:none; transition:width .2s, background .2s; }
 .h2-dot.on{ width:28px; background:var(--h2-accent); }
 .h2-dot.focused{ box-shadow:0 0 0 3px #fff; }
+.h2-feat-nav{ position:absolute; top:50%; transform:translateY(-50%); height:96px; width:56px; border:none; background:none; padding:0; margin:0; cursor:pointer; outline:none;
+    display:flex; align-items:center; z-index:4; color:#fff; }
+.h2-feat-prev{ left:0; justify-content:flex-start; padding-left:8px; }
+.h2-feat-next{ right:0; justify-content:flex-end; padding-right:8px; }
+.h2-feat-nav .ic{ width:42px; height:42px; border-radius:50%; background:rgba(10,13,19,.78); box-shadow:0 4px 16px rgba(0,0,0,.45);
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto; transition:background .15s, transform .15s; }
+.h2-feat-nav:hover .ic{ background:var(--h2-accent); color:#03141a; }
+.h2-feat-nav.focused .ic, .h2-feat-nav:focus-visible .ic{ background:var(--h2-accent); color:#03141a; box-shadow:0 0 0 3px #fff, 0 4px 16px rgba(0,0,0,.45); transform:scale(1.08); }
 /* what's on now */
 .h2-now{ background:#0f151d; border:1px solid #1a2330; padding:22px 22px 18px; display:flex; flex-direction:column; gap:14px; }
 .h2-now-head{ display:flex; align-items:center; justify-content:space-between; }
