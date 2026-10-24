@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.wexlot.byoplayerpro'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.wexlot.byoplayerpro"
+        minSdk 21          // Android TV / Google TV baseline
+        multiDexEnabled true
+        targetSdk 34
+        versionCode 148
+        versionName "3.36.36"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+    // Native movie/episode player (same engine most Android IPTV apps use): plays the original
+    // MKV/MP4 with HEVC/H.264 directly, no server transcode needed.
+    implementation 'androidx.media3:media3-exoplayer:1.3.1'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.3.1'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.3.1'
+    implementation 'androidx.media3:media3-ui:1.3.1'
+    // FFmpeg audio decoders (AC3 / E-AC3 / DTS / TrueHD) that most phones lack in hardware.
+    implementation 'org.jellyfin.media3:media3-ffmpeg-decoder:1.3.1+2'
+}

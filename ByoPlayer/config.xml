@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="http://byoplayer.wexlot.com/byoplayerpro" version="3.36.36" viewmodes="maximized">
+    <tizen:application id="BYOPlayer1.BYOPlayerPro" package="BYOPlayer1" required_version="6.0"/>
+    <content src="index.html"/>
+    <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
+    <icon src="icon.png"/>
+    <name>BYO Player Pro</name>
+    <tizen:profile name="tv-samsung"/>
+
+    <!-- Privileges (Public-level only — Tizen 9.0 rejects partner-level privileges
+         on a Public-signed app at install time) -->
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+
+    <!-- Allow loading remote playlist/stream URLs over http and https -->
+    <access origin="*" subdomains="true"/>
+    <tizen:allow-navigation>*</tizen:allow-navigation>
+
+    <!-- Relax the default Content Security Policy so the app's inline styles,
+         inline scripts and remote IPTV streams are allowed. -->
+    <tizen:content-security-policy>default-src * data: blob: filesystem: about: ws: wss: 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'; img-src * data: blob:; media-src * data: blob:; connect-src *;</tizen:content-security-policy>
+    <tizen:content-security-policy-report-only>default-src *;</tizen:content-security-policy-report-only>
+
+    <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>

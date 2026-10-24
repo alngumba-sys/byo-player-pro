@@ -1,0 +1,9 @@
+/tv.apk
+  Content-Type: application/vnd.android.package-archive
+  Cache-Control: no-cache
+/tv3247.apk
+  Content-Type: application/vnd.android.package-archive
+  Cache-Control: no-cache
+/support/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache

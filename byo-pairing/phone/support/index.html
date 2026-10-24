@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>BYO Support Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0F14; --card:#11161D; --line:#1A212B; --row:#151B24; --row2:#171D26;
+  --in:#0B0F14; --inl:#222A35; --fg:#E6EAF0; --muted:#8B95A3; --faint:#5B6573;
+  --acc:#22D3EE; --acc-ink:#04212A; --bad:#F43F5E; --bad-line:#5A1F2C; --ok:#34D399; --warn:#FBBF24;
+  --r:12px;
+}
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{ margin:0; background:var(--bg); color:var(--fg); font:400 13px/1.4 Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; -webkit-font-smoothing:antialiased; }
+button,input,select,textarea{ font:inherit; color:inherit; }
+.hidden{ display:none !important; }
+.nw{ white-space:nowrap; }
+.ell{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+
+/* ---------- shell ---------- */
+.app{ height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+.hdr{ flex:none; display:flex; align-items:center; gap:14px; padding:10px 16px; border-bottom:1px solid var(--line); min-width:0; }
+.brand{ display:flex; align-items:center; gap:8px; font-weight:800; font-size:15px; white-space:nowrap; flex:none; }
+.brand svg{ width:22px; height:22px; flex:none; }
+.brand small{ color:var(--muted); font-weight:600; font-size:13px; }
+.sess-strip{ flex:1; min-width:0; display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding:2px 0; }
+.sess-strip::-webkit-scrollbar{ display:none; }
+.who{ flex:none; display:flex; align-items:center; gap:10px; color:var(--muted); white-space:nowrap; }
+.who b{ color:var(--fg); font-weight:700; }
+.view{ flex:1; min-height:0; display:flex; flex-direction:column; }
+
+/* ---------- controls ---------- */
+.btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; height:34px; padding:0 12px; border-radius:8px; border:1px solid var(--inl); background:var(--row); color:var(--fg); font-weight:700; white-space:nowrap; cursor:pointer; flex:none; }
+.btn:hover{ border-color:#2E3846; }
+.btn:focus-visible,.inp:focus-visible,.sel:focus-visible,.seg button:focus-visible,.tab:focus-visible,.tgl:focus-within,.chip:focus-visible{ outline:2px solid var(--acc); outline-offset:2px; }
+.btn.pri{ background:var(--acc); border-color:var(--acc); color:var(--acc-ink); font-weight:800; }
+.btn.pri:hover{ filter:brightness(1.06); }
+.btn.dng{ background:transparent; border-color:var(--bad-line); color:var(--bad); }
+.btn.dng:hover{ border-color:var(--bad); }
+.btn.gh{ background:transparent; }
+.btn.sm{ height:28px; padding:0 10px; font-size:12px; }
+.btn:disabled{ opacity:.45; cursor:default; }
+.inp,.sel{ width:100%; height:34px; padding:0 10px; border-radius:8px; border:1px solid var(--inl); background:var(--in); color:var(--fg); outline:none; min-width:0; }
+.inp:focus,.sel:focus,textarea.inp:focus{ border-color:var(--acc); outline:none; }
+textarea.inp{ height:auto; padding:8px 10px; resize:none; line-height:1.4; }
+.sel{ appearance:none; -webkit-appearance:none; padding-right:30px; cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B95A3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center; }
+.sel option{ background:#11161D; }
+.lbl{ display:block; font-size:12px; font-weight:600; color:var(--muted); margin:0 0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kicker{ font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--faint); text-transform:uppercase; white-space:nowrap; }
+.bdg{ display:inline-flex; align-items:center; height:18px; padding:0 7px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; background:#1C232D; color:var(--muted); flex:none; }
+.bdg.ok{ background:rgba(52,211,153,.14); color:var(--ok); } .bdg.acc{ background:rgba(34,211,238,.14); color:var(--acc); }
+.bdg.bad{ background:rgba(244,63,94,.14); color:var(--bad); } .bdg.warn{ background:rgba(251,191,36,.14); color:var(--warn); }
+.msg{ font-size:12px; min-height:16px; color:var(--bad); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.msg.good{ color:var(--ok); } .msg.busy{ color:var(--muted); }
+.msg:empty{ display:none; } .foot .msg:empty{ display:block; visibility:hidden; }
+.thin{ scrollbar-width:thin; scrollbar-color:#2A3340 transparent; }
+.thin::-webkit-scrollbar{ width:6px; height:6px; } .thin::-webkit-scrollbar-thumb{ background:#2A3340; border-radius:3px; }
+
+/* session chips in the header */
+.chip{ display:inline-flex; align-items:center; gap:7px; height:30px; padding:0 10px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--fg); font-weight:700; font-size:12px; white-space:nowrap; cursor:pointer; flex:none; }
+.chip.new{ border-color:var(--acc); color:var(--acc); background:transparent; }
+.chip.on{ border-color:var(--acc); background:#0D2A31; }
+.chip .t{ font-variant-numeric:tabular-nums; color:var(--ok); }
+.chip.warn .t{ color:var(--warn); } .chip.late .t{ color:var(--bad); }
+.chip .d{ width:6px; height:6px; border-radius:50%; background:var(--ok); flex:none; }
+.chip.warn .d{ background:var(--warn); } .chip.late .d{ background:var(--bad); }
+
+/* ---------- cards ---------- */
+.card{ background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:12px 14px; display:flex; flex-direction:column; gap:10px; min-width:0; }
+.card.fix{ flex-shrink:0; }
+.card.flex{ flex:1; min-height:0; }
+.ch{ display:flex; align-items:center; gap:8px; min-width:0; }
+.ch h2{ margin:0; font-size:14px; font-weight:800; white-space:nowrap; }
+.ch .note{ color:var(--faint); font-size:12px; }
+.sp{ flex:1; }
+.row{ display:flex; align-items:center; gap:8px; min-width:0; }
+.foot{ display:flex; align-items:center; gap:10px; justify-content:flex-end; margin-top:auto; }
+.foot .msg{ flex:1; }
+
+/* ---------- login / code ---------- */
+.center{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; align-items:center; padding:24px 16px; gap:12px; }
+.center .card{ width:100%; max-width:440px; flex-shrink:0; }
+.center .card.wide{ max-width:640px; }
+.codebox{ display:flex; gap:10px; justify-content:center; }
+.codebox input{ width:60px; height:72px; text-align:center; font-size:36px; font-weight:800; border-radius:10px; border:1px solid var(--inl); background:var(--in); color:var(--fg); outline:none; }
+.codebox input:focus{ border-color:var(--acc); }
+table.rec{ width:100%; border-collapse:collapse; font-size:12px; }
+table.rec td,table.rec th{ text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
+table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+.rec-wrap{ overflow-x:auto; }
+
+/* ---------- session view ---------- */
+.sess{ flex:1; min-height:0; display:flex; flex-direction:column; gap:12px; padding:12px 16px; }
+.devbar{ flex-shrink:0; flex-direction:row; flex-wrap:wrap; align-items:center; gap:10px 12px; padding:10px 14px; }
+.dev-id{ display:flex; align-items:center; gap:8px; flex:none; max-width:100%; }
+.dev-id .nm{ font-size:16px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.metas{ flex:1 1 300px; min-width:0; display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; }
+.metas::-webkit-scrollbar{ display:none; }
+.meta{ flex:none; display:inline-flex; gap:5px; align-items:center; height:26px; padding:0 9px; border-radius:7px; background:var(--row); color:var(--muted); font-size:12px; white-space:nowrap; }
+.meta b{ color:var(--fg); font-weight:700; }
+.meta.t b{ font-variant-numeric:tabular-nums; color:var(--ok); } .meta.t.warn b{ color:var(--warn); } .meta.t.late b{ color:var(--bad); }
+.devacts{ display:flex; gap:8px; flex-wrap:wrap; flex:0 1 auto; max-width:100%; align-items:center; justify-content:flex-end; }
+.devmsg{ flex-basis:100%; }
+.ended{ flex-basis:100%; background:rgba(244,63,94,.08); border:1px solid var(--bad-line); color:#FDA4AF; border-radius:8px; padding:7px 10px; font-size:12px; }
+
+.grid3{ flex:1; min-height:0; display:grid; grid-template-columns:1.15fr 1fr 1fr; gap:12px; }
+.col{ min-height:0; min-width:0; display:flex; flex-direction:column; gap:12px; }
+.scroll{ min-height:0; overflow-y:auto; }
+
+/* connections */
+.conns{ display:flex; flex-direction:column; gap:6px; max-height:132px; overflow-y:auto; flex-shrink:0; }
+.conn{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:9px; background:var(--row); min-width:0; }
+.conn .tx{ flex:1; min-width:0; }
+.conn .nm{ display:flex; align-items:center; gap:7px; font-weight:700; min-width:0; }
+.conn .nm span:first-child{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.conn .dt{ color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.empty{ color:var(--faint); padding:8px 10px; border-radius:9px; background:var(--row); }
+.seg{ display:flex; background:var(--row); border-radius:9px; padding:3px; gap:3px; flex-shrink:0; }
+.seg button{ flex:1; height:28px; border:0; border-radius:7px; background:transparent; color:var(--muted); font-weight:700; white-space:nowrap; cursor:pointer; }
+.seg button.on{ background:var(--acc); color:var(--acc-ink); font-weight:800; }
+.fields{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px; }
+.chk{ display:inline-flex; align-items:center; gap:8px; color:var(--fg); font-weight:600; white-space:nowrap; cursor:pointer; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.chk input{ display:none; }
+.box{ width:16px; height:16px; border-radius:4px; border:1.5px solid #3A4554; background:var(--in); flex:none; display:inline-flex; align-items:center; justify-content:center; }
+.chk input:checked + .box{ background:var(--acc); border-color:var(--acc); }
+.chk input:checked + .box::after{ content:''; width:8px; height:4px; border:2px solid var(--acc-ink); border-top:0; border-right:0; transform:rotate(-45deg) translate(1px,-1px); }
+
+/* trial */
+.trial-line{ display:flex; align-items:center; gap:8px; color:var(--muted); white-space:nowrap; overflow:hidden; }
+.trial-line .tx{ overflow:hidden; text-overflow:ellipsis; }
+.days{ display:flex; gap:6px; align-items:center; }
+.days .btn{ flex:none; padding:0 10px; }
+.addon{ display:flex; flex:1 1 150px; min-width:150px; }
+.addon .inp{ min-width:54px; }
+.acc-row{ display:flex; gap:6px; align-items:center; }
+.acc-row .sel{ flex:1 1 96px; min-width:96px; }
+.acc-row .btn{ flex:none; }
+.btn.ok{ background:transparent; border-color:#1F5A45; color:var(--ok); } .btn.ok:hover{ border-color:var(--ok); }
+.addon .inp{ border-radius:8px 0 0 8px; border-right:0; }
+.addon .btn{ border-radius:0 8px 8px 0; min-width:96px; flex:none; }
+
+/* toggles */
+.tgls{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.tgl{ display:flex; align-items:center; gap:8px; height:32px; padding:0 9px; border-radius:8px; background:var(--row2); border:1px solid var(--line); cursor:pointer; font-weight:700; white-space:nowrap; overflow:hidden; min-width:0; }
+.tgl span:last-child{ overflow:hidden; text-overflow:ellipsis; }
+.tgl input{ display:none; }
+.tgl input:checked + .box{ background:var(--acc); border-color:var(--acc); }
+.tgl input:checked + .box::after{ content:''; width:8px; height:4px; border:2px solid var(--acc-ink); border-top:0; border-right:0; transform:rotate(-45deg) translate(1px,-1px); }
+.tgl.off{ opacity:.5; }
+.g2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+
+/* activity */
+.log{ display:flex; flex-direction:column; gap:6px; }
+.ev{ display:flex; gap:10px; align-items:flex-start; padding:7px 10px 7px 12px; border-radius:8px; background:var(--row); position:relative; min-width:0; }
+.ev::before{ content:''; position:absolute; left:0; top:6px; bottom:6px; width:3px; border-radius:2px; background:var(--faint); }
+.ev.done::before{ background:var(--ok); } .ev.error::before{ background:var(--bad); } .ev.pending::before,.ev.delivered::before{ background:var(--warn); }
+.ev.cancelled{ opacity:.55; }
+.ev .tx{ flex:1; min-width:0; }
+.ev .l1{ display:flex; align-items:center; gap:7px; font-weight:700; white-space:nowrap; min-width:0; }
+.ev .l1 span:first-child{ overflow:hidden; text-overflow:ellipsis; }
+.ev .l2{ color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ev time{ color:var(--faint); font-size:11px; white-space:nowrap; flex:none; padding-top:2px; }
+
+/* ---------- all TVs ---------- */
+.chip.fl{ border-color:var(--inl); }
+.chip.fl.on{ border-color:var(--acc); background:#0D2A31; color:var(--acc); }
+.chip .n{ color:var(--muted); font-variant-numeric:tabular-nums; }
+.fleet{ flex:1; min-height:0; display:flex; flex-direction:column; gap:12px; padding:12px 16px; }
+.fbar{ flex-shrink:0; flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px 10px; padding:10px 14px; }
+.fbar h2{ margin:0; font-size:16px; font-weight:800; white-space:nowrap; }
+.sums{ display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; flex:1 1 420px; min-width:0; }
+.sums::-webkit-scrollbar{ display:none; }
+.sum{ flex:none; display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 11px; border-radius:8px; border:1px solid var(--line); background:var(--row); color:var(--muted); font-weight:700; font-size:12px; white-space:nowrap; cursor:pointer; }
+.sum b{ color:var(--fg); font-variant-numeric:tabular-nums; }
+.sum.on{ border-color:var(--acc); background:#0D2A31; color:var(--acc); } .sum.on b{ color:var(--acc); }
+.sum .d{ width:7px; height:7px; border-radius:50%; flex:none; }
+.fsearch{ flex:0 1 260px; min-width:150px; }
+.flist{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding:0; }
+.flist-card{ padding:10px; }
+.tv{ display:grid; grid-template-columns:minmax(190px,1.25fr) minmax(170px,1.05fr) minmax(150px,.9fr) minmax(140px,.85fr) 300px; grid-template-areas:"who plan left paid acts" "meta meta meta meta meta"; align-items:center; gap:8px 16px; padding:11px 14px 9px; border-radius:10px; background:var(--row); min-width:0; border:1px solid transparent; }
+.tv:hover{ border-color:var(--line); }
+.tv .c.who{ grid-area:who; } .tv .c.plan{ grid-area:plan; } .tv .c.left{ grid-area:left; } .tv .c.paid{ grid-area:paid; } .tv .acts{ grid-area:acts; }
+.tv .pn{ font-weight:800; font-size:14px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tv .cd{ font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.tv .cd.ok{ color:var(--ok); } .tv .cd.warn{ color:var(--warn); } .tv .cd.bad{ color:var(--bad); }
+.tv .bar{ height:4px; border-radius:2px; background:#232b37; margin:4px 0 3px; overflow:hidden; }
+.tv .bar i{ display:block; height:100%; border-radius:2px; background:var(--ok); }
+.tv .bar i.warn{ background:var(--warn); } .tv .bar i.bad{ background:var(--bad); }
+.tv .money{ font-size:15px; font-weight:800; color:var(--fg); font-variant-numeric:tabular-nums; }
+.tv .cnt{ color:var(--muted); font-size:12px; font-weight:600; }
+.tv .meta-row{ grid-area:meta; display:flex; flex-wrap:wrap; gap:4px 18px; padding-top:7px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; min-width:0; }
+.tv .meta-row span{ display:inline-flex; align-items:center; gap:6px; white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.tv .meta-row svg{ width:13px; height:13px; flex:none; color:var(--faint); }
+.tv .c{ min-width:0; }
+.tv .l1{ display:flex; align-items:center; gap:7px; font-weight:700; min-width:0; white-space:nowrap; }
+.tv .l1 span.ell{ min-width:0; }
+.tv .l2{ color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tv .id{ font-variant-numeric:tabular-nums; letter-spacing:.06em; color:var(--acc); font-weight:800; }
+.dot{ width:8px; height:8px; border-radius:50%; background:var(--faint); flex:none; }
+.dot.on{ background:var(--ok); box-shadow:0 0 0 3px rgba(52,211,153,.15); }
+.tv .flg{ font-size:16px; line-height:1; flex:none; }
+.tv .seen{ color:var(--muted); font-size:12px; white-space:nowrap; }
+.tv .acts{ display:flex; gap:6px; align-items:center; justify-content:flex-end; flex-wrap:nowrap; }
+.tv .acts .sel{ width:96px; height:28px; font-size:12px; padding:0 24px 0 8px; background-position:right 7px center; }
+.tv .help{ display:inline-flex; align-items:center; height:18px; padding:0 7px; border-radius:999px; background:rgba(251,191,36,.14); color:var(--warn); font-size:10px; font-weight:800; letter-spacing:.06em; white-space:nowrap; border:0; cursor:pointer; }
+.fnote{ color:var(--faint); font-size:12px; flex-basis:100%; }
+.fnote:empty{ display:none; }
+@media (max-width:1180px){
+  .tv{ grid-template-columns:minmax(170px,1.2fr) minmax(150px,1fr) minmax(130px,.9fr) 300px; grid-template-areas:"who plan left acts" "paid paid paid paid" "meta meta meta meta"; }
+  .tv .c.paid .l1, .tv .c.paid .l2{ display:inline-flex; margin-right:12px; }
+}
+@media (max-width:820px){
+  .fleet{ padding:10px 12px; gap:10px; }
+  .tv{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-areas:"who who" "plan left" "paid paid" "acts acts" "meta meta"; gap:8px 12px; }
+  .tv .acts{ justify-content:stretch; }
+  .tv .acts .btn{ flex:1 1 auto; } .tv .acts .sel{ flex:1 1 90px; width:auto; height:32px; } .tv .acts .btn.sm{ height:32px; }
+  .fsearch{ flex:1 1 200px; }
+  .fbar .fh{ display:none; }
+}
+
+/* ---------- payments ---------- */
+.pay{ flex:1; min-height:0; display:grid; grid-template-columns:minmax(380px,1fr) minmax(380px,1.15fr); grid-template-rows:auto 1fr; gap:12px; padding:12px 16px; }
+.pay .pbar{ grid-column:1 / -1; flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px 10px; padding:10px 14px; }
+.pay .pbar h2{ margin:0; font-size:16px; font-weight:800; }
+.pcol{ min-height:0; display:flex; flex-direction:column; gap:12px; }
+.ptbl{ display:flex; flex-direction:column; gap:6px; }
+.prow{ display:grid; grid-template-columns:28px minmax(0,1.4fr) 88px 110px 30px; gap:8px; align-items:center; }
+.prow.h{ color:var(--faint); font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.prow .inp{ height:32px; }
+.prow .x{ width:28px; height:28px; border-radius:7px; border:1px solid var(--inl); background:transparent; color:var(--muted); cursor:pointer; }
+.prow .x:hover{ color:var(--bad); border-color:var(--bad-line); }
+.cur{ position:relative; } .cur .inp{ padding-left:44px; } .cur i{ position:absolute; left:10px; top:50%; transform:translateY(-50%); font-style:normal; font-size:11px; font-weight:800; color:var(--faint); }
+.keybox{ display:flex; gap:8px; align-items:center; padding:10px 12px; border-radius:9px; background:#0D2A31; border:1px solid var(--acc); }
+.keybox code{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:13px; color:var(--acc); font-weight:700; }
+.plist{ display:flex; flex-direction:column; gap:6px; }
+.pi{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:4px 12px; align-items:center; padding:9px 12px; border-radius:9px; background:var(--row); }
+.pi .amt{ font-weight:800; font-size:15px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.pi .who{ min-width:0; } .pi .who .l1{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pi .who .l2{ color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pi .rt{ text-align:right; } .pi time{ display:block; color:var(--faint); font-size:11px; margin-top:3px; white-space:nowrap; }
+.today{ display:inline-flex; gap:6px; flex-wrap:wrap; }
+@media (max-width:900px), (max-height:560px){
+  .pay{ display:flex; flex-direction:column; overflow-y:auto; padding:10px 12px; }
+  .pay .card.flex{ flex:0 0 auto; min-height:260px; }
+  .pcol{ flex:none; }
+}
+@media (max-width:480px){ .pay .g2{ grid-template-columns:1fr; } .pi{ grid-template-columns:auto minmax(0,1fr); } .pi .rt{ grid-column:1 / -1; text-align:left; display:flex; gap:8px; align-items:center; } .pi .rt time{ margin:0 0 0 auto; } }
+@media (max-width:480px){ .pay .g2{ grid-template-columns:1fr; } .pi{ grid-template-columns:auto minmax(0,1fr); } .pi .rt{ grid-column:1 / -1; text-align:left; display:flex; gap:8px; align-items:center; } .pi .rt time{ margin:0 0 0 auto; } }
+@media (max-width:480px){ .prow{ grid-template-columns:24px minmax(0,1fr) 64px 84px 26px; gap:5px; } .cur .inp{ padding-left:36px; } .cur i{ left:7px; } }
+
+/* ---------- tabs (narrow or short screens) ---------- */
+.tabbar{ display:none; }
+@media (max-width:1099px), (max-height:679px){
+  .who .as{ display:none; }
+  .sess{ padding:10px 12px; gap:10px; }
+  .grid3{ display:flex; flex-direction:column; }
+  .grid3 [data-panel]{ flex:1 1 auto; min-height:0; }
+  .grid3 .card.fix[data-panel]{ flex:0 0 auto; }
+  .grid3 [data-panel]{ display:none !important; }
+  .grid3[data-tab="connect"] [data-panel="connect"],
+  .grid3[data-tab="setup"] [data-panel="setup"],
+  .grid3[data-tab="message"] [data-panel="message"],
+  .grid3[data-tab="activity"] [data-panel="activity"]{ display:flex !important; }
+  .col.c3{ display:contents; }
+  .tabbar{ display:grid; grid-template-columns:repeat(4,1fr); flex:none; border-top:1px solid var(--line); background:var(--card); padding:6px 8px calc(6px + env(safe-area-inset-bottom)); gap:6px; }
+  .tab{ min-height:44px; border:0; border-radius:10px; background:transparent; color:var(--muted); font-weight:800; white-space:nowrap; cursor:pointer; font-size:13px; }
+  .tab.on{ color:var(--acc); background:#0D2A31; }
+  .col.c2 > .card{ flex-shrink:0; }
+  .col.c2 .card.flex{ flex:1 0 auto; }
+  .col.c2{ overflow-y:auto; }
+}
+/* tabbed but wide enough: TV setup as two columns so it fits without scrolling */
+@media (min-width:700px) and (max-width:1099px), (min-width:700px) and (max-height:679px){
+  .grid3[data-tab="setup"] .col.c2[data-panel="setup"]{ display:grid !important; grid-template-columns:1fr 1fr; grid-template-rows:auto 1fr; align-content:start; gap:10px; }
+  .col.c2 > .card:nth-child(1){ grid-column:1; grid-row:1; }
+  .col.c2 > .card:nth-child(2){ grid-column:1; grid-row:2; align-self:start; }
+  .col.c2 > .card:nth-child(3){ grid-column:2; grid-row:1 / span 2; }
+}
+@media (max-width:560px){
+  .hdr{ gap:10px; padding:8px 12px; }
+  .brand small{ display:none; }
+  .devacts{ flex:1 1 100%; justify-content:stretch; gap:6px; }
+  .devacts .btn{ flex:1 1 auto; height:32px; padding:0 9px; font-size:12px; }
+  .days{ gap:5px; } .days .btn{ flex:1 1 0; padding:0 4px; font-size:12px; } .addon{ flex:1.4 1 0; min-width:0; } .addon .inp{ min-width:0; padding:0 6px; } .addon .btn{ min-width:46px; }
+  .acc-row{ gap:5px; } .acc-row .sel{ flex:1 1 0; min-width:0; padding:0 22px 0 8px; background-position:right 6px center; } .acc-row .btn{ flex:none; padding:0 8px; font-size:12px; }
+  .card{ padding:10px 12px; gap:8px; }
+  .col.c2 .ch .note{ display:none; }
+  .col.c2{ gap:8px; }
+  .tgl{ height:30px; }
+  .tgls{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .g2{ grid-template-columns:1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hdr">
+    <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 5 L27 16 L8 27 Z" fill="none" stroke="#22D3EE" stroke-width="3.2" stroke-linejoin="round"/></svg>BYO Player <small>Support console</small></div>
+    <div class="sess-strip" id="strip"></div>
+    <div class="who" id="who"></div>
+  </header>
+
+  <!-- 1. Sign in -->
+  <section id="v-login" class="view hidden">
+    <div class="center thin">
+      <div class="card">
+        <div class="ch"><h2>Sign in</h2></div>
+        <div class="muted" style="color:var(--muted)">Uses the admin key set on the BYO backend. It stays in this browser only.</div>
+        <div><label class="lbl" for="l-agent">Your name (shown on the customer's TV)</label><input class="inp" id="l-agent" placeholder="e.g. Albert"></div>
+        <div><label class="lbl" for="l-key">Admin key</label><input class="inp" id="l-key" type="password" autocomplete="current-password"></div>
+        <details><summary style="cursor:pointer;color:var(--muted);font-weight:600">Backend</summary>
+          <div style="display:grid;gap:8px;margin-top:8px">
+            <div><label class="lbl" for="l-url">Supabase URL</label><input class="inp" id="l-url"></div>
+            <div><label class="lbl" for="l-anon">Publishable key</label><input class="inp" id="l-anon"></div>
+          </div></details>
+        <div class="foot"><span class="msg" id="l-err"></span><button class="btn pri" id="l-go">Continue</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Enter the code -->
+  <section id="v-code" class="view hidden">
+    <div class="center thin">
+      <div class="card" style="text-align:center">
+        <div class="ch" style="justify-content:center"><h2>Enter the customer's code</h2></div>
+        <div style="color:var(--muted)">They get it on the TV from Settings &gt; Connection &gt; Get remote help.</div>
+        <div class="codebox" id="codebox">
+          <input inputmode="numeric" maxlength="1" aria-label="Digit 1"><input inputmode="numeric" maxlength="1" aria-label="Digit 2"><input inputmode="numeric" maxlength="1" aria-label="Digit 3"><input inputmode="numeric" maxlength="1" aria-label="Digit 4">
+        </div>
+        <div class="row" style="justify-content:center"><button class="btn pri" id="c-go" style="min-width:160px">Connect to TV</button></div>
+        <div class="msg" id="c-err" style="text-align:center"></div>
+      </div>
+      <div class="card wide">
+        <div class="ch"><h2>Recent sessions</h2><span class="sp"></span><button class="btn sm gh" id="r-load">Refresh</button></div>
+        <div id="recent" class="rec-wrap thin" style="color:var(--muted)">Loading…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- All TVs (no code needed) -->
+  <section id="v-fleet" class="view hidden">
+    <div class="fleet">
+      <div class="card fbar">
+        <h2 class="fh">All TVs</h2>
+        <div class="sums" id="fl-sums"></div>
+        <input class="inp fsearch" id="fl-q" type="search" placeholder="Search TV ID, model, country, version" aria-label="Search TVs">
+        <button class="btn sm gh" id="fl-ref">Refresh</button>
+        <div class="fnote" id="fl-note"></div>
+      </div>
+      <div class="card flex flist-card">
+        <div class="flist thin" id="fl-list"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Payments: plans, prices, receiving numbers, what came in -->
+  <section id="v-pay" class="view hidden">
+    <div class="pay">
+      <div class="card pbar">
+        <h2>Payments</h2>
+        <span class="today" id="p-today"></span>
+        <span class="sp"></span>
+        <button class="btn sm gh" id="p-ref">Refresh</button>
+      </div>
+      <div class="pcol">
+        <div class="card fix">
+          <div class="ch"><h2>Plans &amp; prices</h2><span class="note ell" id="p-upd"></span></div>
+          <div class="seg" id="p-ctry"><button data-c="KE" class="on">Kenya · M-Pesa</button><button data-c="ET">Ethiopia · telebirr</button></div>
+          <div class="g2">
+            <div><label class="lbl" for="p-num" id="p-num-l">M-Pesa number customers pay to</label><input class="inp" id="p-num" inputmode="tel" placeholder="07XX XXX XXX"></div>
+            <div><label class="lbl" for="p-name">Name they will see (optional)</label><input class="inp" id="p-name" placeholder="e.g. Albert N" maxlength="40"></div>
+          </div>
+          <div class="ptbl" id="p-plans"></div>
+          <div class="foot" style="justify-content:space-between"><button class="btn sm gh" id="p-add">+ Add plan</button><span class="msg" id="p-err"></span><button class="btn pri" id="p-save">Save plans</button></div>
+          <div class="note" style="color:var(--faint);font-size:12px">The TV shows the ticked plans for its country. Customers must pay from the number they type on the TV.</div>
+        </div>
+        <div class="card fix">
+          <div class="ch"><h2>Collector phone key</h2><span class="sp"></span><span id="p-keyst"></span></div>
+          <div style="color:var(--muted)">The BYO Collector app needs this key (Settings, Connection key) to report payments. A new key replaces the old one.</div>
+          <div id="p-keybox"></div>
+          <div class="foot"><span class="msg" id="p-kerr"></span><button class="btn" id="p-key">New key</button></div>
+        </div>
+      </div>
+      <div class="pcol">
+        <div class="card flex">
+          <div class="ch"><h2>Received</h2><span class="note ell">Read by the collector phone</span></div>
+          <div class="plist scroll thin" id="p-recv" style="flex:1"></div>
+        </div>
+        <div class="card fix" style="max-height:34%">
+          <div class="ch"><h2>Waiting to pay</h2><span class="note ell">TVs that started a payment</span></div>
+          <div class="plist scroll thin" id="p-wait"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Session -->
+  <section id="v-sess" class="view hidden">
+    <div class="sess">
+      <div class="card devbar">
+        <div class="dev-id"><span class="nm" id="s-title">TV</span><span class="bdg" id="s-status">…</span><span class="meta t" id="s-timer">Ends in <b id="s-left">--:--</b></span></div>
+        <div class="metas" id="s-kv"></div>
+        <div class="devacts">
+          <button class="btn" id="s-more">+30 min</button>
+          <button class="btn" id="x-refresh">Refresh library</button>
+          <button class="btn" id="s-back">New code</button>
+          <button class="btn dng" id="x-signout">Sign out of all connections</button>
+          <button class="btn dng" id="s-end">End session</button>
+        </div>
+        <div class="msg devmsg hidden" id="x-err"></div>
+        <div class="ended hidden" id="s-ended"></div>
+      </div>
+
+      <div class="grid3" id="grid" data-tab="connect">
+        <!-- column 1: connections -->
+        <div class="col c1" data-panel="connect">
+          <div class="card flex scroll thin">
+            <div class="ch"><h2>Connections</h2><span class="note ell">Passwords and links are never shown</span></div>
+            <div class="conns thin" id="s-conns"></div>
+            <div class="kicker">Add a connection</div>
+            <div class="seg" id="a-mode"><button data-m="xtream" class="on">Xtream</button><button data-m="m3u">M3U</button><button data-m="emby">Emby</button><button data-m="jellyfin">Jellyfin</button></div>
+            <div class="fields">
+              <div><label class="lbl" for="a-name">Name (optional)</label><input class="inp" id="a-name" placeholder="e.g. Home server"></div>
+              <div id="f-server"><label class="lbl" for="a-server">Server URL</label><input class="inp" id="a-server" placeholder="http://provider.com:8080"></div>
+              <div id="f-url" class="hidden"><label class="lbl" for="a-url">Playlist URL</label><input class="inp" id="a-url" placeholder="https://…/playlist.m3u"></div>
+              <div id="f-epg" class="hidden"><label class="lbl" for="a-epg">EPG URL (optional)</label><input class="inp" id="a-epg" placeholder="https://…/epg.xml"></div>
+              <div id="f-user"><label class="lbl" for="a-user">Username</label><input class="inp" id="a-user" autocomplete="off"></div>
+              <div id="f-pass"><label class="lbl" for="a-pass">Password</label><input class="inp" id="a-pass" type="password" autocomplete="new-password"></div>
+            </div>
+            <div class="foot" style="justify-content:space-between">
+              <label class="chk"><input type="checkbox" id="a-combine"><span class="box"></span><span class="ell">Keep other connections</span></label>
+              <button class="btn pri" id="a-send">Add to TV</button>
+            </div>
+            <div class="msg" id="a-err"></div>
+          </div>
+        </div>
+
+        <!-- column 2: trial, sections, settings -->
+        <div class="col c2 thin" data-panel="setup">
+          <div class="card fix">
+            <div class="trial-line"><h2 style="margin:0;font-size:14px;font-weight:800;color:var(--fg)">Trial &amp; subscription</h2><span id="b-line" class="row" style="gap:8px;min-width:0"></span></div>
+            <div class="days">
+              <button class="btn" data-days="3">+3 days</button><button class="btn" data-days="5">+5 days</button><button class="btn" data-days="7">+7 days</button>
+              <div class="addon"><input class="inp" id="b-days" type="number" min="-60" max="365" placeholder="Days"><button class="btn" id="b-custom">Add</button></div>
+            </div>
+            <div class="acc-row">
+              <select class="sel" id="ax-days" aria-label="Enable for"><option value="1">1 day</option><option value="3">3 days</option><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option><option value="180">6 months</option><option value="365">1 year</option></select>
+              <button class="btn ok" id="ax-enable">Enable</button>
+              <button class="btn dng" id="ax-end">End access</button>
+              <button class="btn dng" id="ax-block">Block</button>
+              <button class="btn hidden" id="ax-clear">Back to normal</button>
+            </div>
+            <div class="msg" id="b-err"></div>
+          </div>
+          <div class="card fix">
+            <div class="ch"><h2>App sections</h2><span class="note ell">Unticked sections are hidden on the TV</span></div>
+            <div class="tgls" id="f-flags"></div>
+            <div class="foot"><span class="msg" id="f-err"></span><button class="btn pri" id="f-send">Save sections</button></div>
+          </div>
+          <div class="card flex">
+            <div class="ch"><h2>Settings</h2><span class="note ell">Language and parental controls</span></div>
+            <div class="g2">
+              <div><label class="lbl" for="st-lang">Language</label><select class="sel" id="st-lang"><option value="">No change</option></select></div>
+              <div><label class="lbl" for="st-pc">Parental controls</label><select class="sel" id="st-pc"><option value="">No change</option><option value="on">On</option><option value="off">Off</option></select></div>
+              <div><label class="lbl" for="st-lock">Lock settings with PIN</label><select class="sel" id="st-lock"><option value="">No change</option><option value="on">On</option><option value="off">Off</option></select></div>
+              <div><label class="lbl" for="st-pin">New 4-digit PIN</label><input class="inp" id="st-pin" inputmode="numeric" maxlength="4" placeholder="e.g. forgotten PIN"></div>
+            </div>
+            <div class="foot"><span class="msg" id="st-err"></span><button class="btn pri" id="st-send">Apply settings</button></div>
+          </div>
+        </div>
+
+        <!-- column 3: message + activity -->
+        <div class="col c3">
+          <div class="card fix" data-panel="message">
+            <div class="ch"><h2>Show a message on the TV</h2></div>
+            <div><label class="lbl" for="m-title">Title</label><input class="inp" id="m-title" value="Message from BYO support"></div>
+            <div><label class="lbl" for="m-text">Message</label><textarea class="inp" id="m-text" rows="3" placeholder="e.g. Your server is back up. Press OK and try again."></textarea></div>
+            <div class="foot"><span class="msg" id="m-err"></span><button class="btn pri" id="m-send">Show on TV</button></div>
+          </div>
+          <div class="card flex" data-panel="activity">
+            <div class="ch"><h2>Activity</h2><span class="sp"></span><span class="note nw" id="s-poll"></span></div>
+            <div class="log scroll thin" id="s-log" style="flex:1"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <nav class="tabbar" id="tabbar">
+      <button class="tab on" data-tab="connect">Connect</button><button class="tab" data-tab="setup">TV setup</button><button class="tab" data-tab="message">Message</button><button class="tab" data-tab="activity">Activity</button>
+    </nav>
+  </section>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var DEF_URL='https://lkftnbkuuitaxtlvrqfj.supabase.co', DEF_ANON='sb_publishable_D5tMkCSL1AVvJS8S9fuPgQ_nOg_ItOY';
+  var LANGS=[['en','English'],['am','Amharic'],['sw','Swahili'],['fr','French'],['ar','Arabic'],['es','Spanish'],['pt','Portuguese'],['de','German'],['it','Italian'],['nl','Dutch'],['tr','Turkish'],['zh','Chinese']];
+  var FLAGS=[['live','Live TV'],['sports','Sports'],['movies','Movies'],['series','Series'],['guide','TV Guide'],['assistant','AI assistant']];
+  var KIND={ 'access.set':'Access', 'connection.add':'Add connection','connection.remove':'Remove connection','settings':'Settings','message':'Message','refresh':'Refresh library','signout':'Sign out','billing.refresh':'Trial update','trial.add':'Trial days','flags':'App sections' };
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function ls(k,v){ try{ if(v===undefined) return localStorage.getItem(k)||''; if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(e){ return ''; } }
+  var cfg={ url:ls('sc_url')||DEF_URL, anon:ls('sc_anon')||DEF_ANON, key:ls('sc_key'), agent:ls('sc_agent') };
+  var sess=null, view=null, pollT=null, mode='xtream';
+
+  function api(action, body){ body=body||{}; body.action=action; body.agent=cfg.agent||'support';
+    return fetch(cfg.url.replace(/\/$/,'')+'/functions/v1/admin',{ method:'POST', headers:{ 'content-type':'application/json', 'x-api-key':cfg.key, 'apikey':cfg.anon, 'authorization':'Bearer '+cfg.anon }, body:JSON.stringify(body) })
+      .then(function(r){ return r.json().catch(function(){ return { ok:false, error:'HTTP '+r.status }; }).then(function(j){ if(r.status===401) j={ ok:false, error:'The admin key was not accepted.', auth:true }; return j; }); })
+      .catch(function(){ return { ok:false, error:'Could not reach the backend.' }; }); }
+
+  function show(v){ if(v!=='v-fleet') stopFleet(); if(v!=='v-pay') stopPay(); ['v-login','v-code','v-sess','v-fleet','v-pay'].forEach(function(id){ $(id).classList.toggle('hidden', id!==v); }); view=v;
+    $('strip').classList.toggle('hidden', v==='v-login'); if(v!=='v-login') startRail(); else stopRail();
+    $('who').innerHTML=cfg.key?('<span class="as">Signed in as <b>'+esc(cfg.agent||'support')+'</b></span><button class="btn sm gh" id="logout">Sign out</button>'):'';
+    var lo=$('logout'); if(lo) lo.onclick=function(){ stop(); stopRail(); cfg.key=''; ls('sc_key',null); show('v-login'); }; }
+
+  // ---------- sign in ----------
+  $('l-url').value=cfg.url; $('l-anon').value=cfg.anon; $('l-agent').value=cfg.agent;
+  $('l-go').onclick=function(){ cfg.agent=$('l-agent').value.trim()||'Support'; cfg.key=$('l-key').value.trim(); cfg.url=$('l-url').value.trim()||DEF_URL; cfg.anon=$('l-anon').value.trim()||DEF_ANON;
+    if(!cfg.key){ say($('l-err'),'Enter the admin key.'); return; }
+    say($('l-err'),'Checking…','busy');
+    api('support.recent',{ limit:1 }).then(function(j){ if(!j.ok){ say($('l-err'),j.error||'Sign in failed'); return; }
+      ls('sc_url',cfg.url); ls('sc_anon',cfg.anon); ls('sc_key',cfg.key); ls('sc_agent',cfg.agent); say($('l-err'),''); toCode(); }); };
+
+  // ---------- code ----------
+  var digits=[].slice.call(document.querySelectorAll('#codebox input'));
+  digits.forEach(function(d,i){ d.addEventListener('input',function(){ d.value=d.value.replace(/\D/g,'').slice(-1); if(d.value&&digits[i+1]) digits[i+1].focus(); if(code().length===4) claim(); });
+    d.addEventListener('keydown',function(e){ if(e.key==='Backspace'&&!d.value&&digits[i-1]){ digits[i-1].focus(); } if(e.key==='Enter') claim(); });
+    d.addEventListener('paste',function(e){ var t=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'').slice(0,4); if(t.length){ e.preventDefault(); t.split('').forEach(function(c,k){ if(digits[k]) digits[k].value=c; }); if(t.length===4) claim(); } }); });
+  function code(){ return digits.map(function(d){ return d.value; }).join(''); }
+  function toCode(){ stop(); sess=null; paintRail(); digits.forEach(function(d){ d.value=''; }); say($('c-err'),''); show('v-code'); digits[0].focus(); loadRecent(); }
+  $('c-go').onclick=claim;
+  function claim(){ var c=code(); if(c.length!==4){ say($('c-err'),'Enter all 4 digits.'); return; }
+    say($('c-err'),'Connecting…','busy');
+    api('support.claim',{ code:c }).then(function(j){ if(!j.ok){ say($('c-err'),j.error||'Could not connect'); if(j.auth) show('v-login'); return; }
+      say($('c-err'),''); open(j); }); }
+  $('r-load').onclick=loadRecent;
+  function loadRecent(){ api('support.recent',{ limit:12 }).then(function(j){ if(!j.ok){ $('recent').textContent=j.error||''; return; }
+    if(!j.sessions.length){ $('recent').textContent='No sessions yet.'; return; }
+    $('recent').innerHTML='<table class="rec"><tr><th>When</th><th>Code</th><th>TV</th><th>Status</th><th>Support</th><th></th></tr>'+j.sessions.map(function(s){
+      var d=s.device_state||{}; var op=(s.status==='connected');
+      return '<tr><td>'+esc(when(s.created_at))+'</td><td>'+esc(s.code)+'</td><td>'+esc([d.platform,d.version].filter(Boolean).join(' · ')||'TV')+'</td><td>'+pill(s.status)+'</td><td>'+esc(s.claimed_by||'')+'</td><td>'+(op?'<button class="btn sm" data-open="'+esc(s.id)+'">Open</button>':'')+'</td></tr>'; }).join('')+'</table>';
+    [].forEach.call(document.querySelectorAll('[data-open]'),function(b){ b.onclick=function(){ api('support.status',{ session_id:b.getAttribute('data-open') }).then(function(j){ if(j.ok) open(j); }); }; }); }); }
+
+  // ---------- session ----------
+  function open(j){ sess=j; show('v-sess'); paint(); start(); paintRail(); }
+
+  // ---------- several TVs at once: chips in the header ----------
+  var active=[], railT=null, tickT=null, skew=0;
+  function startRail(){ if(railT) return; loadActive(); railT=setInterval(loadActive, 5000); tickT=setInterval(tick, 1000); }
+  function stopRail(){ if(railT){ clearInterval(railT); railT=null; } if(tickT){ clearInterval(tickT); tickT=null; } }
+  function loadActive(){ api('support.active',{}).then(function(j){ if(!j.ok) return; if(j.now) skew=Date.parse(j.now)-Date.now(); active=j.sessions||[]; paintRail(); }); }
+  function leftMs(exp){ return Date.parse(exp)-(Date.now()+skew); }
+  function fmt(ms){ if(ms<=0) return '0:00'; var t=Math.floor(ms/1000), m=Math.floor(t/60), sec=t%60; return m+':'+(sec<10?'0':'')+sec; }
+  function cls(ms){ return ms<=5*60000?'late':(ms<=15*60000?'warn':''); }
+  function paintRail(){ var L=$('strip');
+    var h='<button class="chip fl'+(view==='v-fleet'?' on':'')+'" id="strip-fleet" title="Every TV that has checked in, with its subscription">All TVs'+(fleetSum?' <span class="n">'+fleetSum.total+'</span>':'')+'</button>';
+    h+='<button class="chip fl'+(view==='v-pay'?' on':'')+'" id="strip-pay" title="Plans, prices and payments received">Payments</button>';
+    h+='<button class="chip new" id="strip-new" title="Connect another TV">+ Connect a TV</button>';
+    h+=active.map(function(a){ var d=a.device_state||{}, ms=leftMs(a.expires_at), on=sess&&sess.session&&sess.session.id===a.id;
+      var nm=(d.model||d.platform||'TV');
+      return '<button class="chip '+cls(ms)+(on?' on':'')+'" data-sid="'+esc(a.id)+'" title="'+esc((d.platform||'TV')+' · code '+a.code+(a.errors?' · '+a.errors+' error(s)':''))+'"><span class="d"></span>'+esc(nm)+' · '+esc(a.code)+' <span class="t" data-exp="'+esc(a.expires_at)+'">'+fmt(ms)+'</span></button>'; }).join('');
+    L.innerHTML=h;
+    $('strip-new').onclick=toCode; $('strip-fleet').onclick=toFleet; $('strip-pay').onclick=toPay;
+    [].forEach.call(L.querySelectorAll('[data-sid]'),function(b){ b.onclick=function(){ var id=b.getAttribute('data-sid'); if(sess&&sess.session&&sess.session.id===id&&view==='v-sess') return;
+      api('support.status',{ session_id:id }).then(function(j){ if(j.ok) open(j); }); }; }); }
+  function tick(){ [].forEach.call(document.querySelectorAll('.chip .t[data-exp]'),function(el){ var ms=leftMs(el.getAttribute('data-exp')); el.textContent=fmt(ms); var c=el.closest('.chip'); c.classList.toggle('warn', cls(ms)==='warn'); c.classList.toggle('late', cls(ms)==='late'); });
+    if(sess&&sess.session){ var t=$('s-timer'); if(!t) return; var live=sess.session.status==='connected', ms=live?leftMs(sess.session.expires_at):0;
+      $('s-left').textContent=live?fmt(ms):'ended'; t.classList.toggle('warn', live&&cls(ms)==='warn'); t.classList.toggle('late', !live||cls(ms)==='late'); } }
+  function start(){ stop(); pollT=setInterval(refresh, 3000); }
+  function stop(){ if(pollT){ clearInterval(pollT); pollT=null; } }
+  function refresh(){ if(!sess) return; api('support.status',{ session_id:sess.session.id }).then(function(j){ if(j.ok){ sess=j; paint(); $('s-poll').textContent='Updated '+new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }); } else $('s-poll').textContent=j.error||'Update failed'; }); }
+  function send(kind, payload, secret, errEl){ say(errEl,'Sending…','busy');
+    return api('support.send',{ session_id:sess.session.id, kind:kind, payload:payload||{}, secret:secret||null }).then(function(j){ if(!j.ok){ say(errEl,j.error||'Failed'); return false; } say(errEl,'Sent. Watch Activity for the TV’s reply.','good'); sess=j; paint(); setTimeout(function(){ if(errEl.textContent.indexOf('Sent')===0) say(errEl,''); },4000); return true; }); }
+
+  function say(el, text, kind){ el.textContent=text||''; el.classList.toggle('good', kind==='good'); el.classList.toggle('busy', kind==='busy'); if(el.id==='x-err') el.classList.toggle('hidden', !text); }
+  function pill(st){ var c={ connected:'ok', waiting:'warn', done:'ok', error:'bad', pending:'warn', delivered:'acc', trial:'acc', active:'ok', enabled:'ok', paid:'ok', disabled:'bad', blocked:'bad', ended:'bad', expired:'bad' }[st]||''; return '<span class="bdg '+c+'">'+esc(st)+'</span>'; }
+  function when(t){ if(!t) return ''; var d=new Date(t); return d.toLocaleDateString(undefined,{ day:'numeric', month:'short' })+' '+d.toLocaleTimeString(undefined,{ hour:'2-digit', minute:'2-digit' }); }
+  function hm(t){ if(!t) return ''; return new Date(t).toLocaleTimeString(undefined,{ hour:'2-digit', minute:'2-digit' }); }
+  function host(u){ try{ return new URL(u).host; }catch(e){ return String(u||'').replace(/^https?:\/\//,'').split(/[\/?#]/)[0]; } }
+
+  function paint(){ var s=sess.session, d=sess.device||{}, lib=d.library||{}, bl=sess.billing||{};
+    var live=(s.status==='connected');
+    $('s-title').textContent=d.platform||'TV';
+    var st=$('s-status'); st.className='bdg '+(live?'ok':''); st.textContent=s.status;
+    var chips=[['Code',s.code],['App',d.version||'?'],['Country',(cname(d.country)?(flag(d.country)+' '+cname(d.country)):(d.country||'?'))],['Language',d.lang||'?'],['Profiles',d.profiles==null?'?':d.profiles],
+      ['Library',(lib.live||0)+' ch · '+(lib.movies||0)+' movies · '+(lib.series||0)+' series']];
+    if(d.model) chips.splice(1,0,['Model',d.model]);
+    var h=chips.map(function(c){ return '<span class="meta">'+esc(c[0])+' <b>'+esc(c[1])+'</b></span>'; }).join('');
+    h+='<span class="meta">Last seen <b>'+esc(hm(s.last_seen))+'</b></span>';
+    $('s-kv').innerHTML=h;
+    $('s-ended').classList.toggle('hidden', live); $('s-ended').textContent=live?'':('This session has '+s.status+(s.ended_by?' ('+s.ended_by+')':'')+'. Ask the customer for a new code to make more changes.');
+    [].forEach.call(document.querySelectorAll('#grid button, #grid input, #grid select, #grid textarea'),function(b){ b.disabled=!live; });
+    ['s-end','s-more','x-refresh','x-signout'].forEach(function(id){ $(id).disabled=!live; });
+    tick();
+    // connections
+    var cs=lib.connections||[];
+    $('s-conns').innerHTML=cs.length?cs.map(function(c){ var bd=c.active?(c.ok===false?'<span class="bdg bad">error</span>':'<span class="bdg ok">active</span>'):(c.on===false?'<span class="bdg">off</span>':(c.ok===false?'<span class="bdg bad">error</span>':'<span class="bdg">saved</span>'));
+        var counts=(c.live!=null)?(c.live+' ch · '+(c.movies||0)+' movies · '+(c.series||0)+' series'):'';
+        var det=[String(c.mode||'').toUpperCase(), c.host, c.user?('user '+c.user):'', counts, c.err].filter(Boolean).join(' · ');
+        return '<div class="conn"><div class="tx"><div class="nm"><span>'+esc(c.name)+'</span>'+bd+'</div><div class="dt" title="'+esc(det)+'">'+esc(det)+'</div></div>'+
+          (c.id?'<button class="btn sm dng" data-rm="'+esc(c.id)+'" data-nm="'+esc(c.name)+'"'+(live?'':' disabled')+'>Remove</button>':'')+'</div>'; }).join(''):'<div class="empty">No connections on this TV yet.</div>';
+    [].forEach.call(document.querySelectorAll('[data-rm]'),function(b){ b.onclick=function(){ if(!confirm('Remove "'+b.getAttribute('data-nm')+'" from the customer’s TV?')) return; send('connection.remove',{ id:b.getAttribute('data-rm'), name:b.getAttribute('data-nm') },null,$('a-err')); }; });
+    // billing
+    var tb=d.billing||{}, state, text;
+    if(!bl.state&&tb.state){ state=tb.state; text=tb.state==='active'?'Subscribed':(tb.state==='trial'?(tb.days_left+' day'+(tb.days_left===1?'':'s')+' left'):(tb.state==='blocked'?'Paused on the TV':'Trial ended')); }
+    else { state=bl.state||'unknown'; text=bl.state==='active'?('Until '+when(bl.sub_expires_at)):(bl.state==='trial'?('Until '+when(bl.trial_ends_at)):(bl.state?('Ended '+when(bl.trial_ends_at)):'Not registered yet')); }
+    var ax=(sess.flags||{}).access||null;
+    if(ax&&ax.state==='blocked'){ state='blocked'; text='Blocked by '+(ax.by||'support'); }
+    else if(ax&&ax.state==='ended'){ state='ended'; text='Access ended by '+(ax.by||'support'); }
+    else if(ax&&ax.state==='active'){ state='enabled'; text='Until '+when(ax.until); }
+    $('b-line').innerHTML=pill(state)+'<span class="tx ell">'+esc(text)+'</span>';
+    $('ax-block').classList.toggle('hidden', !!(ax&&ax.state==='blocked')); $('ax-end').classList.toggle('hidden', !!(ax&&ax.state==='ended'));
+    $('ax-clear').classList.toggle('hidden', !ax); $('ax-clear').textContent=(ax&&ax.state==='blocked')?'Unblock':'Back to normal';
+    ['ax-days','ax-enable','ax-end','ax-block','ax-clear'].forEach(function(id){ $(id).disabled=!live; });
+    // flags (only rebuild when not being edited)
+    var fl=sess.flags||{}; var fb=$('f-flags'); if(!fb.dataset.dirty){
+      fb.innerHTML=FLAGS.map(function(f){ var on=fl[f[0]]!==false; return '<label class="tgl'+(on?'':' off')+'"><input type="checkbox" data-flag="'+f[0]+'"'+(on?' checked':'')+'><span class="box"></span><span>'+esc(f[1])+'</span></label>'; }).join('');
+      [].forEach.call(fb.querySelectorAll('input'),function(i){ i.onchange=function(){ fb.dataset.dirty='1'; i.closest('.tgl').classList.toggle('off', !i.checked); }; i.disabled=!live; }); }
+    // activity
+    var cmds=(sess.commands||[]).slice().reverse();
+    $('s-log').innerHTML=cmds.length?cmds.map(function(c){ var p=c.payload||{};
+        var what=c.kind==='connection.add'?((p.name||String(p.mode||'').toUpperCase())+(p.host?' · '+p.host:'')):(c.kind==='connection.remove'?(p.name||''):(c.kind==='message'?(p.title||''):((c.kind==='billing.refresh'||c.kind==='trial.add')?((p.days>0?'+':'')+p.days+' days'):(c.kind==='access.set'?({ active:'Enable '+(p.days||'')+' days', ended:'End access', blocked:'Block', clear:'Back to normal' }[p.state]||''):''))));
+        var res=c.result?('TV: '+c.result):(c.status==='pending'?'Waiting for the TV to collect it…':(c.status==='delivered'?'The TV is working on it…':''));
+        var l2=[what,res].filter(Boolean).join(' · ');
+        return '<div class="ev '+esc(c.status)+'"><div class="tx"><div class="l1"><span>'+esc(KIND[c.kind]||c.kind)+'</span>'+pill(c.status)+'</div>'+(l2?'<div class="l2" title="'+esc(l2)+'">'+esc(l2)+'</div>':'')+'</div><time>'+esc(hm(c.created_at))+'</time></div>'; }).join(''):'<div class="empty">Nothing sent yet.</div>';
+  }
+
+  // ---------- all TVs ----------
+  var DAYS=[[1,'1 day'],[3,'3 days'],[7,'7 days'],[30,'30 days'],[90,'90 days'],[180,'6 months'],[365,'1 year']], fDays={};
+  var fleetT=null, fleetSum=null, fFilter='all', fQ='', fBusy=false, fSkew=0;
+  var FSUM=[['all','All','total',''],['online','Online','online','var(--ok)'],['trial','Trial','trial','var(--acc)'],['active','Active','active','var(--ok)'],['expired','Expired','expired','var(--warn)'],['blocked','Disabled','blocked','var(--bad)']];
+  function toFleet(){ stop(); sess=null; show('v-fleet'); paintRail(); loadFleet(); if(!fleetT) fleetT=setInterval(function(){ var ae=document.activeElement; if(!fBusy&&!document.hidden&&!(ae&&ae.closest&&ae.closest('#fl-list')&&ae.tagName==='SELECT')) loadFleet(); }, 15000); }
+  function stopFleet(){ if(fleetT){ clearInterval(fleetT); fleetT=null; } }
+  function ago(t){ if(!t) return 'never'; var m=Math.round((Date.now()+fSkew-Date.parse(t))/60000); if(m<1) return 'just now'; if(m<60) return m+' min ago'; var h=Math.round(m/60); if(h<48) return h+' h ago'; return Math.round(h/24)+' days ago'; }
+  var CN=null; try{ CN=new Intl.DisplayNames(['en'],{ type:'region' }); }catch(e){}
+  function cname(c){ c=String(c||'').toUpperCase(); if(!/^[A-Z]{2}$/.test(c)) return ''; try{ return (CN&&CN.of(c))||c; }catch(e){ return c; } }
+  function flag(c){ c=String(c||'').toUpperCase(); if(!/^[A-Z]{2}$/.test(c)) return ''; return String.fromCodePoint(127397+c.charCodeAt(0),127397+c.charCodeAt(1)); }
+  function day(t){ return t?new Date(t).toLocaleDateString(undefined,{ day:'numeric', month:'short', year:'numeric' }):''; }
+  function loadFleet(){ var want=fFilter==='active'?'all':fFilter;
+    return api('fleet.list',{ q:fQ, filter:want, limit:300 }).then(function(j){
+      if(!j.ok){ if(j.auth){ show('v-login'); return; } $('fl-list').innerHTML='<div class="empty">'+esc(/unknown action/.test(j.error||'')?'The All TVs list needs the 0010_fleet.sql update on the backend.':(j.error||'Could not load TVs'))+'</div>'; return; }
+      if(j.now) fSkew=Date.parse(j.now)-Date.now();
+      var tvs=j.tvs||[]; if(fFilter==='active') tvs=tvs.filter(function(t){ return t.status==='active'||t.status==='enabled'; });
+      fleetSum=j.summary||null; paintFleet(tvs); paintRail(); }); }
+  function stText(t){ var a=t.access||{};
+    if(t.pending&&!t.access) return 'Back to normal once the TV checks in';
+    if(t.status==='blocked') return 'Disabled by '+(a.by||'support')+(a.at?' on '+day(a.at):'');
+    if(t.status==='expired') return a.state==='ended'?('Ended by '+(a.by||'support')+(a.at?' on '+day(a.at):'')):'Trial ended';
+    if(t.status==='enabled') return 'Enabled until '+day(a.until)+(a.by?' by '+a.by:'');
+    if(t.status==='active') return 'Subscribed';
+    if(t.status==='trial') return (t.days_left==null?'Free trial':(t.days_left+' day'+(t.days_left===1?'':'s')+' left'));
+    return 'Not reported yet'; }
+  function num(n){ return Number(n||0).toLocaleString(); }
+  function icon2(n){ var P={ lib:'<path d="M4 6h16M4 12h16M4 18h10"/>', eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', usr:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>' };
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(P[n]||'')+'</svg>'; }
+  function nowMs(){ return Date.now()+fSkew; }
+  function cdown(u){ var ms=Date.parse(u)-nowMs(); if(ms<=0) return 'Expired'; var m=Math.floor(ms/60000), d=Math.floor(m/1440), h=Math.floor(m%1440/60), mi=m%60;
+    return d?(d+'d '+h+'h left'):(h?(h+'h '+mi+'m left'):(mi+'m left')); }
+  function endTxt(u){ var d=new Date(u); return d.toLocaleDateString(undefined,{ weekday:'short', day:'numeric', month:'short' })+', '+d.toLocaleTimeString(undefined,{ hour:'numeric', minute:'2-digit' }); }
+  function lenTxt(days){ days=Math.round(days); if(days<=1) return '1 day'; if(days===7) return '1 week'; if(days>=28&&days<=31) return '1 month'; if(days>=89&&days<=92) return '3 months'; if(days>=180&&days<=184) return '6 months'; if(days>=364&&days<=366) return '1 year'; return days+' days'; }
+  // What this TV is on: plan name, how long that period is, when it ends, and how much is used up.
+  function planInfo(t){ var a=t.access||{}, o={ badge:t.status, name:'', sub:'', until:null, pct:0, tone:'', big:'', small:'' };
+    function span(from,until){ var f=Date.parse(from||''), u=Date.parse(until), tot=u-(isNaN(f)?nowMs():f); var used=nowMs()-(isNaN(f)?nowMs():f);
+      o.pct=Math.max(2,Math.min(100,Math.round(100*(1-(used/Math.max(tot,1)))))); var left=u-nowMs(); o.tone=left<=0?'bad':(left<86400000?'warn':'ok'); return tot/86400000; }
+    if(t.status==='blocked'){ o.badge='disabled'; o.name='Disabled'; o.sub='By '+(a.by||'support')+(a.at?' on '+day(a.at):''); o.big='Paused'; o.small='Until you enable or unblock it'; o.tone='bad'; return o; }
+    if(a.state==='active'&&a.until){ var L=span(a.at,a.until);
+      if(a.paid){ o.badge='paid'; o.name=(a.plan||'Paid')+' plan'; o.sub='Paid with '+(a.by||'M-Pesa')+(a.ref?' · '+a.ref:''); }
+      else { o.badge='enabled'; o.name=lenTxt(L)+' by support'; o.sub='Enabled by '+(a.by||'support')+(a.at?' on '+day(a.at):''); }
+      o.until=a.until; if(Date.parse(a.until)<=nowMs()){ o.badge='expired'; } return o; }
+    if(t.status==='expired'){ o.badge='expired'; o.name=a.state==='ended'?'Access ended':'Trial ended'; o.sub=a.state==='ended'?('Ended by '+(a.by||'support')+(a.at?' on '+day(a.at):'')):'Waiting for a payment'; o.big='Expired'; o.small='Shows the payment screen'; o.tone='bad'; return o; }
+    if(t.status==='trial'){ o.badge='trial'; o.name='Free trial';
+      if(t.trial_ends){ var te=Date.parse(t.trial_ends); span(new Date(te-8*86400000).toISOString(), t.trial_ends); o.until=t.trial_ends; o.sub='8-day free trial'; }
+      else { o.big=(t.days_left==null?'?':t.days_left)+' day'+(t.days_left===1?'':'s')+' left'; o.small='Exact end shows after the TV updates to 3.36.8'; o.tone=t.days_left<=1?'warn':'ok'; o.sub='Free trial'; }
+      return o; }
+    if(t.status==='active'){ o.badge='active'; o.name='Subscribed'; o.sub='Card or store subscription'; o.big='Active'; o.tone='ok'; return o; }
+    o.badge='new'; o.name='Not reported yet'; o.big='Unknown'; o.small='Waiting for the TV to check in'; return o; }
+  function tickFleet(){ [].forEach.call(document.querySelectorAll('#fl-list .cd[data-until]'),function(el){ el.textContent=cdown(el.getAttribute('data-until')); }); }
+  setInterval(function(){ if(view==='v-fleet') tickFleet(); }, 30000);
+  function paintFleet(tvs){ var S=fleetSum||{};
+    $('fl-sums').innerHTML=FSUM.map(function(f){ return '<button class="sum'+(fFilter===f[0]?' on':'')+'" data-f="'+f[0]+'">'+(f[3]?'<span class="d" style="background:'+f[3]+'"></span>':'')+esc(f[1])+' <b>'+(S[f[2]]||0)+'</b></button>'; }).join('');
+    [].forEach.call($('fl-sums').querySelectorAll('[data-f]'),function(b){ b.onclick=function(){ fFilter=b.getAttribute('data-f'); loadFleet(); }; });
+    var L=$('fl-list');
+    if(!tvs.length){ L.innerHTML='<div class="empty">'+((S.total||0)?'No TVs match.':'No TVs have checked in yet. A TV appears here a few seconds after it opens BYO Player 3.35 or newer.')+'</div>'; return; }
+    L.innerHTML=tvs.map(function(t){ var lib=t.library||{}, a=t.access||null, k=esc(t.device_key), pl=planInfo(t), pay=t.pay||{};
+      var name=t.model||t.platform||'TV';
+      var where=[t.platform&&t.model?t.platform:'', t.lang?String(t.lang).toUpperCase():'', t.version?'v'+t.version:''].filter(Boolean).join(' · ');
+      var cn=cname(t.country);
+      var nc=lib.connections==null?null:(typeof lib.connections==='number'?lib.connections:(lib.connections.length||0));
+      var libt=nc==null?'Library not reported':(nc?nc+' connection'+(nc===1?'':'s'):'No connections');
+      var cnt=num(lib.live)+' ch · '+num(lib.movies)+' movies · '+num(lib.series)+' series';
+      var blocked=t.status==='blocked';
+      var paidTxt=(pay.count?[pay.KES?amt('KES',pay.KES):'', pay.ETB?amt('ETB',pay.ETB):''].filter(Boolean).join(' + '):'');
+      var lastTxt=pay.last?('Last '+amt(pay.last.currency,pay.last.amount)+' · '+ago(pay.last.at)):'No payments yet';
+      return '<div class="tv" data-k="'+k+'">'+
+        '<div class="c who"><div class="l1"><span class="dot'+(t.online?' on':'')+'" title="'+(t.online?'Online':'Offline')+'"></span><span class="ell">'+esc(name)+'</span><span class="id">'+esc(t.tv_id)+'</span>'+(t.help_code?'<button class="help" data-code="'+esc(t.help_code)+'" title="This TV is asking for help. Open the session.">HELP '+esc(t.help_code)+'</button>':'')+'</div>'+
+          '<div class="l2" title="'+esc(where)+'">'+(cn?flag(t.country)+' '+esc(cn)+' · ':'')+esc(where||'No details yet')+'</div></div>'+
+        '<div class="c plan"><div class="l1">'+pill(pl.badge)+(t.pending?'<span class="bdg warn" title="Saved. The TV picks this up within about 20 seconds.">waiting for TV</span>':'')+'</div><div class="pn" title="'+esc(pl.name)+'">'+esc(pl.name)+'</div>'+
+          '<div class="l2" title="'+esc(pl.sub)+'">'+esc(pl.sub)+'</div></div>'+
+        '<div class="c left">'+(pl.until?('<div class="cd '+pl.tone+'" data-until="'+esc(pl.until)+'">'+esc(cdown(pl.until))+'</div><div class="bar"><i class="'+pl.tone+'" style="width:'+pl.pct+'%"></i></div><div class="l2">Ends '+esc(endTxt(pl.until))+'</div>')
+            :('<div class="cd '+pl.tone+'">'+esc(pl.big||'')+'</div><div class="l2">'+esc(pl.small||'')+'</div>'))+'</div>'+
+        '<div class="c paid"><div class="l1">'+(paidTxt?'<span class="money">'+esc(paidTxt)+'</span><span class="cnt">'+pay.count+' payment'+(pay.count===1?'':'s')+'</span>':'<span class="ell" style="color:var(--faint)">Nothing paid</span>')+'</div><div class="l2" title="'+esc(pay.last&&pay.last.txn?('Ref '+pay.last.txn):'')+'">'+esc(lastTxt)+'</div></div>'+
+        '<div class="acts">'+
+          '<select class="sel" data-days aria-label="Enable for">'+DAYS.map(function(o){ return '<option value="'+o[0]+'"'+((fDays[t.device_key]||30)===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select>'+
+          '<button class="btn sm ok" data-act="active">Enable</button>'+
+          (blocked?'<button class="btn sm" data-act="clear" title="Remove the block and go back to the normal trial or subscription">Unblock</button>':'<button class="btn sm dng" data-act="blocked">Disable</button>')+
+          (a&&!blocked?'<button class="btn sm gh" data-act="clear" title="Remove what support or a payment set and go back to the normal trial">Reset</button>':'')+
+        '</div>'+
+        '<div class="meta-row"><span>'+icon2('lib')+esc(libt)+' · '+esc(cnt)+'</span><span>'+icon2('eye')+(t.online?'Online now':'Seen '+esc(ago(t.last_seen)))+'</span><span>'+icon2('cal')+'First seen '+esc(day(t.first_seen))+'</span>'+(t.profiles?'<span>'+icon2('usr')+t.profiles+' profile'+(t.profiles===1?'':'s')+'</span>':'')+'</div>'+
+        '</div>'; }).join('');
+    [].forEach.call(L.querySelectorAll('[data-days]'),function(sel){ sel.onchange=function(){ fDays[sel.closest('.tv').getAttribute('data-k')]=parseInt(sel.value,10)||30; }; });
+    [].forEach.call(L.querySelectorAll('[data-act]'),function(b){ b.onclick=function(){ var row=b.closest('.tv'), st=b.getAttribute('data-act'), id=row.querySelector('.id').textContent;
+      var days=st==='active'?parseInt(row.querySelector('[data-days]').value,10):null;
+      if(st==='blocked'&&!confirm('Disable BYO Player on TV '+id+'? The customer will only see a paused screen until you enable it again.')) return;
+      fBusy=true; [].forEach.call(row.querySelectorAll('button,select'),function(x){ x.disabled=true; });
+      api('fleet.access',{ device_key:row.getAttribute('data-k'), state:st, days:days }).then(function(j){ fBusy=false;
+        $('fl-note').textContent=j.ok?({ active:'TV '+id+' enabled for '+days+' day'+(days===1?'':'s')+'.', blocked:'TV '+id+' disabled.', clear:'TV '+id+' is back to normal.' }[st]+' It updates when the TV next checks in: when it opens, comes back on screen, or within 15 minutes.'):(j.error||'Failed');
+        loadFleet(); }); }; });
+    [].forEach.call(L.querySelectorAll('[data-code]'),function(b){ b.onclick=function(){ api('support.claim',{ code:b.getAttribute('data-code') }).then(function(j){ if(j.ok){ open(j); loadActive(); } else $('fl-note').textContent=j.error||'Could not open'; }); }; }); }
+  var fqT=null; $('fl-q').addEventListener('input',function(){ clearTimeout(fqT); fqT=setTimeout(function(){ fQ=$('fl-q').value.trim(); loadFleet(); },300); });
+  $('fl-ref').onclick=loadFleet;
+
+  // ---------- payments ----------
+  var payT=null, pcfg=null, pCtry='KE', pDirty=false;
+  var PST={ matched:['ok','matched'], held:['warn','TV disabled'], partial:['warn','too little'], unmatched:['bad','no match'] };
+  function toPay(){ stop(); sess=null; show('v-pay'); paintRail(); loadPayCfg(); loadPays(); if(!payT) payT=setInterval(function(){ if(!document.hidden) loadPays(); },10000); }
+  function stopPay(){ if(payT){ clearInterval(payT); payT=null; } }
+  function amt(cur,n){ n=Number(n||0); return (cur||'')+' '+(n%1?n.toFixed(2):n.toLocaleString()); }
+  function loadPayCfg(){ api('fleet.pay_config',{}).then(function(j){ if(!j.ok){ say($('p-err'), /unknown action/.test(j.error||'')?'Run 0012_payments.sql on the backend first.':(j.error||'Could not load')); return; }
+    pcfg=j.cfg||{}; pDirty=false; paintCfg(j); }); }
+  function paintCfg(j){ var c=(pcfg||{})[pCtry]||{ plans:[] }, mp=pCtry==='KE';
+    [].forEach.call(document.querySelectorAll('#p-ctry button'),function(b){ b.classList.toggle('on', b.getAttribute('data-c')===pCtry); });
+    $('p-num-l').textContent=(mp?'M-Pesa':'telebirr')+' number customers pay to'; $('p-num').placeholder=mp?'07XX XXX XXX':'09XX XXX XXX';
+    $('p-num').value=c.number||''; $('p-name').value=c.name||'';
+    if(j){ $('p-upd').textContent=j.updated_by?('Last saved by '+j.updated_by+' · '+when(j.updated_at)):'';
+      $('p-keyst').innerHTML=j.collector_key_set?'<span class="bdg ok">key set</span>':'<span class="bdg warn">no key yet</span>'; }
+    var cur=c.currency||(mp?'KES':'ETB');
+    $('p-plans').innerHTML='<div class="prow h"><span>On</span><span>Plan name</span><span>Days</span><span>Price</span><span></span></div>'+(c.plans||[]).map(function(p,i){
+      return '<div class="prow" data-i="'+i+'"><label class="chk"><input type="checkbox" data-f="on"'+(p.on!==false?' checked':'')+'><span class="box"></span></label>'+
+        '<input class="inp" data-f="name" maxlength="24" value="'+esc(p.name)+'"><input class="inp" data-f="days" type="number" min="1" max="3650" value="'+esc(p.days)+'">'+
+        '<span class="cur"><i>'+esc(cur)+'</i><input class="inp" data-f="amount" type="number" min="1" step="any" value="'+esc(p.amount)+'"></span>'+
+        '<button class="x" data-del="'+i+'" title="Remove this plan">\u00d7</button></div>'; }).join('');
+    [].forEach.call($('p-plans').querySelectorAll('input'),function(i){ i.oninput=i.onchange=function(){ pDirty=true; }; });
+    [].forEach.call($('p-plans').querySelectorAll('[data-del]'),function(b){ b.onclick=function(){ readPlans(); c.plans.splice(+b.getAttribute('data-del'),1); pDirty=true; paintCfg(); }; }); }
+  function readPlans(){ var c=pcfg[pCtry]; if(!c) return; c.number=$('p-num').value.trim(); c.name=$('p-name').value.trim();
+    c.plans=[].map.call($('p-plans').querySelectorAll('.prow[data-i]'),function(r){ var old=c.plans[+r.getAttribute('data-i')]||{}; var g=function(f){ return r.querySelector('[data-f="'+f+'"]'); };
+      return { code:old.code||('p'+Date.now().toString(36).slice(-6)), name:g('name').value.trim(), days:parseInt(g('days').value,10)||0, amount:parseFloat(g('amount').value)||0, on:g('on').checked }; }); }
+  [].forEach.call(document.querySelectorAll('#p-ctry button'),function(b){ b.onclick=function(){ if(pcfg) readPlans(); pCtry=b.getAttribute('data-c'); paintCfg(); }; });
+  $('p-num').oninput=$('p-name').oninput=function(){ pDirty=true; };
+  $('p-add').onclick=function(){ if(!pcfg) return; readPlans(); var c=pcfg[pCtry]; if((c.plans||[]).length>=8){ say($('p-err'),'Up to 8 plans.'); return; }
+    c.plans.push({ code:'p'+Date.now().toString(36).slice(-6), name:'', days:30, amount:'', on:true }); pDirty=true; paintCfg(); var ins=$('p-plans').querySelectorAll('[data-f="name"]'); if(ins.length) ins[ins.length-1].focus(); };
+  $('p-save').onclick=function(){ if(!pcfg) return; readPlans(); var c=pcfg[pCtry];
+    for(var i=0;i<c.plans.length;i++){ var p=c.plans[i]; if(!p.name){ say($('p-err'),'Give every plan a name.'); return; } if(!(p.days>=1)){ say($('p-err'),'Days must be 1 or more.'); return; } if(!(p.amount>0)){ say($('p-err'),'Every price must be more than 0.'); return; } }
+    var send={}; send[pCtry]=c; say($('p-err'),'Saving…','busy');
+    api('fleet.pay_config_set',{ cfg:send }).then(function(j){ if(!j.ok){ say($('p-err'),j.error||'Could not save'); return; } pcfg=j.cfg; pDirty=false; paintCfg(j); say($('p-err'),'Saved. TVs show the new plans the next time the payment screen opens.','good'); setTimeout(function(){ say($('p-err'),''); },6000); }); };
+  $('p-key').onclick=function(){ if(!confirm('Make a new collector key? The collector phone stops reporting payments until you enter the new key in its Settings.')) return;
+    say($('p-kerr'),'Making a key…','busy'); api('fleet.pay_key_new',{}).then(function(j){ if(!j.ok){ say($('p-kerr'),j.error||'Failed'); return; } say($('p-kerr'),'');
+      $('p-keybox').innerHTML='<div class="keybox"><code id="p-keyv">'+esc(j.key)+'</code><button class="btn sm" id="p-copy">Copy</button></div><div style="color:var(--warn);font-size:12px;margin-top:6px">Shown once. Enter it in BYO Collector, Settings, Connection key.</div>';
+      $('p-copy').onclick=function(){ try{ navigator.clipboard.writeText(j.key); $('p-copy').textContent='Copied'; }catch(e){} };
+      $('p-keyst').innerHTML='<span class="bdg ok">key set</span>'; }); };
+  function loadPays(){ api('fleet.payments',{ limit:60 }).then(function(j){ if(!j.ok){ $('p-recv').innerHTML='<div class="empty">'+esc(/unknown action/.test(j.error||'')?'Run 0012_payments.sql on the backend first.':(j.error||'Could not load'))+'</div>'; return; }
+    var t=j.today||{}; $('p-today').innerHTML='<span class="meta">Today <b>'+(t.count||0)+'</b></span>'+(t.KES?'<span class="meta"><b>'+esc(amt('KES',t.KES))+'</b></span>':'')+(t.ETB?'<span class="meta"><b>'+esc(amt('ETB',t.ETB))+'</b></span>':'');
+    $('p-recv').innerHTML=(j.received||[]).length?j.received.map(function(r){ var b=PST[r.status]||['',r.status];
+      return '<div class="pi"><span class="amt">'+esc(amt(r.currency,r.amount))+'</span><div class="who"><div class="l1">'+esc(r.payer_name||'Unknown')+' <span style="color:var(--muted);font-weight:600">'+esc(r.payer||'')+'</span></div>'+
+        '<div class="l2" title="'+esc(r.note||'')+'">'+esc((r.method==='mpesa'?'M-Pesa ':'telebirr ')+r.txn)+(r.note?' · '+esc(r.note):'')+'</div></div>'+
+        '<div class="rt"><span class="bdg '+b[0]+'">'+esc(b[1])+'</span>'+(r.tv_id?' <span class="id" style="color:var(--acc);font-weight:800">'+esc(r.tv_id)+'</span>':'')+'<time>'+esc(when(r.at))+'</time></div></div>'; }).join(''):'<div class="empty">No payments yet. They appear here as soon as the collector phone reads them.</div>';
+    $('p-wait').innerHTML=(j.waiting||[]).length?j.waiting.map(function(w){
+      return '<div class="pi"><span class="amt">'+esc(amt(w.currency,w.amount))+'</span><div class="who"><div class="l1">TV '+esc(w.tv_id)+' · '+esc(w.plan)+'</div><div class="l2">'+(w.method==='mpesa'?'M-Pesa':'telebirr')+' from '+esc(w.payer)+(w.status==='partial'?' · paid too little':'')+'</div></div><div class="rt"><time>'+esc(when(w.at))+'</time></div></div>'; }).join(''):'<div class="empty">Nobody is in the middle of paying.</div>'; }); }
+  $('p-ref').onclick=function(){ loadPays(); if(!pDirty) loadPayCfg(); };
+
+  // tabs (narrow / short screens)
+  [].forEach.call(document.querySelectorAll('#tabbar .tab'),function(b){ b.onclick=function(){ $('grid').setAttribute('data-tab', b.getAttribute('data-tab'));
+    [].forEach.call(document.querySelectorAll('#tabbar .tab'),function(x){ x.classList.toggle('on', x===b); }); }; });
+
+  // connection form
+  [].forEach.call(document.querySelectorAll('#a-mode button'),function(b){ b.onclick=function(){ mode=b.getAttribute('data-m'); [].forEach.call(document.querySelectorAll('#a-mode button'),function(x){ x.classList.toggle('on', x===b); });
+    var m3u=(mode==='m3u'); ['f-url','f-epg'].forEach(function(id){ $(id).classList.toggle('hidden', !m3u); }); ['f-server','f-user','f-pass'].forEach(function(id){ $(id).classList.toggle('hidden', m3u); });
+    $('a-server').placeholder=(mode==='xtream')?'http://provider.com:8080':'http://your-server:8096'; }; });
+  $('a-send').onclick=function(){ var name=$('a-name').value.trim(), combine=$('a-combine').checked;
+    if(mode==='m3u'){ var u=$('a-url').value.trim(); if(!/^https?:\/\//i.test(u)){ say($('a-err'),'Enter the playlist URL (http… or https…).'); return; }
+      send('connection.add',{ mode:'m3u', name:name, host:host(u), combine:combine },{ url:u, epg:$('a-epg').value.trim() },$('a-err')).then(function(ok){ if(ok){ $('a-url').value=''; $('a-epg').value=''; } }); return; }
+    var sv=$('a-server').value.trim(), us=$('a-user').value.trim(), pw=$('a-pass').value;
+    if(!/^https?:\/\//i.test(sv)){ say($('a-err'),'Enter the server URL, starting with http:// or https://'); return; }
+    if(!us){ say($('a-err'),'Enter the username.'); return; }
+    send('connection.add',{ mode:mode, name:name, server:sv, host:host(sv), user:us, combine:combine },{ pass:pw },$('a-err')).then(function(ok){ if(ok){ $('a-pass').value=''; } }); };
+
+  // settings
+  LANGS.forEach(function(l){ var o=document.createElement('option'); o.value=l[0]; o.textContent=l[1]; $('st-lang').appendChild(o); });
+  $('st-send').onclick=function(){ var p={}, pc={}; var lang=$('st-lang').value; if(lang) p.lang=lang;
+    var pin=$('st-pin').value.trim(); if(pin){ if(!/^\d{4}$/.test(pin)){ say($('st-err'),'The PIN must be 4 digits.'); return; } pc.pin=pin; }
+    if($('st-pc').value) pc.enabled=($('st-pc').value==='on'); if($('st-lock').value) pc.lockSettings=($('st-lock').value==='on');
+    if(Object.keys(pc).length) p.parental=pc;
+    if(!Object.keys(p).length){ say($('st-err'),'Choose something to change.'); return; }
+    send('settings',p,null,$('st-err')).then(function(ok){ if(ok){ $('st-pin').value=''; ['st-lang','st-pc','st-lock'].forEach(function(id){ $(id).value=''; }); } }); };
+
+  // message
+  $('m-send').onclick=function(){ var t=$('m-text').value.trim(); if(!t){ say($('m-err'),'Write a message first.'); return; }
+    send('message',{ title:$('m-title').value.trim()||'Message from BYO support', text:t.slice(0,600) },null,$('m-err')).then(function(ok){ if(ok) $('m-text').value=''; }); };
+
+  // trial
+  function addDays(n){ n=parseInt(n,10); if(!n){ say($('b-err'),'Enter a number of days.'); return; } say($('b-err'),'Saving…','busy');
+    var ax=(sess.flags||{}).access; var pre=(n>0&&ax&&ax.state==='ended')?api('support.access',{ session_id:sess.session.id, state:'clear' }):Promise.resolve({ ok:true });
+    pre.then(function(){ return api('support.trial',{ session_id:sess.session.id, days:n }).then(function(j){ if(!j.ok){ say($('b-err'),j.error); return; } say($('b-err'),(n>0?'Added ':'Removed ')+Math.abs(n)+' days. The TV updates in a few seconds.','good'); sess=j; paint(); setTimeout(function(){ say($('b-err'),''); },5000); }); }); }
+  function setAccess(state, days, confirmText){ if(confirmText&&!confirm(confirmText)) return; say($('b-err'),'Saving…','busy');
+    api('support.access',{ session_id:sess.session.id, state:state, days:days }).then(function(j){ if(!j.ok){ say($('b-err'),j.error||'Failed'); return; }
+      say($('b-err'),{ active:'Enabled for '+days+' day'+(days===1?'':'s')+'.', ended:'Access ended. The TV now shows the Subscribe screen.', blocked:'Blocked. The TV shows a paused screen.', clear:'Back to normal.' }[state],'good'); sess=j; paint(); setTimeout(function(){ say($('b-err'),''); },5000); }); }
+  $('ax-enable').onclick=function(){ var d=parseInt($('ax-days').value,10)||30; setAccess('active', d); };
+  $('ax-end').onclick=function(){ setAccess('ended', null, 'End this TV\u2019s trial or subscription now? The customer will see the Subscribe screen.'); };
+  $('ax-block').onclick=function(){ setAccess('blocked', null, 'Block BYO Player on this TV? The customer will only see a paused screen until you unblock it.'); };
+  $('ax-clear').onclick=function(){ setAccess('clear', null); };
+  [].forEach.call(document.querySelectorAll('[data-days]'),function(b){ b.onclick=function(){ addDays(b.getAttribute('data-days')); }; });
+  $('b-custom').onclick=function(){ addDays($('b-days').value); };
+
+  // flags
+  $('f-send').onclick=function(){ var f={}; [].forEach.call(document.querySelectorAll('#f-flags input'),function(i){ f[i.getAttribute('data-flag')]=i.checked; });
+    say($('f-err'),'Saving…','busy'); api('support.flags',{ session_id:sess.session.id, flags:f }).then(function(j){ if(!j.ok){ say($('f-err'),j.error); return; } delete $('f-flags').dataset.dirty; say($('f-err'),'Saved.','good'); sess=j; paint(); setTimeout(function(){ say($('f-err'),''); },4000); }); };
+
+  // device bar actions
+  $('x-refresh').onclick=function(){ send('refresh',{},null,$('x-err')); };
+  $('x-signout').onclick=function(){ if(!confirm('Remove every connection from the customer’s TV?')) return; send('signout',{},null,$('x-err')); };
+  $('s-end').onclick=function(){ if(!confirm('End this support session? The TV will show "Support has finished, happy watching".')) return; var id=sess.session.id;
+    api('support.end',{ session_id:id }).then(function(j){ if(!j.ok) return; active=active.filter(function(a){ return a.id!==id; });
+      var next=active[0]; if(next){ api('support.status',{ session_id:next.id }).then(function(k){ if(k.ok) open(k); else toCode(); }); } else toCode(); loadActive(); }); };
+  $('s-more').onclick=function(){ api('support.extend',{ session_id:sess.session.id }).then(function(j){ if(j.ok){ sess=j; paint(); loadActive(); say($('x-err'),'Added 30 minutes.','good'); setTimeout(function(){ say($('x-err'),''); },3000); } else say($('x-err'),j.error||'Could not extend'); }); };
+  $('s-back').onclick=toCode;
+
+  if(cfg.key) toCode(); else show('v-login');
+})();
+</script>
+</body>
+</html>

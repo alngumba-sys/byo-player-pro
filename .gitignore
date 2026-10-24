@@ -1,0 +1,15 @@
+# Build outputs / caches (regenerate with build.py + gradle)
+byo-android-tv/.gradle/
+byo-android-tv/build/
+byo-android-tv/app/build/
+byo-android-tv/local.properties
+
+# Netlify local deploy cache
+byo-pairing/phone/.netlify/
+
+# Packaged binaries (sent to the user directly; rebuild via build.py + gradle)
+*.apk
+*.zip
+
+# OS / editor cruft
+.DS_Store

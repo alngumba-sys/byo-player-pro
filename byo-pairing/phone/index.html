@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0d13">
+<title>Connect to BYO Player</title>
+<style>
+  :root{ --bg:#070b14; --bg2:#0c1220; --panel:#111a2b; --elev:#18233a; --line:rgba(255,255,255,.07); --fg:#eef3f9; --dim:#93a1b5;
+    --accent:#22dde2; --accent-ink:#03222a; --ok:#2bd4a7; --danger:#ff5c6c; --warn:#f5b84b; --ring:#22dde2; --radius:20px; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  body{ min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; align-items:center;
+    padding:max(14px,env(safe-area-inset-top)) 16px calc(36px + env(safe-area-inset-bottom));
+    background:radial-gradient(120% 60% at 50% -10%, rgba(34,221,226,.14), transparent 60%), var(--bg); }
+  .wrap{ width:100%; max-width:460px; }
+  .hidden{ display:none !important; }
+  .brand{ display:flex; align-items:center; justify-content:center; gap:10px; font-size:20px; font-weight:800; letter-spacing:-.2px; margin:4px 0 16px; }
+  .brand svg{ width:26px; height:26px; }
+  .brand span{ color:var(--accent); }
+  h1{ font-size:24px; font-weight:800; margin:0 0 6px; line-height:1.2; }
+  .sub{ font-size:15px; color:var(--dim); margin:0 0 18px; line-height:1.45; }
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin-bottom:14px; }
+  .card-h{ display:flex; align-items:center; gap:10px; font-size:17px; font-weight:800; margin:0 0 4px; }
+  .card-h .num{ width:24px; height:24px; border-radius:50%; background:rgba(34,221,226,.16); color:var(--accent); font-size:13px; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .card-s{ font-size:14px; color:var(--dim); margin:0 0 4px; line-height:1.45; }
+
+  /* TV header */
+  .tv-row{ display:flex; align-items:center; gap:14px; }
+  .tv-ic{ width:52px; height:52px; border-radius:15px; background:linear-gradient(145deg,#1d3550,#12213a); display:flex; align-items:center; justify-content:center; flex:0 0 auto; color:var(--accent); }
+  .tv-ic svg{ width:28px; height:28px; }
+  .tv-main{ flex:1; min-width:0; }
+  .tv-name{ font-size:18px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tv-meta{ font-size:13px; color:var(--dim); margin-top:2px; }
+  .pill{ display:inline-flex; align-items:center; gap:7px; border-radius:30px; padding:6px 11px; font-size:12.5px; font-weight:800; background:var(--elev); color:var(--dim); white-space:nowrap; flex:0 0 auto; }
+  .pill i{ width:8px; height:8px; border-radius:50%; background:var(--dim); display:inline-block; }
+  .pill.ok{ color:var(--ok); background:rgba(43,212,167,.12); } .pill.ok i{ background:var(--ok); box-shadow:0 0 0 4px rgba(43,212,167,.2); }
+  .pill.wait{ color:var(--warn); background:rgba(245,184,75,.12); } .pill.wait i{ background:var(--warn); }
+  .code-line{ margin-top:16px; padding:14px; background:var(--bg2); border:1px dashed rgba(34,221,226,.35); border-radius:16px; text-align:center; }
+  .code-line .k{ font-size:14px; color:var(--dim); line-height:1.4; }
+  .code-line .k b{ color:var(--fg); }
+  .code-line .code{ font-size:34px; font-weight:800; letter-spacing:.14em; color:var(--accent); font-variant-numeric:tabular-nums; margin:6px 0 2px; }
+  #code-timer{ font-size:12.5px; }
+
+  /* add form */
+  .paste{ position:relative; margin-top:14px; }
+  .paste textarea{ width:100%; min-height:96px; resize:none; border-radius:16px; border:2px dashed rgba(34,221,226,.4); background:var(--bg2); color:var(--fg);
+    font-size:15px; font-family:inherit; line-height:1.4; padding:14px 14px 52px; outline:none; }
+  .paste textarea:focus{ border-style:solid; border-color:var(--ring); }
+  .paste textarea::placeholder{ color:#7d8a9d; }
+  .paste .pbtn{ position:absolute; left:12px; bottom:12px; height:34px; padding:0 14px; border:none; border-radius:10px; background:var(--accent); color:var(--accent-ink);
+    font-size:14px; font-weight:800; display:inline-flex; align-items:center; gap:7px; cursor:pointer; }
+  .paste .pbtn svg{ width:16px; height:16px; }
+  .paste .phint{ position:absolute; right:14px; bottom:19px; font-size:12px; color:var(--dim); }
+  .sp-out{ margin-top:10px; border-radius:14px; padding:11px 13px; font-size:13.5px; line-height:1.4; background:var(--elev); color:var(--dim); }
+  .sp-out b{ display:block; font-size:14.5px; color:var(--fg); margin-bottom:1px; }
+  .sp-out.ok{ background:rgba(43,212,167,.1); } .sp-out.ok b{ color:var(--ok); }
+  .sp-out.warn{ background:rgba(245,184,75,.12); } .sp-out.warn b{ color:var(--warn); }
+  .sp-out.bad{ background:rgba(255,92,108,.1); } .sp-out.bad b{ color:var(--danger); }
+  .or-line{ display:flex; align-items:center; gap:10px; font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.1em; font-weight:700; margin:18px 0 0; }
+  .or-line::before, .or-line::after{ content:""; flex:1; height:1px; background:var(--line); }
+  .seg{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+  .seg button{ min-width:0; padding:10px 4px 9px; border:1.5px solid var(--line); border-radius:14px; background:var(--bg2); color:var(--dim);
+    font-size:13px; font-weight:800; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; line-height:1.15; }
+  .seg button small{ font-size:10.5px; font-weight:600; opacity:.8; }
+  .seg button.on{ border-color:var(--accent); background:rgba(34,221,226,.12); color:var(--fg); }
+  .seg button.on small{ color:var(--accent); opacity:1; }
+  #c-seg{ grid-template-columns:1fr 1fr; }
+  .fld{ margin-top:12px; }
+  .fld label{ display:block; font-size:13px; font-weight:700; color:var(--dim); margin:0 0 6px 2px; }
+  .fld .opt{ font-weight:500; opacity:.8; }
+  .pw{ position:relative; }
+  .pw input{ padding-right:56px; }
+  .pw .eye{ position:absolute; right:6px; top:50%; transform:translateY(-50%); width:44px; height:40px; border:none; background:transparent; color:var(--dim); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .pw .eye svg{ width:22px; height:22px; }
+  input{ width:100%; height:52px; border-radius:14px; border:2px solid transparent; background:var(--bg2); color:var(--fg); font-size:16px; padding:0 15px; outline:none; }
+  input:focus{ border-color:var(--ring); }
+  input::placeholder{ color:#6f7c90; }
+  .btn{ width:100%; height:54px; border:none; border-radius:15px; font-size:17px; font-weight:800; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px; background:var(--elev); color:var(--fg); }
+  .btn.primary{ background:var(--accent); color:var(--accent-ink); box-shadow:0 8px 22px rgba(34,221,226,.25); }
+  .btn.ghost{ background:transparent; color:var(--dim); font-weight:700; height:44px; margin-top:6px; font-size:15px; box-shadow:none; }
+  .btn:active{ transform:scale(.99); } .btn:disabled{ opacity:.55; }
+  .tg-row{ display:flex; align-items:center; gap:12px; margin-top:14px; padding:13px 14px; background:var(--bg2); border-radius:14px; cursor:pointer; }
+  .tg{ width:48px; height:28px; border-radius:14px; background:#2a3446; position:relative; flex:0 0 auto; transition:background .15s; }
+  .tg i{ position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#c9d2de; transition:transform .18s, background .18s; }
+  .tg-row.on .tg, .sw.on .tg{ background:var(--accent); } .tg-row.on .tg i, .sw.on .tg i{ transform:translateX(20px); background:#fff; }
+  .tg-t{ font-size:15px; font-weight:700; } .tg-s{ font-size:12.5px; color:var(--dim); margin-top:2px; line-height:1.4; }
+  .err{ color:var(--danger); font-size:14px; margin-top:12px; background:rgba(255,92,108,.08); border-radius:12px; padding:10px 12px; }
+
+  /* progress */
+  .prog{ margin-top:16px; background:var(--bg2); border-radius:16px; padding:6px 14px; }
+  .step{ display:flex; align-items:center; gap:12px; padding:11px 0; font-size:15px; color:var(--dim); }
+  .step + .step{ border-top:1px solid var(--line); }
+  .step .si{ width:26px; height:26px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; border-radius:50%; font-size:14px; font-weight:800; }
+  .step.todo .si{ border:2px solid rgba(127,127,127,.35); }
+  .step.run{ color:var(--fg); } .step.run .si{ border:3px solid rgba(127,127,127,.3); border-top-color:var(--accent); animation:sp .9s linear infinite; }
+  .step.done{ color:var(--fg); } .step.done .si{ background:rgba(43,212,167,.18); color:var(--ok); }
+  .step.fail{ color:var(--danger); } .step.fail .si{ background:rgba(255,92,108,.16); color:var(--danger); }
+  .step .sx{ font-size:12px; color:var(--dim); display:block; margin-top:2px; }
+  @keyframes sp{ to{ transform:rotate(360deg); } }
+  .result{ margin-top:14px; border-radius:16px; padding:15px; display:flex; gap:12px; align-items:flex-start; }
+  .result.ok{ background:rgba(43,212,167,.12); } .result.bad{ background:rgba(255,92,108,.12); } .result.info{ background:var(--elev); }
+  .result .ri{ width:32px; height:32px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-weight:900; }
+  .result.ok .ri{ background:var(--ok); color:#04101f; } .result.bad .ri{ background:var(--danger); color:#fff; } .result.info .ri{ background:var(--accent); color:var(--accent-ink); }
+  .result .rt{ font-size:16px; font-weight:800; } .result .rs{ font-size:14px; color:var(--dim); margin-top:3px; line-height:1.45; word-break:break-word; }
+
+  /* connections on the TV */
+  .tv-sum{ display:flex; gap:8px; margin:10px 0 4px; }
+  .tv-sum div{ flex:1; background:var(--bg2); border-radius:12px; padding:9px 6px; text-align:center; }
+  .tv-sum b{ display:block; font-size:17px; font-variant-numeric:tabular-nums; } .tv-sum span{ font-size:11.5px; color:var(--dim); }
+  .mode-line{ font-size:13px; color:var(--dim); margin:2px 0 2px; }
+  .conn{ display:flex; align-items:center; gap:12px; padding:13px 0; }
+  .conn + .conn{ border-top:1px solid var(--line); }
+  .conn .cicon{ width:40px; height:40px; border-radius:12px; background:var(--bg2); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--dim); flex:0 0 auto; position:relative; }
+  .conn .cicon::after{ content:""; position:absolute; right:-2px; bottom:-2px; width:11px; height:11px; border-radius:50%; background:#3a4558; border:2px solid var(--panel); }
+  .conn.active .cicon{ color:var(--accent); background:rgba(34,221,226,.1); } .conn.active .cicon::after{ background:var(--ok); }
+  .conn.failed .cicon::after{ background:var(--danger); }
+  .conn.off{ opacity:.6; }
+  .conn .cm{ flex:1; min-width:0; }
+  .conn .cn{ font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .conn .cs{ font-size:12.5px; color:var(--dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .conn.failed .cs{ color:var(--danger); }
+  .sw{ border:none; background:none; padding:6px 0 6px 6px; cursor:pointer; display:flex; align-items:center; flex:0 0 auto; }
+  .sw:disabled{ opacity:.5; }
+  .sw.busy .tg i{ animation:pulse .8s ease-in-out infinite alternate; }
+  @keyframes pulse{ to{ opacity:.35; } }
+  .conn-note{ font-size:12.5px; color:var(--dim); margin-top:8px; line-height:1.45; }
+
+  details.more{ margin-top:2px; }
+  details.more summary{ list-style:none; cursor:pointer; color:var(--dim); font-size:14.5px; font-weight:700; padding:10px 2px; text-align:center; }
+  details.more summary::-webkit-details-marker{ display:none; }
+  .field-lbl{ font-size:13px; font-weight:700; color:var(--dim); margin-top:14px; }
+  .note{ font-size:12.5px; color:var(--dim); margin-top:12px; text-align:center; }
+  .codein{ letter-spacing:.3em; text-align:center; font-weight:800; font-size:24px; }
+  .spin{ width:38px; height:38px; border:4px solid var(--elev); border-top-color:var(--accent); border-radius:50%; margin:10px auto; animation:sp 1s linear infinite; }
+  .center{ text-align:center; }
+  .search-row{ display:flex; gap:8px; margin-top:10px; }
+  .search-row input{ margin:0; flex:1; }
+  .search-row .btn{ width:auto; margin:0; padding:0 18px; height:52px; font-size:15px; background:var(--accent); color:var(--accent-ink); }
+  @media (prefers-color-scheme: light){ :root{ --bg:#eef2f7; --bg2:#eef2f7; --panel:#fff; --elev:#e6ebf2; --line:rgba(10,20,40,.08); --fg:#0a0f1a; --dim:#5a6678; --ok:#0e9e7a; --warn:#b7791f; --accent:#0fb5bb; }
+    body{ background:radial-gradient(120% 60% at 50% -10%, rgba(15,181,187,.14), transparent 60%), var(--bg); } input::placeholder{ color:#8a94a3; } .tv-ic{ background:#e3f6f7; } .tg{ background:#cfd7e2; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.8v16.4a1 1 0 0 0 1.5.86l13.2-8.2a1 1 0 0 0 0-1.72L7.5 2.94A1 1 0 0 0 6 3.8z" fill="#22dde2"/></svg><b style="font-weight:800">BYO <span>Player</span></b></div>
+
+  <!-- LOADING -->
+  <div id="s-loading" class="card center">
+    <div class="spin"></div>
+    <div class="card-s" style="margin:0">Finding your TV…</div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="s-main" class="hidden">
+    <div class="card">
+      <div class="tv-row">
+        <div class="tv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M8 21h8M12 17v4"/></svg></div>
+        <div class="tv-main"><div class="tv-name" id="tv-name">Living Room TV</div><div class="tv-meta" id="tv-meta">BYO Player Pro</div></div>
+        <span class="pill wait" id="tv-pill"><i></i><span>Not paired</span></span>
+      </div>
+      <div class="code-line" id="code-line">
+        <div class="k"><b>Check your TV shows this code</b></div>
+        <div class="code" id="tv-code">000 000</div>
+        <div class="k"><span id="code-timer">Check before you connect.</span></div>
+      </div>
+    </div>
+
+    <div class="card" id="add-card">
+      <div class="card-h" id="add-h">Add your TV service</div>
+      <div class="card-s" id="add-s">Paste the link or login your provider gave you. It goes straight to the TV, no typing with the remote.</div>
+      <div id="f-wrap">
+        <div class="paste">
+          <textarea id="sp-in" rows="3" placeholder="Paste a playlist link, an Xtream link, an Emby or Jellyfin address, or the playlist text" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+          <button type="button" class="pbtn" id="sp-paste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2.5" width="8" height="4" rx="1.2"/><path d="M16 4.5h1.5A2.5 2.5 0 0 1 20 7v12a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 19V7a2.5 2.5 0 0 1 2.5-2.5H8"/></svg>Paste</button>
+          <span class="phint">We'll work out the type</span>
+        </div>
+        <div class="sp-out hidden" id="sp-out"></div>
+        <div class="or-line">or enter the details</div>
+        <div class="seg" id="i-seg">
+          <button class="on" data-mode="xtream">Xtream<small>login</small></button>
+          <button data-mode="m3u">M3U<small>link</small></button>
+          <button data-mode="emby">Emby<small>server</small></button>
+          <button data-mode="jellyfin">Jellyfin<small>server</small></button>
+          <button data-mode="stalker">MAG<small>portal</small></button>
+          <button data-mode="plex">Plex<small>account</small></button>
+        </div>
+        <div id="i-xtream">
+          <div class="fld"><label for="i-server">Server</label><input id="i-server" placeholder="http://provider.com:8080" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url"/></div>
+          <div class="fld"><label for="i-user">Username</label><input id="i-user" placeholder="Username" autocomplete="off" autocapitalize="off" spellcheck="false"/></div>
+          <div class="fld"><label for="i-pass">Password</label><div class="pw"><input id="i-pass" type="password" placeholder="Password" autocomplete="off" autocapitalize="off" spellcheck="false"/></div></div>
+        </div>
+        <div id="i-m3u" class="hidden">
+          <div class="fld"><label for="i-url">Playlist link</label><input id="i-url" placeholder="https://…" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url"/></div>
+          <div class="fld"><label for="i-epg">TV guide link <span class="opt">(optional)</span></label><input id="i-epg" placeholder="https://… (EPG / XMLTV)" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url"/></div>
+        </div>
+        <div id="i-emby" class="hidden">
+          <div class="fld"><label for="i-eserver">Server address</label><input id="i-eserver" placeholder="https://emby.example.com" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url"/></div>
+          <div class="fld"><label for="i-euser">Username</label><input id="i-euser" placeholder="Username" autocomplete="off" autocapitalize="off" spellcheck="false"/></div>
+          <div class="fld"><label for="i-epass">Password</label><div class="pw"><input id="i-epass" type="password" placeholder="Password" autocomplete="off" autocapitalize="off" spellcheck="false"/></div></div>
+        </div>
+        <div id="i-jellyfin" class="hidden">
+          <div class="fld"><label for="i-jserver">Server address</label><input id="i-jserver" placeholder="https://jellyfin.example.com" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url"/></div>
+          <div class="fld"><label for="i-juser">Username</label><input id="i-juser" placeholder="Username" autocomplete="off" autocapitalize="off" spellcheck="false"/></div>
+          <div class="fld"><label for="i-jpass">Password</label><div class="pw"><input id="i-jpass" type="password" placeholder="Password" autocomplete="off" autocapitalize="off" spellcheck="false"/></div></div>
+        </div>
+        <div id="i-plex" class="hidden">
+          <button class="btn" id="px-btn" style="background:#e5a00d;color:#1a1300">Sign in with Plex</button>
+          <div class="note" id="px-note" style="text-align:left">Plex opens in a new tab. Approve BYO Player there, then come back to this page.</div>
+        </div>
+        <div id="i-stalker" class="hidden">
+          <div class="fld"><label for="i-kportal">Portal link</label><input id="i-kportal" placeholder="http://portal.example.com/c/" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url"/></div>
+          <div class="fld"><label for="i-kmac">MAC address</label><input id="i-kmac" placeholder="00:1A:79:12:34:56" autocomplete="off" autocapitalize="characters" spellcheck="false"/></div>
+        </div>
+        <div class="tg-row on" id="i-combine" role="switch" aria-checked="true" tabindex="0">
+          <span class="tg"><i></i></span>
+          <span><div class="tg-t">Keep my other connections</div><div class="tg-s">Everything shows as one library on the TV. Titles on more than one connection appear once.</div></span>
+        </div>
+        <div class="err hidden" id="f-err"></div>
+        <button class="btn primary" id="go">Send to my TV</button>
+      </div>
+
+      <div class="prog hidden" id="prog">
+        <div class="step todo" id="st-pair"><span class="si"></span><span>Pairing with your TV<span class="sx"></span></span></div>
+        <div class="step todo" id="st-send"><span class="si"></span><span>Sending it to the TV<span class="sx"></span></span></div>
+        <div class="step todo" id="st-load"><span class="si"></span><span>TV is loading it<span class="sx">Big playlists can take up to a minute.</span></span></div>
+      </div>
+      <div class="result hidden" id="result"><div class="ri" id="r-ic">✓</div><div><div class="rt" id="r-t"></div><div class="rs" id="r-s"></div></div></div>
+      <button class="btn hidden" id="another">＋ Add another</button>
+    </div>
+
+    <div class="card hidden" id="tvconn-card">
+      <div class="card-h">On your TV</div>
+      <div class="mode-line" id="tvconn-mode"></div>
+      <div class="tv-sum hidden" id="tvconn-sum"></div>
+      <div id="tvconn-list"></div>
+      <div class="conn-note">Switch a connection off to hide it from the TV without deleting it. Switch it on again any time.</div>
+    </div>
+
+    <div class="card hidden" id="d-remote">
+      <div class="card-h">Search on the TV</div>
+      <div class="card-s">Type here instead of with the remote.</div>
+      <div class="search-row"><input id="r-text" placeholder="e.g. Arsenal" autocomplete="off" enterkeyhint="send"/><button class="btn" id="r-send">Send</button></div>
+      <div class="note" id="r-note"></div>
+    </div>
+
+    <details class="more" id="more">
+      <summary>More options ▾</summary>
+      <div class="card">
+        <div class="field-lbl" style="margin-top:0">Connect as</div>
+        <div class="seg" id="c-seg"><button class="on" data-mode="account">My account</button><button data-mode="guest">Guest</button></div>
+        <div id="c-account-fields"><div class="field-lbl">Your name</div><input id="c-name" placeholder="e.g. Albert" autocomplete="name" style="margin-top:6px"/></div>
+        <div class="field-lbl">Name this TV</div>
+        <input id="c-devname" placeholder="Living Room TV" value="Living Room TV" style="margin-top:6px"/>
+        <button class="btn" id="pair-only">Pair the TV only</button>
+        <button class="btn ghost" id="c-cancel">This is not my TV</button>
+      </div>
+    </details>
+  </div>
+
+  <!-- MANUAL CODE ENTRY (no token in URL) -->
+  <div id="s-manual" class="hidden">
+    <div class="card center">
+      <h1>Connect to your TV</h1>
+      <p class="sub">On the TV, open BYO Player and go to <b>Settings › Devices</b>. Then scan the QR code it shows with your phone camera.</p>
+      <input id="manual-code" class="codein hidden" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code"/>
+      <button class="btn primary hidden" id="manual-go">Continue</button>
+    </div>
+    <div class="err hidden" id="manual-err"></div>
+  </div>
+
+  <!-- ERROR / EXPIRED -->
+  <div id="s-error" class="hidden">
+    <div class="card center">
+      <h1 id="e-title">Pairing code expired</h1>
+      <p class="sub" id="e-msg" style="margin-bottom:0">Show a new code on your TV and scan it again.</p>
+    </div>
+  </div>
+  <div class="note">BYO Player Pro · secure pairing with your TV</div>
+</div>
+<script>
+var SUPA_URL='https://lkftnbkuuitaxtlvrqfj.supabase.co';
+var SUPA_KEY='sb_publishable_D5tMkCSL1AVvJS8S9fuPgQ_nOg_ItOY';
+function $(id){ return document.getElementById(id); }
+function show(id){ ['s-loading','s-main','s-manual','s-error'].forEach(function(s){ $(s).classList.toggle('hidden', s!==id); }); }
+function rpc(fn, args){ return fetch(SUPA_URL+'/rest/v1/rpc/'+fn, { method:'POST',
+    headers:{ 'Content-Type':'application/json', 'apikey':SUPA_KEY, 'Authorization':'Bearer '+SUPA_KEY },
+    body:JSON.stringify(args||{}) }).then(function(r){ if(r.status===404) return { error:'missing' }; return r.json(); }); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function n(x){ return (x||0).toLocaleString(); }
+var STATE={ token:null, session:null, mode:'account', iptvMode:'xtream', deviceId:null, phoneToken:null, combine:true, busy:false, stateApi:true, expires:0 };
+function qparam(k){ var m=new RegExp('[?&]'+k+'=([^&]+)').exec(location.search); return m?decodeURIComponent(m[1]):null; }
+function store(){ try{ sessionStorage.setItem('byo_pair_'+STATE.token, JSON.stringify({deviceId:STATE.deviceId, phoneToken:STATE.phoneToken, tv:$('tv-name').textContent})); }catch(e){} }
+function restore(){ try{ var v=JSON.parse(sessionStorage.getItem('byo_pair_'+STATE.token)||'null'); if(v&&v.deviceId){ STATE.deviceId=v.deviceId; STATE.phoneToken=v.phoneToken; if(v.tv) $('tv-name').textContent=v.tv; return true; } }catch(e){} return false; }
+
+function start(){
+  STATE.token=qparam('t');
+  if(!STATE.token){ show('s-manual'); return; }
+  if(restore()){ show('s-main'); setPaired(); pollState(); return; }
+  show('s-loading');
+  rpc('byo_pair_scan', { p_token: STATE.token }).then(function(res){
+    if(!res || res.error){ onResolveError(res&&res.error); return; }
+    STATE.session=res;
+    $('tv-name').textContent=res.tvName||'Living Room TV';
+    $('tv-meta').textContent=(res.platform==='Tizen'?'Samsung Smart TV':(res.platform||'TV'))+' · BYO Player Pro';
+    var c=(res.confirmCode||'').toString(); $('tv-code').textContent=c.length===6?(c.slice(0,3)+' '+c.slice(3)):c;
+    $('c-devname').value=res.tvName||'Living Room TV';
+    STATE.expires=Date.now()+4.5*60000; tick();
+    show('s-main');
+  }).catch(function(){ onResolveError('neterr'); });
+}
+function tick(){ if(STATE.deviceId){ $('code-timer').textContent=''; return; }
+  var left=Math.max(0, Math.round((STATE.expires-Date.now())/1000));
+  $('code-timer').textContent=left>0?('Valid for '+Math.floor(left/60)+':'+('0'+(left%60)).slice(-2)):'This code may have expired';
+  if(left>0) setTimeout(tick,1000); }
+function onResolveError(e){
+  if(e==='expired'){ $('e-title').textContent='Pairing code expired'; $('e-msg').textContent='Show a new code on your TV and scan it again.'; show('s-error'); }
+  else if(e==='not_found'){ $('e-title').textContent='Code not found'; $('e-msg').textContent='Show a new code on your TV and scan it again.'; show('s-error'); }
+  else if(e&&String(e).indexOf('already_')===0){ $('e-title').textContent='This TV is already paired'; $('e-msg').textContent='To add more connections, open Settings › Devices on the TV, show a new QR code and scan it.'; show('s-error'); }
+  else { $('e-title').textContent='Could not reach BYO Player'; $('e-msg').textContent='Check your internet connection and scan the QR code again.'; show('s-error'); }
+}
+function setPaired(){
+  var p=$('tv-pill'); p.className='pill ok'; p.querySelector('span').textContent='Connected';
+  $('code-line').classList.add('hidden'); $('d-remote').classList.remove('hidden'); $('pair-only').classList.add('hidden'); $('c-cancel').classList.add('hidden');
+  $('c-seg').closest('.card').querySelectorAll('input,.seg').forEach(function(x){ x.style.opacity='.5'; x.style.pointerEvents='none'; });
+}
+
+// ---- form ----
+$('i-seg').addEventListener('click', function(e){ var b=e.target.closest('button'); if(!b) return; STATE.iptvMode=b.dataset.mode;
+  Array.prototype.forEach.call(this.children,function(x){ x.classList.toggle('on', x===b); });
+  ['xtream','m3u','emby','jellyfin','stalker','plex'].forEach(function(m){ $('i-'+m).classList.toggle('hidden', STATE.iptvMode!==m); });
+  $('f-err').classList.add('hidden'); });
+function setCombine(v){ STATE.combine=v; var r=$('i-combine'); r.classList.toggle('on',v); r.setAttribute('aria-checked',v?'true':'false'); }
+$('i-combine').addEventListener('click', function(){ setCombine(!STATE.combine); });
+$('i-combine').addEventListener('keydown', function(e){ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); setCombine(!STATE.combine); } });
+$('c-seg').addEventListener('click', function(e){ var b=e.target.closest('button'); if(!b) return;
+  STATE.mode=b.dataset.mode; Array.prototype.forEach.call(this.children,function(x){ x.classList.toggle('on', x===b); });
+  $('c-account-fields').classList.toggle('hidden', STATE.mode==='guest'); });
+function host(u){ try{ return new URL(u).host; }catch(e){ return String(u||'').replace(/^https?:\/\//,'').split(/[/?#]/)[0]; } }
+function readForm(){
+  var m=STATE.iptvMode, iptv, label;
+  if(m==='xtream'){ iptv={ mode:'xtream', server:$('i-server').value.trim(), user:$('i-user').value.trim(), pass:$('i-pass').value }; label='Xtream · '+host(iptv.server);
+    if(!/^https?:\/\//i.test(iptv.server)&&iptv.server) iptv.server='http://'+iptv.server;
+    if(!iptv.server||!iptv.user||!iptv.pass) return { err:'Enter the server, username and password from your provider.' }; }
+  else if(m==='emby'||m==='jellyfin'){ var p=m==='emby'?'e':'j'; iptv={ mode:m, server:$('i-'+p+'server').value.trim(), user:$('i-'+p+'user').value.trim(), pass:$('i-'+p+'pass').value };
+    label=(m==='emby'?'Emby':'Jellyfin')+' · '+host(iptv.server);
+    if(!/^https?:\/\//i.test(iptv.server)) return { err:'Enter the server address, starting with http:// or https://' };
+    if(!iptv.user) return { err:'Enter your username.' }; }
+  else if(m==='plex'){ if(!STATE.plex) return { err:'Sign in with Plex first.' }; iptv={ mode:'plex', server:'plex://account', user:STATE.plex.user, pass:STATE.plex.token }; label='Plex · '+STATE.plex.user; }
+  else if(m==='stalker'){ var mac=$('i-kmac').value.toUpperCase().replace(/[^0-9A-F]/g,''); iptv={ mode:'stalker', server:cleanUrl($('i-kportal').value), user:mac.length===12?mac.match(/.{2}/g).join(':'):'' }; label='MAG portal · '+host(iptv.server);
+    if(!/^https?:\/\//i.test(iptv.server)) return { err:'Enter the portal link from your provider.' }; if(!iptv.user) return { err:'Enter the MAC address from your provider, e.g. 00:1A:79:12:34:56.' }; }
+  else if(STATE.pasted&&$('i-url').value===STATE.pasted.marker){ iptv={ mode:'m3u', text:STATE.pasted.text, name:STATE.pasted.name, epg:$('i-epg').value.trim() }; label=STATE.pasted.name;
+    if(STATE.pasted.text.length>250000) return { err:'This playlist is too long to send as text. Paste the link to it instead.' }; }
+  else { iptv={ mode:'m3u', url:directLink(cleanUrl($('i-url').value)), epg:$('i-epg').value.trim() }; label='M3U · '+host(iptv.url);
+    if(!/^https?:\/\//i.test(iptv.url)) return { err:'Enter the playlist link, starting with http:// or https://' }; }
+  iptv.combine=!!STATE.combine; iptv.rid='r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  return { iptv:iptv, label:label }; }
+function clearForm(){ STATE.pasted=null; var sp=$('sp-in'); if(sp) sp.value=''; var so=$('sp-out'); if(so) so.className='sp-out hidden'; ['i-server','i-user','i-pass','i-url','i-epg','i-eserver','i-euser','i-epass','i-jserver','i-juser','i-jpass','i-kportal','i-kmac'].forEach(function(id){ var e=$(id); if(e) e.value=''; }); }
+
+// ---- smart paste ----
+function cleanUrl(u){ u=String(u||'').replace(/[​-‏‪-‮⁠-⁤﻿­]/g,'').replace(/[“”‘’"'<>`]/g,' ').trim().replace(/[\r\n\t]+/g,'');
+  var all=u.match(/https?:\/\/[^ "'<>]+?(?=https?:\/\/| |$)/ig); if(all&&all.length) u=all[all.length-1];
+  u=u.replace(/\s+/g,'').replace(/&amp;/gi,'&').replace(/[)\].,;:!?]+$/,'');
+  u=u.replace(/([?&]type=)(m3u[_a-z]*)(?=&|$)/i,function(_,a,b){ b=b.toLowerCase(); return a+((b==='m3u'||b==='m3u_plus')?b:(b.indexOf('m3u_p')===0||b==='m3u_'?'m3u_plus':b)); });
+  if(u&&!/^https?:\/\//i.test(u)&&(/^[a-z0-9.-]+\.[a-z]{2,}([:/?]|$)/i.test(u)||/^[a-z0-9.-]+:\d{2,5}(\/|$)/i.test(u)||/^\d{1,3}(\.\d{1,3}){3}([:/]|$)/.test(u))) u='http://'+u; return u; }
+function directLink(u){ var m;
+  if(/^https?:\/\/(www\.)?dropbox\.com\//i.test(u)){ u=u.replace(/([?&])dl=0/,'$1dl=1'); if(!/[?&](dl|raw)=1/.test(u)) u+=(u.indexOf('?')<0?'?':'&')+'dl=1'; return u; }
+  if((m=u.match(/^https?:\/\/drive\.google\.com\/file\/d\/([^\/?#]+)/i))) return 'https://drive.google.com/uc?export=download&id='+m[1];
+  if((m=u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/blob\/(.+)$/i))) return 'https://raw.githubusercontent.com/'+m[1]+'/'+m[2]+'/'+m[3];
+  if((m=u.match(/^https?:\/\/(www\.)?pastebin\.com\/(?!raw\/)([A-Za-z0-9]+)\/?$/i))) return 'https://pastebin.com/raw/'+m[2];
+  return u; }
+function chName(u){ try{ var p=new URL(u); var segs=p.pathname.split('/').filter(Boolean); var GEN=/^(index|playlist|master|chunklist|stream|streams|live|mono|hls|dash|video|output|out|v1|\d+p?)$/i;
+  for(var i=segs.length-1;i>=0;i--){ var sg=decodeURIComponent(segs[i]).replace(/\.(m3u8?|ts|mp4|mkv|mpd|flv|webm)$/i,'').replace(/[_+-]+/g,' ').trim(); if(sg&&!GEN.test(sg)&&!/^\d+$/.test(sg)) return sg.replace(/\b\w/g,function(c){ return c.toUpperCase(); }); } return p.host; }catch(e){ return 'My channel'; } }
+function spShow(kind, title, sub){ var o=$('sp-out'); o.className='sp-out '+kind; o.innerHTML='<b>'+esc(title)+'</b>'+esc(sub||''); }
+function pickTab(m){ var b=document.querySelector('#i-seg button[data-mode="'+m+'"]'); if(b) b.click(); }
+function spDetect(raw){ var t=String(raw||'').trim(); STATE.pasted=null; if(!t){ $('sp-out').className='sp-out hidden'; return; }
+  if(/^#EXTM3U/i.test(t)||/#EXTINF[^\n]*\n\s*\S+/i.test(t)){ var n=(t.match(/#EXTINF/gi)||[]).length; var mk='(pasted playlist, '+n+' entr'+(n===1?'y':'ies')+')';
+    STATE.pasted={text:t, name:'Playlist from phone', marker:mk}; pickTab('m3u'); $('i-url').value=mk; spShow('ok','Found: playlist text with '+n+' entr'+(n===1?'y':'ies'),'It will be sent to the TV and kept there. Press Connect.'); return; }
+  var mac=(t.match(/\b([0-9A-F]{2}[:-]){5}[0-9A-F]{2}\b/i)||[])[0]; var url=cleanUrl(t);
+  if(mac||/\/stalker_portal\b|\/portal\.php\b|\/c\/?(index\.html)?(\?|$)|\/server\/load\.php/i.test(url)){ pickTab('stalker'); $('i-kportal').value=/^https?:/i.test(url)?url:''; if(mac) $('i-kmac').value=mac.toUpperCase().replace(/-/g,':'); spShow('ok','Found: MAG / Stalker portal'+(mac?' with MAC '+mac.toUpperCase():''), mac?'Filled in below. Press Connect.':'Enter the MAC address your provider activated, below.'); return; }
+  if(!/^https?:\/\//i.test(url)){ spShow('bad','Could not recognise that','Copy the link from your provider again, or choose the type below.'); return; }
+  url=directLink(url); var u; try{ u=new URL(url); }catch(e){ spShow('bad','That link is not valid','Copy it again and paste it here.'); return; }
+  var base=u.protocol+'//'+u.host, path=u.pathname||'/', q=u.searchParams;
+  if(/\/(get|player_api)\.php/i.test(path)&&q.get('username')&&q.get('password')){ pickTab('xtream'); $('i-server').value=base; $('i-user').value=q.get('username'); $('i-pass').value=q.get('password'); spShow('ok','Found: Xtream account '+q.get('username')+' at '+u.host,'Filled in below. Press Connect.'); return; }
+  var xm=path.match(/^\/(live|movie|series|timeshift)\/([^\/]+)\/([^\/]+)\/[^\/]+$/i);
+  if(xm){ pickTab('xtream'); $('i-server').value=base; $('i-user').value=decodeURIComponent(xm[2]); $('i-pass').value=decodeURIComponent(xm[3]); spShow('ok','Found: Xtream account '+decodeURIComponent(xm[2])+' at '+u.host,'That was a link to one stream, so the whole account will be connected. Press Connect.'); return; }
+  var em=/\/web\/|\/emby(\/|$)|\/jellyfin(\/|$)/i.test(path)||/jellyfin|emby/i.test(u.host)||u.port==='8096'||u.port==='8920';
+  if(/\.(m3u8|ts|mp4|mkv|mpd|flv|webm)(\?|$)/i.test(path)&&!/playlist|channels|list|iptv/i.test(path.split('/').pop())){ var nm=chName(url); var mk2='(one channel: '+nm+')';
+    STATE.pasted={text:'#EXTM3U\n#EXTINF:-1 group-title="My channels",'+nm+'\n'+url+'\n', name:nm, marker:mk2}; pickTab('m3u'); $('i-url').value=mk2; spShow('ok','Found: a single channel, '+nm,'It will be added as a one-channel list. Press Connect.'); return; }
+  if(em){ var srv=base+path.replace(/\/web\/.*$/i,'').replace(/\/(index\.html)?$/i,''); var jf=/jellyfin/i.test(url); pickTab(jf?'jellyfin':'emby'); $(jf?'i-jserver':'i-eserver').value=srv;
+    spShow('ok','Found: '+(jf?'Jellyfin':'Emby or Jellyfin')+' server at '+u.host, jf?'Enter your username and password below.':'Pick Emby or Jellyfin above if needed, then enter your username and password.'); return; }
+  if((path==='/'||path==='')&&!u.search){ pickTab('xtream'); $('i-server').value=base; spShow('ok','Found: a server address','Enter the username and password from your provider below. If this is an Emby or Jellyfin server, pick that type above.'); return; }
+  pickTab('m3u'); $('i-url').value=url; spShow('ok','Found: playlist link at '+u.host, url!==cleanUrl(t)?'The share link was changed to the direct file. Press Connect.':'Press Connect.'); }
+$('sp-paste').addEventListener('click',function(){ var ta=$('sp-in');
+  if(navigator.clipboard&&navigator.clipboard.readText){ navigator.clipboard.readText().then(function(t){ if(t){ ta.value=t; spDetect(t); } else { ta.focus(); } },function(){ ta.focus(); }); } else ta.focus(); });
+Array.prototype.forEach.call(document.querySelectorAll('.pw'),function(w){ var inp=w.querySelector('input'), b=document.createElement('button'); b.type='button'; b.className='eye'; b.setAttribute('aria-label','Show password');
+  var EYE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.1 6.2C3.6 7.8 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  b.innerHTML=EYE; b.addEventListener('click',function(){ var show=inp.type==='password'; inp.type=show?'text':'password'; b.innerHTML=show?OFF:EYE; b.setAttribute('aria-label',show?'Hide password':'Show password'); }); w.appendChild(b); });
+$('r-text').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); $('r-send').click(); } });
+$('sp-in').addEventListener('input',function(){ var v=this.value; clearTimeout(this.__t); this.__t=setTimeout(function(){ spDetect(v); },200); });
+
+// ---- Plex sign-in on the phone ----
+var PLEX_TV=window.__PLEX_TV||'https://plex.tv';
+function plexCid(){ try{ var v=localStorage.getItem('byo_plex_cid'); if(!v){ v='byo-'+Date.now().toString(36)+Math.random().toString(36).slice(2,10); localStorage.setItem('byo_plex_cid',v); } return v; }catch(e){ return 'byo-phone'; } }
+function plexQ(extra){ return 'X-Plex-Product='+encodeURIComponent('BYO Player')+'&X-Plex-Client-Identifier='+encodeURIComponent(plexCid())+(extra?'&'+extra:''); }
+function plexReq(method,url){ return fetch(url,{ method:method, headers:{ 'Accept':'application/json' } }).then(function(r){ if(!r.ok) throw new Error('http-'+r.status); return r.json(); }); }
+$('px-btn').addEventListener('click', function(){ var btn=this, w=null; try{ w=window.open('about:blank','_blank'); }catch(e){}
+  btn.disabled=true; $('px-note').textContent='Opening Plex…';
+  plexReq('POST', PLEX_TV+'/api/v2/pins?strong=true&'+plexQ()).then(function(pin){
+    var auth='https://app.plex.tv/auth#?clientID='+encodeURIComponent(plexCid())+'&code='+encodeURIComponent(pin.code)+'&context%5Bdevice%5D%5Bproduct%5D='+encodeURIComponent('BYO Player');
+    if(w&&!w.closed) w.location.href=auth; else location.href=auth;
+    $('px-note').textContent='Waiting for you to approve BYO Player in Plex…'; var t0=Date.now();
+    (function poll(){ plexReq('GET', PLEX_TV+'/api/v2/pins/'+pin.id+'?'+plexQ()).then(function(j){
+        if(j&&j.authToken){ return plexReq('GET', PLEX_TV+'/api/v2/user?'+plexQ('X-Plex-Token='+encodeURIComponent(j.authToken))).catch(function(){ return {}; }).then(function(u){
+            STATE.plex={ token:j.authToken, user:(u&&(u.username||u.title))||'Plex account' }; btn.disabled=false; btn.textContent='Signed in as '+STATE.plex.user;
+            $('px-note').textContent='Press Connect to add your Plex libraries to the TV.'; }); }
+        if(Date.now()-t0>15*60000){ btn.disabled=false; $('px-note').textContent='Plex sign-in timed out. Try again.'; return; }
+        setTimeout(poll,2000); }).catch(function(){ setTimeout(poll,3000); }); })();
+  }).catch(function(){ btn.disabled=false; if(w&&!w.closed) w.close(); $('px-note').textContent='Could not reach Plex. Check your internet and try again.'; }); });
+
+// ---- progress UI ----
+function step(id, cls, extra){ var el=$(id); el.className='step '+cls; el.querySelector('.si').textContent=cls==='done'?'✓':(cls==='fail'?'!':''); if(extra!=null) el.querySelector('.sx').textContent=extra; }
+function result(kind, title, sub){ var r=$('result'); r.className='result '+kind; $('r-ic').textContent=kind==='ok'?'✓':(kind==='bad'?'!':'i'); $('r-t').textContent=title; $('r-s').textContent=sub||''; }
+function resetProgress(paired){ $('prog').classList.remove('hidden'); $('result').classList.add('hidden'); $('another').classList.add('hidden');
+  step('st-pair', paired?'done':'todo', paired?'Already paired':''); step('st-send','todo',''); step('st-load','todo','This can take up to a minute for big playlists.');
+  $('st-pair').classList.toggle('hidden', !!paired && STATE.sentOnce); }
+function finish(kind,title,sub){ result(kind,title,sub); STATE.busy=false; $('go').disabled=false; $('another').classList.toggle('hidden', kind==='bad');
+  if(kind!=='bad'){ $('f-wrap').classList.add('hidden'); } }
+
+function pair(){ return new Promise(function(res,rej){
+  if(STATE.deviceId) return res();
+  var isGuest=STATE.mode==='guest';
+  rpc('byo_pair_confirm', { p_token:STATE.token, p_confirm_code:STATE.session.confirmCode, p_user_id:null,
+    p_device_name:$('c-devname').value||STATE.session.tvName||'Living Room TV', p_profile_name:isGuest?null:($('c-name').value||'Me'),
+    p_is_guest:isGuest, p_payload:{} }).then(function(r){
+      if(!r||r.error) return rej(r&&r.error||'error');
+      STATE.deviceId=r.deviceId; STATE.phoneToken=r.phoneToken; store(); setPaired(); res(); }).catch(function(){ rej('neterr'); }); }); }
+function pairErr(e){ if(e==='bad_code') return 'The code did not match the TV.'; if(e==='expired') return 'The pairing code expired. Show a new code on the TV and scan again.';
+  if(e==='rate_limited') return 'Too many attempts. Wait a moment and try again.'; if(e==='already_paired') return 'This code was already used. Show a new code on the TV and scan again.';
+  if(e==='neterr') return 'Network problem. Check your internet and try again.'; return 'Could not pair with the TV.'; }
+
+$('go').addEventListener('click', function(){
+  if(STATE.busy) return; $('f-err').classList.add('hidden');
+  var f=readForm(); if(f.err){ $('f-err').textContent=f.err; $('f-err').classList.remove('hidden'); return; }
+  STATE.busy=true; this.disabled=true; var wasPaired=!!STATE.deviceId; resetProgress(wasPaired);
+  if(!wasPaired) step('st-pair','run','');
+  pair().then(function(){
+    if(!wasPaired) step('st-pair','done',$('tv-name').textContent);
+    step('st-send','run','');
+    return rpc('byo_remote_send', { p_device_id:STATE.deviceId, p_secret:STATE.phoneToken, p_kind:'command', p_value:'iptv:'+JSON.stringify(f.iptv) }).then(function(r){
+      if(!r||r.error){ step('st-send','fail',''); finish('bad','Could not send to the TV', r&&r.error==='rate_limited'?'Too many sends. Wait a minute and try again.':'Make sure the TV is on and BYO Player is open.'); return; }
+      STATE.sentOnce=true; step('st-send','done',f.label); step('st-load','run',null);
+      waitForTv(f.iptv.rid, f.label);
+    });
+  }, function(e){ step('st-pair','fail',''); finish('bad','Could not pair', pairErr(e)); });
+});
+$('another').addEventListener('click', function(){ clearForm(); $('f-wrap').classList.remove('hidden'); $('prog').classList.add('hidden'); $('result').classList.add('hidden'); this.classList.add('hidden');
+  $('add-h').textContent='Add another TV service'; $('go').textContent='Send to my TV'; setTimeout(function(){ var v=document.querySelector('#f-wrap > div:not(.hidden) input'); if(v) v.focus(); },60); });
+
+// ---- TV feedback (TV reports its state; older TVs/backends just don't answer) ----
+function waitForTv(rid, label){ var t0=Date.now();
+  (function loop(){
+    rpc('byo_device_state', { p_device_id:STATE.deviceId, p_secret:STATE.phoneToken }).then(function(r){
+      if(r&&r.error==='missing'){ STATE.stateApi=false; step('st-load','done','Look at your TV'); finish('info','Sent to your TV', label+'. The TV is loading it now.'); return; }
+      var st=r&&r.state; if(st) renderTv(st);
+      var last=st&&st.results&&st.results[rid];
+      if(last){ if(last.ok){ step('st-load','done',''); finish('ok','Connected: '+(last.name||label), counts(last)+(st.mode==='combined'?' Added to your combined library.':' This is now the active connection.')); }
+                else { step('st-load','fail',''); finish('bad','The TV could not load it', (last.name||label)+': '+(last.err||'the server did not answer')+'. Check the details and try again.'); }
+                return; }
+      if(Date.now()-t0>100000){ step('st-load','done','Still loading'); finish('info','Sent to your TV', 'It is taking a while. Check the TV in a moment.'); return; }
+      setTimeout(loop,1500);
+    }).catch(function(){ setTimeout(loop,2500); });
+  })(); }
+function counts(x){ var b=[]; if(x.live) b.push(n(x.live)+' live channels'); if(x.movies) b.push(n(x.movies)+' movies'); if(x.series) b.push(n(x.series)+' series'); return b.length?(b.join(' · ')+'.'):''; }
+var PEND={};   // connection id -> wanted on/off while the TV applies it
+function initials(nm){ var w=String(nm||'?').replace(/^(Emby|Jellyfin|Xtream|Plex|MAG portal|M3U)\s*:\s*/i,'').replace(/[^A-Za-z0-9 ]/g,' ').trim().split(/\s+/); return ((w[0]||'?')[0]+((w[1]||'')[0]||'')).toUpperCase(); }
+function kindOf(c){ var m=c.mode||''; return m==='xtream'?'Xtream':m==='m3u'?'M3U':m==='emby'?'Emby':m==='jellyfin'?'Jellyfin':m==='plex'?'Plex':m==='stalker'?'MAG':'Connection'; }
+function renderTv(st){ var list=st.connections||[]; if(!list.length){ $('tvconn-card').classList.add('hidden'); return; }
+  $('tvconn-card').classList.remove('hidden');
+  list.forEach(function(c){ if(PEND[c.id]&&(!!c.on===PEND[c.id].on||Date.now()-PEND[c.id].at>25000)) delete PEND[c.id]; });
+  var onN=list.filter(function(c){ return c.on; }).length;
+  $('tvconn-mode').textContent=st.mode==='combined'?(onN+' of '+list.length+' connection'+(list.length===1?'':'s')+' switched on, shown as one library'):'One connection at a time';
+  var sum=$('tvconn-sum'); if(st.live||st.movies||st.series){ sum.classList.remove('hidden'); sum.innerHTML='<div><b>'+n(st.live)+'</b><span>Live channels</span></div><div><b>'+n(st.movies)+'</b><span>Movies</span></div><div><b>'+n(st.series)+'</b><span>Series</span></div>'; } else sum.classList.add('hidden');
+  $('tvconn-list').innerHTML=list.map(function(c){ var p=PEND[c.id], on=p?p.on:!!c.on;
+    var failed=c.on&&c.ok===false, cls=(on?'':' off')+(c.active&&on?' active':'')+(failed&&on?' failed':'');
+    var sub=p?(on?'Switching on…':'Switching off…'):(!on?'Off · hidden on the TV':failed?(c.err||'Could not load'):c.active?(counts(c).replace(/\.$/,'')||'In use'):(c.managed?'Set up by BYO support':(kindOf(c)+(c.host?' · '+c.host:''))));
+    return '<div class="conn'+cls+'"><div class="cicon">'+esc(initials(c.name))+'</div><div class="cm"><div class="cn">'+esc(c.name)+'</div><div class="cs">'+esc(sub)+'</div></div>'+
+      '<button class="sw'+(on?' on':'')+(p?' busy':'')+'" data-id="'+esc(c.id)+'" role="switch" aria-checked="'+on+'" aria-label="'+(on?'Switch off ':'Switch on ')+esc(c.name)+'"'+(p?' disabled':'')+'><span class="tg"><i></i></span></button></div>'; }).join(''); }
+$('tvconn-list').addEventListener('click', function(e){ var b=e.target.closest('.sw'); if(!b||b.disabled||!STATE.deviceId) return;
+  var id=b.getAttribute('data-id'), want=!b.classList.contains('on');
+  PEND[id]={ on:want, at:Date.now() }; b.classList.toggle('on',want); b.classList.add('busy'); b.disabled=true;
+  var cs=b.parentNode.querySelector('.cs'); if(cs) cs.textContent=want?'Switching on…':'Switching off…'; b.parentNode.classList.toggle('off',!want);
+  rpc('byo_remote_send', { p_device_id:STATE.deviceId, p_secret:STATE.phoneToken, p_kind:'command', p_value:'conn:'+JSON.stringify({ id:id, on:want }) }).then(function(r){
+    if(!r||r.error){ delete PEND[id]; if(cs) cs.textContent=r&&r.error==='rate_limited'?'Too many changes. Wait a minute.':'Could not reach the TV. Is it on?'; b.classList.toggle('on',!want); b.classList.remove('busy'); b.disabled=false; return; }
+    quickPoll(); }).catch(function(){ delete PEND[id]; b.classList.toggle('on',!want); b.classList.remove('busy'); b.disabled=false; }); });
+function quickPoll(){ var k=0; (function q(){ if(k++>14||!Object.keys(PEND).length) return;
+  rpc('byo_device_state', { p_device_id:STATE.deviceId, p_secret:STATE.phoneToken }).then(function(r){ if(r&&r.state) renderTv(r.state); setTimeout(q,1500); }).catch(function(){ setTimeout(q,2500); }); })(); }
+function pollState(){ if(!STATE.deviceId||!STATE.stateApi) return;
+  rpc('byo_device_state', { p_device_id:STATE.deviceId, p_secret:STATE.phoneToken }).then(function(r){
+    if(r&&r.error==='missing'){ STATE.stateApi=false; return; } if(r&&r.state) renderTv(r.state); }).catch(function(){});
+  setTimeout(function(){ if(!document.hidden) pollState(); else setTimeout(pollState,5000); }, 10000); }
+
+// ---- pair only / cancel ----
+$('pair-only').addEventListener('click', function(){ var b=this; b.disabled=true; resetProgress(false); step('st-pair','run','');
+  $('st-send').classList.add('hidden'); $('st-load').classList.add('hidden');
+  pair().then(function(){ step('st-pair','done',$('tv-name').textContent); result('ok','TV paired','You can add a connection any time from this page.'); $('result').classList.remove('hidden'); $('more').open=false; pollState();
+    setTimeout(function(){ $('st-send').classList.remove('hidden'); $('st-load').classList.remove('hidden'); $('prog').classList.add('hidden'); },2500); },
+    function(e){ b.disabled=false; step('st-pair','fail',''); result('bad','Could not pair', pairErr(e)); }); });
+$('c-cancel').addEventListener('click', function(){ if(STATE.token) rpc('byo_pair_cancel',{p_token:STATE.token}); $('e-title').textContent='Pairing cancelled'; $('e-msg').textContent='Nothing was connected. You can scan the QR code again any time.'; show('s-error'); });
+// ---- type on phone ----
+$('r-send').addEventListener('click', function(){ if(!STATE.deviceId) return; var txt=$('r-text').value; if(!txt) return;
+  rpc('byo_remote_send', { p_device_id:STATE.deviceId, p_secret:STATE.phoneToken, p_kind:'text', p_value:txt })
+    .then(function(res){ $('r-note').textContent=(res&&!res.error)?'Sent. Look at your TV.':'Could not send. Is the TV on?'; }); });
+$('manual-go').addEventListener('click', function(){ $('manual-err').textContent='Please scan the QR code on your TV with your phone camera.'; $('manual-err').classList.remove('hidden'); });
+start();
+</script>
+</body>
+</html>
