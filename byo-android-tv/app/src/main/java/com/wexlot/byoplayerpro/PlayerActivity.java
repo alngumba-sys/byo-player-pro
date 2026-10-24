@@ -696,16 +696,14 @@ public class PlayerActivity extends Activity {
         if (basic != null) {
             String type = meta.optString("type", "");
             if (!live && ("episode".equals(type) || "movie".equals(type))) {
-                if ("episode".equals(type)) {
-                    // Icon only. Opens the episode list over the video; playback carries on until another episode is picked.
-                    TextView pick = ctrlPill("\u2630", v -> { if (allEps != null) showEpisodes(); else finishWith("browse"); });
-                    pick.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22); pick.setPadding(0, 0, 0, 0); pick.setContentDescription("Episodes");
-                    LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(dp(52), dp(52)); plp.setMargins(dp(4), 0, dp(4), 0); plp.gravity = Gravity.CENTER_VERTICAL;
-                    basic.addView(pick, 0, plp);
-                } else {
-                    TextView pick = ctrlPill("\u2630  More movies", v -> finishWith("browse"));
-                    basic.addView(pick, 0, ctrlLp());
-                }
+                boolean isEpisode = "episode".equals(type);
+                // Icon only, same square size as the other player buttons (language/display/subtitle/settings/fullscreen)
+                // so the row reads as one consistent set of controls instead of a wide text pill breaking the rhythm.
+                TextView pick = ctrlPill("\u2630", v -> { if (isEpisode) { if (allEps != null) showEpisodes(); else finishWith("browse"); } else finishWith("browse"); });
+                pick.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22); pick.setPadding(0, 0, 0, 0);
+                pick.setContentDescription(isEpisode ? "Episodes" : "More movies");
+                LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(dp(52), dp(52)); plp.setMargins(dp(4), 0, dp(4), 0); plp.gravity = Gravity.CENTER_VERTICAL;
+                basic.addView(pick, 0, plp);
             }
             // Audio language: globe icon; lists the languages this stream carries.
             android.widget.ImageButton langBtn = new android.widget.ImageButton(this);
@@ -723,7 +721,6 @@ public class PlayerActivity extends Activity {
         }
         highlightFocus(view);
     }
-    private LinearLayout.LayoutParams ctrlLp() { LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(44)); lp.setMargins(dp(6), 0, dp(6), 0); lp.gravity = Gravity.CENTER_VERTICAL; return lp; }
     private TextView ctrlPill(String text, View.OnClickListener l) {
         TextView t = new TextView(this); t.setText(text); t.setTextColor(Color.WHITE); t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14); t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setGravity(Gravity.CENTER); t.setPadding(dp(18), 0, dp(18), 0); t.setFocusable(true); t.setClickable(true); t.setOnClickListener(l); return t; }

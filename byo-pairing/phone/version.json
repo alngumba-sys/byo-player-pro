@@ -1,6 +1,6 @@
 {
-  "versionCode": 149,
-  "versionName": "3.36.37",
+  "versionCode": 150,
+  "versionName": "3.36.38",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Home screen: added left/right arrow buttons to the Featured Today hero so you can manually browse through all 4 featured picks, instead of only waiting for them to auto-rotate."
+  "notes": "Video player: the \"More movies\" button is now a clean icon that matches the other player buttons, instead of a wide text pill that looked out of place next to them."
 }
