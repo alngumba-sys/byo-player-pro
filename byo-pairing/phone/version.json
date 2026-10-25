@@ -1,6 +1,6 @@
 {
-  "versionCode": 150,
-  "versionName": "3.36.38",
+  "versionCode": 151,
+  "versionName": "3.36.39",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Video player: the \"More movies\" button is now a clean icon that matches the other player buttons, instead of a wide text pill that looked out of place next to them."
+  "notes": "Profiles: Manage profiles is easier to reach and to focus with the remote, Add profile / Add Kids are now tucked inside Manage profiles instead of cluttering the main picker, and you can delete a profile from its edit screen. Video player: paused screens are cleaner — the floating info card is gone, the top bar is slimmer with just a back button, title, and a favourite star, and the bottom controls get a tinted progress bar and glass-styled background."
 }

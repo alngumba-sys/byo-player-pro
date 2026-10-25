@@ -271,8 +271,8 @@ public class PlayerActivity extends Activity {
                 }
             }
         }
-        @Override public void onIsPlayingChanged(boolean isPlaying) { h.post(() -> updateInfoCard()); }
-        @Override public void onPlayWhenReadyChanged(boolean pwr, int reason) { h.post(() -> { if (!pwr && view != null) view.showController(); updateInfoCard(); }); }
+        @Override public void onIsPlayingChanged(boolean isPlaying) { }
+        @Override public void onPlayWhenReadyChanged(boolean pwr, int reason) { h.post(() -> { if (!pwr && view != null) view.showController(); }); }
         @Override public void onPositionDiscontinuity(Player.PositionInfo o, Player.PositionInfo n, int reason) {
             if (reason == Player.DISCONTINUITY_REASON_SEEK) lastSeekAt = System.currentTimeMillis();
         }
@@ -626,18 +626,20 @@ public class PlayerActivity extends Activity {
         { GradientDrawable eb = new GradientDrawable(); eb.setColor(0xE60B1220); eb.setCornerRadius(dp(18)); eb.setStroke(dp(1), 0x5522DDE2); errorText.setBackground(eb); }
         { FrameLayout.LayoutParams elp = new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER); elp.setMargins(dp(40), 0, dp(40), 0); root.addView(errorText, elp); }
 
+        // Minimal top bar: back arrow, a single compact title badge, favourite icon - nothing else
+        // competing for attention. Dark slate/navy glass instead of the plain black fade used before.
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL); bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(12), dp(14), dp(16), dp(24));
-        bar.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xCC000000, 0x00000000}));
-        bar.addView(pill("‹", 34, v -> finishWith("ok"), false), new LinearLayout.LayoutParams(dp(48), dp(48)));
+        bar.setPadding(dp(10), dp(12), dp(14), dp(16));
+        bar.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xB30B1220, 0x000B1220}));
+        bar.addView(pill("‹", 30, v -> finishWith("ok"), false), new LinearLayout.LayoutParams(dp(44), dp(44)));
         LinearLayout texts = new LinearLayout(this); texts.setOrientation(LinearLayout.VERTICAL);
         titleView = new TextView(this); titleView.setText(title == null ? "" : title); titleView.setTextColor(Color.WHITE);
-        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18); titleView.setTypeface(Typeface.DEFAULT_BOLD);
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16); titleView.setTypeface(Typeface.DEFAULT_BOLD);
         titleView.setMaxLines(1); titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
         texts.addView(titleView);
-        subView = new TextView(this); subView.setText(sub == null ? "" : sub); subView.setTextColor(0xFF22DDE2);
-        subView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13); subView.setVisibility(sub == null || sub.isEmpty() ? View.GONE : View.VISIBLE);
+        subView = new TextView(this); subView.setText(sub == null ? "" : sub); subView.setTextColor(0xFF2FD4E8);
+        subView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12); subView.setVisibility(sub == null || sub.isEmpty() ? View.GONE : View.VISIBLE);
         texts.addView(subView);
         bar.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
         if (live && channels.size() > 1) {
@@ -647,44 +649,29 @@ public class PlayerActivity extends Activity {
         }
         qualityBtn = pill("Auto", 13, v -> showQualityMenu(), true);
         qualityBtn.setVisibility(View.GONE);
-        // ★ Favourite: saved when the player closes, so it shows under Favourites in Movies / Series.
-        favBtn = pill("\u2606 Favourite", 13, v -> toggleFav(), true);
+        bar.addView(qualityBtn, new LinearLayout.LayoutParams(-2, -2));
+        // Favourite: a single star icon on the far right, not a wide text pill - saved when the
+        // player closes, so it shows under Favourites in Movies / Series.
+        favBtn = pill("☆", 20, v -> toggleFav(), false);
+        favBtn.setPadding(dp(10), 0, dp(10), 0);
         favBtn.setVisibility(meta != null && meta.optString("favKind").length() > 0 ? View.VISIBLE : View.GONE);
         favOn = meta != null && meta.optBoolean("fav", false); paintFav();
-        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(-2, -2); flp.rightMargin = dp(10);
-        bar.addView(favBtn, flp);
-        bar.addView(qualityBtn, new LinearLayout.LayoutParams(-2, -2));
+        bar.addView(favBtn, new LinearLayout.LayoutParams(dp(44), dp(44)));
         topBar = bar;
         root.addView(bar, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
         seekFlash = new TextView(this); seekFlash.setTextColor(Color.WHITE); seekFlash.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         seekFlash.setTypeface(Typeface.DEFAULT_BOLD); seekFlash.setPadding(dp(18), dp(12), dp(18), dp(12)); seekFlash.setAlpha(0f);
         GradientDrawable sb = new GradientDrawable(); sb.setColor(0x99000000); sb.setCornerRadius(dp(28)); seekFlash.setBackground(sb);
         root.addView(seekFlash, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER_VERTICAL | Gravity.START));
-        // Info card shown while paused: poster, title, season / episode, and the plot.
-        infoCard = new LinearLayout(this); infoCard.setOrientation(LinearLayout.HORIZONTAL); infoCard.setVisibility(View.GONE);
-        infoCard.setPadding(dp(18), dp(16), dp(22), dp(16));
-        { GradientDrawable ib = new GradientDrawable(); ib.setColor(0xE60B1220); ib.setCornerRadius(dp(18)); ib.setStroke(dp(1), 0x3322DDE2); infoCard.setBackground(ib); }
-        infoPoster = new android.widget.ImageView(this); infoPoster.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
-        { GradientDrawable pb = new GradientDrawable(); pb.setColor(0xFF151D27); pb.setCornerRadius(dp(10)); infoPoster.setBackground(pb); infoPoster.setClipToOutline(true); }
-        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(dp(96), dp(140)); plp.setMargins(0, 0, dp(18), 0); infoCard.addView(infoPoster, plp);
-        LinearLayout itx = new LinearLayout(this); itx.setOrientation(LinearLayout.VERTICAL);
-        infoKicker = new TextView(this); infoKicker.setTextColor(0xFF2FD4E8); infoKicker.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13); infoKicker.setTypeface(Typeface.DEFAULT_BOLD); infoKicker.setLetterSpacing(0.08f);
-        infoTitle = new TextView(this); infoTitle.setTextColor(Color.WHITE); infoTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22); infoTitle.setTypeface(Typeface.DEFAULT_BOLD); infoTitle.setMaxLines(2); infoTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        infoEp = new TextView(this); infoEp.setTextColor(0xFFF2F5F8); infoEp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15); infoEp.setPadding(0, dp(4), 0, 0); infoEp.setMaxLines(1); infoEp.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        infoPlot = new TextView(this); infoPlot.setTextColor(0xFFAAB4BF); infoPlot.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14); infoPlot.setPadding(0, dp(8), 0, 0); infoPlot.setMaxLines(4); infoPlot.setEllipsize(android.text.TextUtils.TruncateAt.END); infoPlot.setLineSpacing(0, 1.15f);
-        itx.addView(infoKicker); itx.addView(infoTitle); itx.addView(infoEp); itx.addView(infoPlot);
-        infoCard.addView(itx, new LinearLayout.LayoutParams(0, -2, 1f));
-        { FrameLayout.LayoutParams ilp = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP | Gravity.START); ilp.setMargins(dp(32), dp(86), dp(32), 0);
-          android.util.DisplayMetrics dmm = getResources().getDisplayMetrics(); ilp.width = Math.min(dmm.widthPixels - dp(64), dp(760)); root.addView(infoCard, ilp); }
+        // Paused state stays clean: no floating "now playing" card over the video — the thin bottom
+        // bar (time + controls) and the slim top bar are the only UI, so the frame itself stays visible.
         setContentView(root);
         addControlButtons();
         view.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) visibility -> {
-            topBar.setVisibility(visibility); if (visibility != View.VISIBLE) hideSystemUi(); else armAutoHide(); updateInfoCard(); });
+            topBar.setVisibility(visibility); if (visibility != View.VISIBLE) hideSystemUi(); else armAutoHide(); });
     }
 
     // ---- Extra controls inside the player bar (reachable with the remote) + a clear focus highlight ----
-    private LinearLayout infoCard; private android.widget.ImageView infoPoster; private TextView infoKicker, infoTitle, infoEp, infoPlot;
-    private String posterLoadedFor = null;
     private TextView displayBtn;
     private static final int[] RESIZE = { androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT, androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM, androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL };
     private static final String[] RESIZE_LABEL = { "Fit", "Fill screen", "Stretch" };
@@ -719,6 +706,21 @@ public class PlayerActivity extends Activity {
             LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(52), dp(52)); dlp.setMargins(dp(4), 0, dp(4), 0); dlp.gravity = Gravity.CENTER_VERTICAL;
             basic.addView(displayBtn, dlp);
         }
+        // Declutter the center of the screen while paused: no full-screen dim scrim behind the
+        // controls (the video frame itself should stay visible), no prev/next (not used for a
+        // single movie/episode), and the bottom bar + its thin progress line get their own
+        // dark-slate/navy glass treatment instead of inheriting the default black bar.
+        View controlsBg = view.findViewById(androidx.media3.ui.R.id.exo_controls_background);
+        if (controlsBg != null) controlsBg.setBackgroundColor(Color.TRANSPARENT);
+        view.setShowPreviousButton(false);
+        view.setShowNextButton(false);
+        View bottomBar = view.findViewById(androidx.media3.ui.R.id.exo_bottom_bar);
+        if (bottomBar != null) bottomBar.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x000B1220, 0xE60B1220}));
+        androidx.media3.ui.DefaultTimeBar timeBar = view.findViewById(androidx.media3.ui.R.id.exo_progress);
+        if (timeBar != null) {
+            timeBar.setPlayedColor(0xFF2FD4E8); timeBar.setScrubberColor(0xFF2FD4E8);
+            timeBar.setBufferedColor(0x552FD4E8); timeBar.setUnplayedColor(0x33FFFFFF);
+        }
         highlightFocus(view);
     }
     private TextView ctrlPill(String text, View.OnClickListener l) {
@@ -750,28 +752,6 @@ public class PlayerActivity extends Activity {
         for (android.view.ViewParent pp = v.getParent(); pp instanceof android.view.ViewGroup; pp = pp.getParent()) { ((android.view.ViewGroup) pp).setClipChildren(false); ((android.view.ViewGroup) pp).setClipToPadding(false); }
         v.setOnFocusChangeListener((vv, has) -> { if (prev != null) prev.onFocusChange(vv, has); if (has) armAutoHide(); });
     }
-    private void updateInfoCard() {
-        if (infoCard == null) return;
-        boolean paused = player != null && !player.getPlayWhenReady() && everPlayed;
-        boolean show = paused && !live && view != null && view.isControllerFullyVisible() && (meta.length() > 0);
-        if (!show) { infoCard.setVisibility(View.GONE); return; }
-        String type = meta.optString("type", "");
-        infoKicker.setText("episode".equals(type) ? "NOW PLAYING \u00B7 SERIES" : "NOW PLAYING \u00B7 MOVIE");
-        String head = meta.optString("series", ""); if (head.isEmpty()) head = titleView != null ? titleView.getText().toString() : "";
-        infoTitle.setText(head);
-        String ep = meta.optString("epLabel", ""); if (ep.isEmpty() && "movie".equals(type)) { String y = meta.optString("year", ""), gn = meta.optString("genre", ""); ep = (y + (y.length() > 0 && gn.length() > 0 ? "  \u00B7  " : "") + gn); }
-        infoEp.setText(ep); infoEp.setVisibility(ep.isEmpty() ? View.GONE : View.VISIBLE);
-        String plot = meta.optString("plot", ""); infoPlot.setText(plot); infoPlot.setVisibility(plot.isEmpty() ? View.GONE : View.VISIBLE);
-        final String pu = meta.optString("poster", "");
-        if (pu.startsWith("http") && !pu.equals(posterLoadedFor)) { posterLoadedFor = pu; infoPoster.setImageDrawable(null);
-            new Thread(() -> { try { java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(pu).openConnection(); c.setConnectTimeout(8000); c.setReadTimeout(10000); c.setInstanceFollowRedirects(true);
-                android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options(); o.inSampleSize = 2;
-                final Bitmap bm = android.graphics.BitmapFactory.decodeStream(c.getInputStream(), null, o); c.disconnect();
-                if (bm != null) h.post(() -> { if (pu.equals(posterLoadedFor) && infoPoster != null) infoPoster.setImageBitmap(bm); }); } catch (Exception ignored) {} }).start(); }
-        infoPoster.setVisibility(pu.startsWith("http") ? View.VISIBLE : View.GONE);
-        infoCard.setVisibility(View.VISIBLE);
-    }
-
     // ---- Score alerts from the app (followed matches): a card in the top-right corner.
     //      OK on the remote switches to the match channel; BACK or a few seconds hides it.
     private static java.lang.ref.WeakReference<PlayerActivity> currentRef;
@@ -852,7 +832,7 @@ public class PlayerActivity extends Activity {
         if (epAdvanced >= nextEps.size() || player == null || finishing) return;
         hideUpNext();
         Ep n = nextEps.get(epAdvanced); epAdvanced++;
-        try { if (epAdvanced - 1 < nextMeta.size()) { meta = nextMeta.get(epAdvanced - 1); posterLoadedFor = null; } } catch (Exception ignored) {}
+        try { if (epAdvanced - 1 < nextMeta.size()) { meta = nextMeta.get(epAdvanced - 1); } } catch (Exception ignored) {}
         if (titleView != null) titleView.setText(n.title == null ? "" : n.title);
         if (subView != null) subView.setText(n.sub == null ? "" : n.sub);
         qualities.clear(); qualities.add(new Q("Original", n.url, Long.MAX_VALUE)); qIndex = 0;
@@ -871,7 +851,7 @@ public class PlayerActivity extends Activity {
 
     // ---- Controls fade away after a few seconds of playback, even on TVs where the
     //      built-in timer never fires (some TVs run accessibility services that keep it open).
-    private static final int HIDE_MS = 4000;
+    private static final int HIDE_MS = 3000;
     private final Runnable autoHide = new Runnable() { @Override public void run() {
         if (view == null) return;
         if (player != null && player.isPlaying() && view.isControllerFullyVisible()) view.hideController();
@@ -1113,7 +1093,8 @@ public class PlayerActivity extends Activity {
     // ---------------------------------------------------------------- lifecycle
 
     private String lastErr = "";
-    private void paintFav() { if (favBtn == null) return; favBtn.setText(favOn ? "\u2605 In favourites" : "\u2606 Add to favourites"); favBtn.setTextColor(favOn ? 0xFFF5C451 : Color.WHITE); }
+    private void paintFav() { if (favBtn == null) return; favBtn.setText(favOn ? "\u2605" : "\u2606");
+        favBtn.setContentDescription(favOn ? "In favourites" : "Add to favourites"); favBtn.setTextColor(favOn ? 0xFFF5C451 : Color.WHITE); }
     private void toggleFav() { favOn = !favOn; favChanged = true; paintFav();
         boolean ep = meta != null && "series".equals(meta.optString("favKind"));
         Toast.makeText(this, favOn ? (ep ? "Series added to favourites" : "Added to favourites") : "Removed from favourites", Toast.LENGTH_SHORT).show(); }

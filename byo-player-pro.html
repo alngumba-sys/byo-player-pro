@@ -454,6 +454,8 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
 .s-btn.primary { background:var(--accent); color:#04101f; }
 .s-btn.primary.focused { box-shadow:0 0 0 3px rgba(34,221,226,.35), 0 14px 34px rgba(34,221,226,.3); transform:translateY(-2px); outline:none; }
 .s-btn.danger { background:var(--danger); color:#2a0409; }
+.s-btn.danger.armed { background:#fff; color:var(--danger); box-shadow:0 0 0 3px var(--danger); animation:dangerPulse 1s ease-in-out infinite; }
+@keyframes dangerPulse { 0%,100%{ opacity:1; } 50%{ opacity:.72; } }
 .settings-status { font-size:23px; margin-top:24px; min-height:30px; }
 .settings-status.ok { color:var(--accent-2); }
 .settings-status.err { color:var(--danger); }
@@ -1661,8 +1663,10 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
 .profile-remove { position:absolute; top:-10px; right:18px; width:44px; height:44px; border-radius:50%; background:var(--danger); color:#fff; border:3px solid var(--bg); font-size:24px; font-weight:800; cursor:pointer; display:none; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,.4); }
 .profile-back.managing .profile-remove { display:flex; }
 .profile-actions { display:flex; gap:18px; margin-top:38px; }
-/* Smaller, less dominant Manage profiles button on the picker. */
-#pp-manage { height:52px; padding:0 26px; font-size:19px; border-radius:10px; }
+/* Clearly visible / easy to land on with the remote — this is the only way to add, rename or delete
+   a profile, so it shouldn't read as a minor footnote under the tiles. */
+#pp-manage { height:60px; padding:0 32px; font-size:21px; border-radius:12px; border:2px solid rgba(255,255,255,.14); }
+#pp-manage.focused { border-color:var(--focus-ring); }
 
 /* top-bar profile avatar */
 .profile-chip { display:flex; align-items:center; gap:8px; height:52px; padding:0 14px 0 8px; background:var(--bg-elev); border:1px solid rgba(255,255,255,.10); border-radius:26px; cursor:pointer; color:var(--fg); flex:0 0 auto; }
@@ -2753,9 +2757,12 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                     <input id="am-name" type="text" maxlength="24" data-focusable="true" tabindex="0" autocomplete="off" class="am-name-input"/>
                     <div class="am-pick-label">Choose your profile icon</div>
                     <div class="av-rows" id="av-rows"></div>
-                    <div class="modal-row" style="justify-content:flex-end">
-                        <button class="s-btn primary" id="am-save" data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-check"/></svg></span>Save</button>
-                        <button class="s-btn" id="am-close" data-focusable="true" tabindex="0">Done</button>
+                    <div class="modal-row" style="justify-content:space-between">
+                        <button class="s-btn danger" id="am-delete" data-focusable="true" tabindex="0">Delete profile</button>
+                        <div class="modal-row" style="gap:14px">
+                            <button class="s-btn primary" id="am-save" data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-check"/></svg></span>Save</button>
+                            <button class="s-btn" id="am-close" data-focusable="true" tabindex="0">Done</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -4746,7 +4753,7 @@ var Nav={ KEY:{LEFT:37,UP:38,RIGHT:39,DOWN:40,ENTER:13,RETURN:10009,BACK_KB:8,ES
         var upd=document.getElementById('upd-modal'); if(upd&&!upd.classList.contains('hidden')) return Array.prototype.slice.call(upd.querySelectorAll('[data-focusable="true"]'));
         var pr=document.getElementById('pairing'); if(pr&&!pr.classList.contains('hidden')) return Array.prototype.slice.call(pr.querySelectorAll('[data-focusable="true"]')).filter(function(el){ return el.offsetParent!==null; });
         var wc=document.getElementById('welcome'); if(wc&&!wc.classList.contains('hidden')) return Array.prototype.slice.call(wc.querySelectorAll('[data-focusable="true"]'));
-        var pk=document.getElementById('profile-picker'); if(pk&&!pk.classList.contains('hidden')) return Array.prototype.slice.call(pk.querySelectorAll('[data-focusable="true"]'));
+        var pk=document.getElementById('profile-picker'); if(pk&&!pk.classList.contains('hidden')) return Array.prototype.slice.call(pk.querySelectorAll('[data-focusable="true"]')).filter(function(el){ return el.offsetParent!==null; });
         var cm=document.getElementById('connect-modal'); if(cm&&!cm.classList.contains('hidden')) return Array.prototype.slice.call(cm.querySelectorAll('[data-focusable="true"]'));
         var modal=document.getElementById('exit-modal'); if(modal&&!modal.classList.contains('hidden')) return Array.prototype.slice.call(modal.querySelectorAll('[data-focusable="true"]'));
         var pin=document.getElementById('pin-modal'); if(pin&&!pin.classList.contains('hidden')) return Array.prototype.slice.call(pin.querySelectorAll('[data-focusable="true"]'));
@@ -5097,14 +5104,17 @@ var Pin=(function(){
             if(pickerManaging){ var hint=document.createElement('div'); hint.className='profile-name'; hint.style.fontSize='18px'; hint.style.color='var(--accent)'; hint.textContent='Tap to edit name & avatar'; tile.appendChild(hint); }
             grid.appendChild(tile);
         });
-        // add-profile tiles
-        ['standard','kids'].forEach(function(kind){
-            var tile=document.createElement('div'); tile.className='profile-tile profile-add'; tile.setAttribute('data-focusable','true'); tile.tabIndex=0;
-            var av=document.createElement('div'); av.className='profile-av'; av.textContent='+'; tile.appendChild(av);
-            var nm=document.createElement('div'); nm.className='profile-name'; nm.textContent=(kind==='kids'?'Add Kids':'Add profile'); tile.appendChild(nm);
-            tile.addEventListener('click',function(){ var n=(kind==='kids'?'Kids':'Profile')+' '+(Store.profiles.length+1); var colors=['#5b9dff','#2bd4a7','#f5c451','#ff5c6c','#b57bff','#ff9e5b']; var col=colors[Store.profiles.length%colors.length]; var av=AVATARS[Store.profiles.length%AVATARS.length]; var np=Store.addProfile(n,kind,kind==='kids'?'#2bd4a7':col,av); renderProfilePicker(); openAvatarChooser(np); });
-            grid.appendChild(tile);
-        });
+        // Add-profile tiles: only shown inside "Manage profiles" so the default picker is just the
+        // profiles themselves, not cluttered with two more tiles most visits never touch.
+        if(pickerManaging){
+            ['standard','kids'].forEach(function(kind){
+                var tile=document.createElement('div'); tile.className='profile-tile profile-add'; tile.setAttribute('data-focusable','true'); tile.tabIndex=0;
+                var av=document.createElement('div'); av.className='profile-av'; av.textContent='+'; tile.appendChild(av);
+                var nm=document.createElement('div'); nm.className='profile-name'; nm.textContent=(kind==='kids'?'Add Kids':'Add profile'); tile.appendChild(nm);
+                tile.addEventListener('click',function(){ var n=(kind==='kids'?'Kids':'Profile')+' '+(Store.profiles.length+1); var colors=['#5b9dff','#2bd4a7','#f5c451','#ff5c6c','#b57bff','#ff9e5b']; var col=colors[Store.profiles.length%colors.length]; var av=AVATARS[Store.profiles.length%AVATARS.length]; var np=Store.addProfile(n,kind,kind==='kids'?'#2bd4a7':col,av); renderProfilePicker(); openAvatarChooser(np); });
+                grid.appendChild(tile);
+            });
+        }
         $('pp-manage').textContent=pickerManaging?'Done':'Manage profiles';
         var sub=$('pp-sub'); if(sub&&pickerManaging) sub.textContent='Tap a profile to rename it or change its avatar · tap × to remove';
         $('profile-picker').classList.toggle('managing',pickerManaging);
@@ -5489,6 +5499,8 @@ var Pin=(function(){
     var _avCats=null; // cached category rows for the session: [{title, items:[{id,name,img}]}]
     function openAvatarChooser(p){ avatarTarget=p; $('am-title').textContent='Edit profile — '+p.name;
         var nameInp=$('am-name'); if(nameInp) nameInp.value=p.name||'';
+        var delBtn=$('am-delete'); if(delBtn){ delBtn.textContent='Delete profile'; delBtn.classList.remove('armed');
+            delBtn.style.display=(Store.profiles.length<=1)?'none':''; }
         function choose(val){ p.avatar=val; Store.save(); renderProfilePicker(); updateProfileChip(); openAvatarChooser(p); }
         // For image avatars, bake the face-aware crop position into the stored id so the saved
         // profile picture keeps the face in frame everywhere it's shown.
@@ -8448,7 +8460,7 @@ var Pin=(function(){
         var used=Store.recordings.length; $('dvr-storage').textContent=used+' item'+(used===1?'':'s')+' · '+done.length+' recorded';
     }
     // Small non-blocking toast (reuses a transient div).
-    function setToast(msg){ var t=$('app-toast'); if(!t){ t=document.createElement('div'); t.id='app-toast'; t.style.cssText='position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:40;background:var(--bg-elev2);color:var(--fg);font-size:22px;padding:18px 30px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);'; document.getElementById('app').appendChild(t); }
+    function setToast(msg){ var t=$('app-toast'); if(!t){ t=document.createElement('div'); t.id='app-toast'; t.style.cssText='position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:40;background:var(--bg-elev2);color:var(--fg);font-size:22px;padding:18px 30px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);pointer-events:none;'; document.getElementById('app').appendChild(t); }
         t.textContent=msg; t.style.opacity='1'; if(S.toastTimer) clearTimeout(S.toastTimer); S.toastTimer=setTimeout(function(){ t.style.opacity='0'; },2600); t.style.transition='opacity .3s'; }
 
     // Toggle a recording for a channel programme (used by Record buttons).
@@ -11145,6 +11157,21 @@ var Pin=(function(){
         $('btn-profile').addEventListener('click',function(){ openProfilePicker(false); });
         $('pp-manage').addEventListener('click',function(){ pickerManaging=!pickerManaging; renderProfilePicker(); Nav.focusFirst(); });
         $('am-close').addEventListener('click',closeAvatarChooser);
+        // Delete profile: tap once to arm (button turns into a plain confirm), tap again within 4s to
+        // actually delete. Avoids losing a profile's favourites/history to a single stray press, without
+        // needing a whole separate confirm modal.
+        var amDelete=$('am-delete'); if(amDelete) amDelete.addEventListener('click',function(){
+            if(!avatarTarget || Store.profiles.length<=1) return;
+            if(!amDelete.classList.contains('armed')){
+                amDelete.classList.add('armed'); amDelete.textContent='Tap again to delete';
+                if(amDelete._armT) clearTimeout(amDelete._armT);
+                amDelete._armT=setTimeout(function(){ amDelete.classList.remove('armed'); amDelete.textContent='Delete profile'; },4000);
+                return;
+            }
+            if(amDelete._armT) clearTimeout(amDelete._armT);
+            var name=avatarTarget.name; Store.removeProfile(avatarTarget.id);
+            updateProfileChip(); closeAvatarChooser(); setToast('Deleted "'+name+'".');
+        });
         // Profile-name field: open the on-screen keyboard on click/ENTER (a bare <input> won't pop one on TV).
         var amName=$('am-name'); if(amName) amName.addEventListener('click',function(){ openFieldKeyboard(amName,{label:'Profile name',returnFocus:amName}); });
         var mvPreset=$('mv-preset-name'); if(mvPreset) mvPreset.addEventListener('click',function(){ openFieldKeyboard(mvPreset,{label:'Preset name',returnFocus:mvPreset}); });
