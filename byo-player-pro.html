@@ -7433,7 +7433,18 @@ var Pin=(function(){
     function seasonChannels(sn){ var out=[]; try{ var kws=sn.kw.map(function(k){ return new RegExp('(^|[^a-z0-9])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z0-9]|$)','i'); });
         sportsChannelsList().forEach(function(c){ if(itemLowPriority(c)) return; var n=String(c.name||'')+' '+String(c.genre||''); if(kws.some(function(r){ return r.test(n); })) out.push(c); }); }catch(e){}
         return out; }
-    function seasonLogo(sn){ try{ return (sn.slug && typeof LiveScores!=='undefined' && LiveScores.leagueLogo)?LiveScores.leagueLogo(sn.slug):''; }catch(e){ return ''; } }
+    // Competition badges (ESPN's public league logos), so the cards carry the real crest from the first paint,
+    // not only once that league's scores have been fetched.
+    var SEASON_LOGOS={ epl:'https://a.espncdn.com/i/leaguelogos/soccer/500/23.png', ucl:'https://a.espncdn.com/i/leaguelogos/soccer/500/2.png', liga:'https://a.espncdn.com/i/leaguelogos/soccer/500/15.png',
+        seriea:'https://a.espncdn.com/i/leaguelogos/soccer/500/12.png', buli:'https://a.espncdn.com/i/leaguelogos/soccer/500/10.png', l1:'https://a.espncdn.com/i/leaguelogos/soccer/500/9.png',
+        uel:'https://a.espncdn.com/i/leaguelogos/soccer/500/2310.png', uecl:'https://a.espncdn.com/i/leaguelogos/soccer/500/20296.png', cafcl:'https://a.espncdn.com/i/leaguelogos/soccer/500/2391.png',
+        afcon:'https://a.espncdn.com/i/leaguelogos/soccer/500/76.png', wc:'https://a.espncdn.com/i/leaguelogos/soccer/500/4.png', unl:'https://a.espncdn.com/i/leaguelogos/soccer/500/2395.png',
+        facup:'https://a.espncdn.com/i/leaguelogos/soccer/500/40.png', efl:'https://a.espncdn.com/i/leaguelogos/soccer/500/41.png', spl:'https://a.espncdn.com/i/leaguelogos/soccer/500/2488.png',
+        mls:'https://a.espncdn.com/i/leaguelogos/soccer/500/19.png', chmp:'https://a.espncdn.com/i/leaguelogos/soccer/500/24.png',
+        nba:'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png', nfl:'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png', nhl:'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
+        mlb:'https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png', f1:'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png', ipl:'https://a.espncdn.com/i/leaguelogos/cricket/500/8048.png' };
+    function seasonLogo(sn){ if(SEASON_LOGOS[sn.k]) return SEASON_LOGOS[sn.k];
+        try{ var u=(sn.slug && typeof LiveScores!=='undefined' && LiveScores.leagueLogo)?LiveScores.leagueLogo(sn.slug):''; return /default-team-logo/.test(u)?'':u; }catch(e){ return ''; } }
     function seasonStatus(sn){ var evs=seasonEvents(sn); var live=evs.filter(function(e){ return evStatus(e)==='live'; });
         if(live.length){ var e=live[0]; return {cls:'live', txt:'LIVE · '+e.home+' '+(e.score||'v')+' '+e.away+(live.length>1?' +'+(live.length-1):'')}; }
         var up=evs.filter(function(e){ return evStatus(e)==='upcoming'; }).sort(function(a,b){ return a.start-b.start; });

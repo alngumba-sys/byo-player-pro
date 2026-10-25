@@ -1,6 +1,6 @@
 {
-  "versionCode": 177,
-  "versionName": "3.36.65",
+  "versionCode": 178,
+  "versionName": "3.36.66",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Channels and movies play the moment you open them. A series opens on its episodes, and the episode you press plays at once. Favourite a live channel from the player's star."
+  "notes": "Sports: the In season now cards and competition pages carry the real competition badges (Premier League, Champions League, LaLiga, Serie A, Bundesliga, Europa League, NBA, NFL, F1 and more)."
 }
