@@ -258,7 +258,11 @@ public class PlayerActivity extends Activity {
         if (errorText != null) errorText.setVisibility(View.GONE);
         unavailableShown = false;
         h.removeCallbacks(startTimeout);   // no start deadline: slow channels (VPN, distant servers) get all the time they need, as before
-        h.removeCallbacks(slowHint); if (live) h.postDelayed(slowHint, 25000);
+        // Event channels ("... @ 10 Oct 11:00 AM") carry video only while the event is on; give those
+        // 10 s instead of 25 s before saying so, since a dead one never comes up no matter how long we wait.
+        h.removeCallbacks(slowHint); if (live) { String tn = titleView != null ? String.valueOf(titleView.getText()) : "";
+            boolean ev = tn.matches("(?s).*@\\s*\\d{1,2}[ /.-]\\w{2,9}.*") || tn.matches("(?s).*@\\s*\\w{3,4}\\.?\\s+\\d{1,2}.*");
+            h.postDelayed(slowHint, ev ? 10000 : 25000); }
         curDrm = (live && !channels.isEmpty() && chIndex < channels.size()) ? channels.get(chIndex).drm : baseDrm;
         applyHeaders(live && !channels.isEmpty() && chIndex < channels.size() && channels.get(chIndex).headers != null ? channels.get(chIndex).headers : (live && !channels.isEmpty() && chIndex < channels.size() ? null : baseHeaders));
         if (posMs > 0 && !live) player.setMediaItem(item(url), posMs); else player.setMediaItem(item(url));

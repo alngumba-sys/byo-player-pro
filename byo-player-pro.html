@@ -7263,8 +7263,9 @@ var Pin=(function(){
         var card=document.createElement('div'); card.className='spchan-card'; card.setAttribute('data-focusable','true'); card.tabIndex=0;
         var e=c.epgGenre?epgFor(c.epgGenre):null;
         var logo=c.logo?'<img src="'+esc(c.logo)+'"/>':esc(c.name.charAt(0));
-        card.innerHTML='<div class="spc-top"><div class="spc-logo">'+logo+'</div><div><div class="spc-name">'+esc(c.name)+'</div><div class="spc-live"><span style="color:var(--danger)">●</span> LIVE</div></div></div>'+
-            (e?'<div class="spc-now">'+esc(e.now)+'</div><div class="spc-next">Next: '+esc(e.next)+' · '+esc(e.nextTime)+'</div>':'<div class="spc-now">Live sport</div>');
+        var _ev=chanEventInfo(c); var liveTag=(_ev&&_ev.status==='upcoming')?'<div class="spc-live" style="color:var(--gold)">'+icon('i-clock')+' Starts '+esc(fmtEvTime(_ev.start))+'</div>':'<div class="spc-live"><span style="color:var(--danger)">●</span> LIVE</div>';
+        card.innerHTML='<div class="spc-top"><div class="spc-logo">'+logo+'</div><div><div class="spc-name">'+esc(c.name)+'</div>'+liveTag+'</div></div>'+
+            (e?'<div class="spc-now">'+esc(e.now)+'</div><div class="spc-next">Next: '+esc(e.next)+' · '+esc(e.nextTime)+'</div>':(_ev&&_ev.status==='upcoming'?'<div class="spc-now">Not on air yet: tap to set a reminder</div>':'<div class="spc-now">Live sport</div>'));
         card.addEventListener('click',function(){ playSportChannel(c); }); return card;
     }
     function tlItem(e){ var st=evStatus(e); var it=document.createElement('div'); it.className='tl-item'+(st==='live'?' tl-live':''); it.setAttribute('data-focusable','true'); it.tabIndex=0;
@@ -7518,7 +7519,8 @@ var Pin=(function(){
         // Sports channels — narrowed to the active sport filter so picking Tennis/Basketball/etc
         // surfaces that sport's channels (not just its events). Shown as a wrapping GRID (not a 60-item
         // strip) so hundreds of beIN/Sky/etc channels are all browsable, with a count + cap note.
-        var chans=channelsForSport(sportsFilter);
+        var chans=channelsForSport(sportsFilter).filter(function(c){ return !chanEventDead(c); });
+        chans=chans.slice().sort(function(a,b){ var ea=chanEventInfo(a), eb=chanEventInfo(b); return ((ea&&ea.status==='upcoming')?1:0)-((eb&&eb.status==='upcoming')?1:0); });
         var allView=(sportsFilter==='All'||sportsFilter==='Live'||sportsFilter==='Upcoming');
         // High-school/amateur feeds (NFHS etc) sink below the professional channels in a sport's grid.
         if(!allView) chans=chans.slice().sort(function(a,b){ return (itemLowPriority(a)?1:0)-(itemLowPriority(b)?1:0); });
@@ -8696,6 +8698,7 @@ var Pin=(function(){
         // Quality tags (4K / UHD / HD …) sit on the right of the card, as in the design.
         var qualHtml=info.tags.length?'<div class="lc-qual">'+info.tags.map(function(t){return '<span class="lc-tag">'+esc(t)+'</span>';}).join('')+'</div>':'';
         var countryChip=info.country?'<span class="lc-country">'+esc(info.country)+'</span>':'';
+        var _ev=chanEventInfo(c); if(_ev){ countryChip+=(_ev.status==='live')?'<span class="lc-country lc-ev live">● LIVE NOW</span>':(_ev.status==='upcoming'?'<span class="lc-country lc-ev">Starts '+esc(fmtEvTime(_ev.start))+'</span>':'<span class="lc-country lc-ev ended">Ended</span>'); }
         // Now-playing is optional — only when real EPG data exists for this channel.
         var pr=currentProgramme(c); var metaRow='', bar='';
         if(pr.cur && pr.cur.start && pr.cur.end && (new Date()>=pr.cur.start) && (new Date()<pr.cur.end)){
@@ -8782,6 +8785,7 @@ var Pin=(function(){
         // shown only when the user explicitly picks the "Radio" genre, or when searching by name.
         var wantRadio=(S.liveGenre==='Radio');
         if(!q){ base=base.filter(function(c){ return wantRadio ? isRadioChannel(c) : !isRadioChannel(c); }); }
+        if(!q){ base=base.filter(function(c){ return !chanEventDead(c); }); }   // finished event channels send no video
         var f=base.filter(function(c){ return (q ? true : (wantRadio||S.liveGenre==='All'||c.genre===S.liveGenre)) && (!q||c.name.toLowerCase().indexOf(q)>-1); });
         var sorted=sortList(f,S.liveSort,S.liveDir);
         // (g) On the default ordering, float channels in the app's language to the top (stable), so an
@@ -9963,7 +9967,32 @@ var Pin=(function(){
         setTimeout(function(){ if(!toast.classList.contains('hidden')) Nav.setFocus($('nt-play')); },30);
     }
     function hideNextToast(){ var t=$('next-toast'); if(t) t.classList.add('hidden'); if(S.nextTimer){ clearInterval(S.nextTimer); S.nextTimer=null; } }
-    function playLiveByChannel(c){ var idx=computeLiveView().indexOf(c); if(idx<0){ S.liveView=[c]; idx=0; } S.currentLiveIndex=idx; S.playerFrom='live';
+    /* ---- Event channels ("... Arsenal v Leeds @ 10 Oct 11:00 AM GMT"): they only carry video while
+       the event is on. Knowing the window from the name lets the app stop people landing on a dead
+       feed: off-air ones are hidden from channel lists, upcoming ones show their start time and set a
+       reminder instead of opening the player, and only a live one actually plays. ---- */
+    var EV_LEAD=10*60000, EV_DUR={ 'Tennis':4*3600000, 'Cricket':8*3600000, 'Golf':6*3600000, 'Formula 1':2.5*3600000, 'Motorsport':3*3600000, 'Boxing':4*3600000, 'MMA':4*3600000, 'Baseball':3.5*3600000 };
+    function chanEventInfo(c){ if(!c||!c.name||c.name.indexOf('@')<0) return null;
+        if(typeof ChanEvents==='undefined'||!ChanEvents._when) return null;
+        var now=Date.now(); if(c._evAt&&now-c._evAt<30000) return c._evInfo;
+        var t=null; try{ t=ChanEvents._when(c.name); }catch(e){} c._evAt=now;
+        if(t==null){ c._evInfo=null; return null; }
+        var sport=classifySport(c.name)||classifySport(c.genre||'')||'Other'; var end=t+(EV_DUR[sport]||2.5*3600000);
+        var st=(now<t-EV_LEAD)?'upcoming':(now>end?'ended':'live');
+        c._evInfo={ start:t, end:end, status:st }; return c._evInfo; }
+    function chanEventDead(c){ var ev=chanEventInfo(c); return !!(ev&&ev.status==='ended'); }
+    // Called instead of playing when the event channel is not on air right now.
+    function eventNotLive(c, ev){
+        if(ev.status==='ended'){ setToast('This event has finished (it ended '+fmtEvTime(ev.end)+'). The channel is no longer sending video.'); return; }
+        var title=(typeof ChanEvents!=='undefined'&&ChanEvents._clean)?ChanEvents._clean(c.name):c.name; var has=false;
+        (Store.reminders||[]).forEach(function(r){ if(r.channelId===c.id&&r.start===ev.start) has=true; });
+        if(!has){ try{ Store.addReminder({channelId:c.id,channelName:c.name,title:title,start:ev.start,end:ev.end,url:c.url,order:c.order||0,fired:false}); }catch(e){} }
+        setToast('Starts '+fmtEvTime(ev.start)+'. '+(has?'You have a reminder set':'Reminder set: you will be told when it starts')+'.'); }
+    // Test hook (only when localStorage.byo_debug is '1'): lets an automated check reach module-scoped functions.
+    try{ if(localStorage.getItem('byo_debug')==='1'){ window.__byoDbg={ S:S, Store:Store, chanEventInfo:chanEventInfo, playLiveByChannel:function(c){ return playLiveByChannel(c); }, computeLiveView:function(){ return computeLiveView(); }, toasts:[] };
+        var _st0=setToast; setToast=function(m,x){ try{ window.__byoDbg.toasts.push(String(m)); }catch(e){} return _st0(m,x); }; } }catch(e){}
+    function playLiveByChannel(c){ var _ev=chanEventInfo(c); if(_ev&&_ev.status!=='live'){ eventNotLive(c,_ev); return; }
+        var idx=computeLiveView().indexOf(c); if(idx<0){ S.liveView=[c]; idx=0; } S.currentLiveIndex=idx; S.playerFrom='live';
         var e=c.epgGenre?epgFor(c.epgGenre):null; playContent(c.url,c.name,c.genre,{type:'live',from:'live',epg:e,channelId:c.id,genre:c.genre}); }
     // ★ Favourite in the player: the movie, or the whole series when an episode is playing.
     function playerFavSetup(opts){ var b=$('tb-fav'); if(!b) return; S.playFav=null;

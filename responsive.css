@@ -3361,3 +3361,8 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
   #view-detail.title-screen .detail-info{ max-width:none !important; }
   #view-detail.title-screen .detail-plot{ max-width:none !important; -webkit-line-clamp:3; }
 }
+
+/* ---- Event channels: on-air state on the Live cards ---- */
+.lc-country.lc-ev{ color:var(--gold); border-color:rgba(245,185,66,.45); }
+.lc-country.lc-ev.live{ color:#fff; background:var(--danger); border-color:var(--danger); }
+.lc-country.lc-ev.ended{ color:var(--fg-dim); opacity:.8; }
