@@ -4152,6 +4152,15 @@ var TMDB=(function(){
             var cast=(r.cast||[]).slice(0,8).map(function(c){ return { name:c.name||'', character:c.character||'', photo:c.profile_path?(PFACE+c.profile_path):'' }; }).filter(function(c){ return c.name; });
             creditsCache[ck]=cast; cb(cast);
         }, function(){ cb([]); }); }
+    // Title logo (the clean wordmark studios publish) for a matched title: English first, else any.
+    var logoCache={};
+    function titleLogo(kind,id,cb){ if(!enabled()||!id){ cb(''); return; } var k=(kind==='series'?'tv':'movie'); var ck=k+':'+id;
+        if(logoCache[ck]!==undefined){ cb(logoCache[ck]); return; }
+        get('https://api.themoviedb.org/3/'+k+'/'+id+'/images?api_key='+encodeURIComponent(KEY)+'&include_image_language=en,null', function(r){
+            var L=(r.logos||[]).filter(function(x){ return x.file_path; });
+            L.sort(function(a,b){ return ((b.iso_639_1==='en')-(a.iso_639_1==='en')) || (/\.svg$/i.test(a.file_path)-/\.svg$/i.test(b.file_path)) || ((b.vote_average||0)-(a.vote_average||0)); });
+            var u=L.length?('https://image.tmdb.org/t/p/w500'+L[0].file_path):''; logoCache[ck]=u; cb(u);
+        }, function(){ cb(''); }); }
     function popularFaces(cb){ if(!enabled()){ cb([]); return; }
         var out=[], pages=2, got=0;
         for(var pg=1; pg<=pages; pg++){ (function(pg){
@@ -4256,7 +4265,7 @@ var TMDB=(function(){
     }
     return { configure:configure, setEnabled:setEnabled, enabled:enabled, lookup:lookup, lookupItem:lookupItem, hintsOf:hintsOf, diagnostics:diagnostics, noteBadUrl:noteBadUrl, clearArtCache:clearArtCache, test:test,
         candidates:candidates, setOverride:setOverride, normaliseTitle:normaliseTitle, MIN_CONFIDENCE:MIN_CONFIDENCE,
-        popularFaces:popularFaces, avatarCategories:avatarCategories, heroBackdrop:heroBackdrop, heroBackdropPool:heroBackdropPool, credits:credits,
+        popularFaces:popularFaces, titleLogo:titleLogo, avatarCategories:avatarCategories, heroBackdrop:heroBackdrop, heroBackdropPool:heroBackdropPool, credits:credits,
         fetchById:function(kind,id,cb){ fetchById(kind==='series'?'tv':'movie', id, cb); } };
 })();
 /* ============ Emby / Jellyfin connector ============
@@ -9132,11 +9141,21 @@ var Pin=(function(){
     // TMDB has verified this exact title (the same lookup the Home hero uses), else a blurred crop of
     // its own poster as ambient colour (never another title's art) with the poster card kept visible.
     function paintTitleBackdrop(x){ var view=$('view-detail'), wrap=$('detail-hero-bg'), img=$('detail-hero-img'); if(!view||!wrap||!img) return;
-        view.classList.add('title-screen'); view.classList.remove('has-bd');
-        function show(src, wide){ if(!S.currentDetail||S.currentDetail.data!==x) return; wrap.classList.toggle('is-fallback',!wide); img.onload=function(){ view.classList.toggle('has-bd',!!wide); wrap.classList.add('bd-ok'); }; img.onerror=function(){ img.removeAttribute('src'); wrap.classList.remove('bd-ok'); view.classList.remove('has-bd'); }; wrap.classList.remove('bd-ok'); img.src=src; }
-        if(x._bd){ show(x._bd,true); return; }
-        if(x.logo) show(x.logo,false);
-        if(!x._bdTried && __byoTmdbOn()){ x._bdTried=true; try{ TMDB.lookupItem(x,(x.seasons!==undefined)?'series':'movie',function(r){ if(r&&r.backdrop){ x._bd=r.backdrop; var pre=new Image(); pre.onload=function(){ show(x._bd,true); }; pre.src=x._bd; } }); }catch(e){} } }
+        view.classList.add('title-screen'); view.classList.remove('has-bd'); view.classList.remove('has-logo'); setTitleLogo('');
+        // The poster is the picture until (if) a wide backdrop arrives: sharp, filling the screen,
+        // framed high so faces/titles sit in the clear right-hand area. Never a blurred stand-in.
+        function show(src, wide){ if(!S.currentDetail||S.currentDetail.data!==x) return; wrap.classList.toggle('is-poster',!wide); img.onload=function(){ view.classList.toggle('has-bd',!!wide); wrap.classList.add('bd-ok'); }; img.onerror=function(){ img.removeAttribute('src'); wrap.classList.remove('bd-ok'); view.classList.remove('has-bd'); }; wrap.classList.remove('bd-ok'); img.src=src; }
+        if(x._bd){ show(x._bd,true); }
+        else if(x.logo) show(x.logo,false);
+        if(x._logoUrl){ setTitleLogo(x._logoUrl); }
+        var kind=(x.seasons!==undefined)?'series':'movie';
+        if((!x._bd||!x._logoUrl) && !x._bdTried && __byoTmdbOn()){ x._bdTried=true; try{ TMDB.lookupItem(x,kind,function(r){ if(!r) return;
+            if(r.backdrop&&!x._bd){ x._bd=r.backdrop; var pre=new Image(); pre.onload=function(){ show(x._bd,true); }; pre.src=x._bd; }
+            if(r.id&&!x._logoUrl&&TMDB.titleLogo){ TMDB.titleLogo(kind,r.id,function(u){ if(!u) return; x._logoUrl=u; var pl=new Image(); pl.onload=function(){ if(S.currentDetail&&S.currentDetail.data===x) setTitleLogo(u); }; pl.src=u; }); } }); }catch(e){} } }
+    // Title logo (wordmark) in place of the plain text title when the studio art exists.
+    function setTitleLogo(url){ var view=$('view-detail'), h=$('detail-title'); if(!view||!h) return; var lg=$('detail-logo');
+        if(!lg){ lg=document.createElement('img'); lg.id='detail-logo'; lg.className='detail-logo'; lg.alt=''; h.parentNode.insertBefore(lg,h); }
+        if(url){ lg.src=url; view.classList.add('has-logo'); } else { lg.removeAttribute('src'); view.classList.remove('has-logo'); } }
     // Auto-play countdown on the title screen: the user already chose this title from a card, so
     // after a short beat the screen fades out and it plays (resume point respected). Any other key or
     // tap cancels the countdown so the details can be read / another action chosen; OK plays at once.
@@ -9146,14 +9165,11 @@ var Pin=(function(){
         if(_dapBtn){ try{ _dapBtn.classList.remove('auto'); var f=_dapBtn.querySelector('.pb-fill'); if(f) f.remove(); var c=_dapBtn.querySelector('.pb-count'); if(c) c.remove(); }catch(e){} _dapBtn=null; } }
     function armDetailAutoplay(btn, go){ cancelDetailAutoplay(); if(!btn) return;
         if(Store.settings&&Store.settings.openAutoplay===false) return;
-        var secs=6, n=secs; _dapBtn=btn; btn.classList.add('auto');
-        var fill=document.createElement('i'); fill.className='pb-fill'; btn.insertBefore(fill,btn.firstChild);
-        var cnt=document.createElement('span'); cnt.className='pb-count'; cnt.textContent=n; btn.appendChild(cnt);
-        requestAnimationFrame(function(){ fill.style.transitionDuration=secs+'s'; fill.style.width='100%'; });
-        _dapT=setInterval(function(){ n--; if(n<=0){ cancelDetailAutoplay(); detailFadeThenPlay(go); return; } cnt.textContent=n; },1000);
+        var secs=6, n=secs; _dapBtn=btn; btn.classList.add('auto');   // no visible countdown: the page simply fades into the film
+        _dapT=setInterval(function(){ n--; if(n<=0){ cancelDetailAutoplay(); detailFadeThenPlay(go); } },1000);
         _dapKey=function(e){ if(e.type==='keydown'){ var k=e.keyCode; var isOk=(k===13||k===Nav.KEY.ENTER); if(isOk&&Nav.current===btn){ cancelDetailAutoplay(); return; } } cancelDetailAutoplay(); };
         document.addEventListener('keydown',_dapKey,true); document.addEventListener('pointerdown',_dapKey,true); }
-    function detailFadeThenPlay(go){ var v=$('view-detail'); if(!v||!v.classList.contains('active-view')){ return; } v.classList.add('fading'); setTimeout(function(){ try{ go(); }finally{ setTimeout(function(){ v.classList.remove('fading'); },300); } },480); }
+    function detailFadeThenPlay(go){ var v=$('view-detail'); if(!v||!v.classList.contains('active-view')){ return; } v.classList.add('fading'); setTimeout(function(){ try{ go(); }finally{ setTimeout(function(){ v.classList.remove('fading'); },300); } },1500); }
     // Next episode to play for a series: the most recent in-progress one, else the first unwatched, else S1 E1.
     function seriesNextUp(s){ if(!s||!s.seasons||!s.seasons.length) return null;
         var r=latestSeriesResume(s); var out=null;

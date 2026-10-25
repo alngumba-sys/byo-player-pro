@@ -1,6 +1,6 @@
 {
-  "versionCode": 168,
-  "versionName": "3.36.56",
+  "versionCode": 169,
+  "versionName": "3.36.57",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Opening a movie or series now shows a full-screen title page - the title's own artwork across the whole screen with the name, details, cast and actions over it - then after a short countdown it fades out and plays (from where you left off). Press OK on Play to start at once, or any other key to stay and read. Series open straight on the next episode to watch."
+  "notes": "Title page refinements: no visible countdown on Play (the page simply fades slowly into the film), the poster thumbnail is gone and the title's picture always fills the screen, and when a studio title logo exists it replaces the plain text title."
 }
