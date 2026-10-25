@@ -2001,6 +2001,7 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                 <div class="filter-row">
                     <span class="count-tag" style="font-size:23px;color:var(--fg);display:inline-flex;align-items:center;gap:10px"><span class="ic" style="font-size:24px;color:var(--accent)"><svg><use href="#i-guide"/></svg></span><span data-i18n="nav.guide">TV Guide</span></span>
                     <span id="guide-daylabel" class="guide-daylabel"></span>
+                    <span class="guide-kind hidden" id="guide-kind"><button class="sort-btn seg-on" id="guide-kind-tv" data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-live"/></svg></span>TV Guide</button><button class="sort-btn" id="guide-kind-radio" data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-audio"/></svg></span>Radio Guide</button></span>
                     <span style="flex:1"></span>
                     <span id="guide-clock" class="guide-clock hidden"></span>
                     <button class="sort-btn" id="guide-now" data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-clock"/></svg></span><span data-i18n="guide.jumpToNow">Jump to now</span></button>
@@ -9471,7 +9472,12 @@ var Pin=(function(){
         var gq=(S.liveQ||'').toLowerCase();
         // Guide mirrors the Live screen's category AND search box, so a search for "bbc"/"cnn" on Live
         // narrows the Guide to those channels too — the fast way to reach a specific channel in a huge list.
-        var filtered=allch.filter(function(c){ return (!gGenre||c.genre===gGenre)&&(!gq||(c.name||'').toLowerCase().indexOf(gq)>-1); });
+        // TV and Radio have their own guides: the switch appears only when the playlist carries radio stations.
+        var hasRadio=allch.some(isRadioChannel); var kindEl=$('guide-kind'); if(kindEl) kindEl.classList.toggle('hidden', !hasRadio);
+        var wantRadio=hasRadio&&S.guideKind==='radio'; if(!hasRadio) S.guideKind='tv';
+        try{ $('guide-kind-tv').classList.toggle('seg-on', !wantRadio); $('guide-kind-radio').classList.toggle('seg-on', wantRadio); }catch(e){}
+        if(gGenre==='Radio') gGenre=null;
+        var filtered=allch.filter(function(c){ return (isRadioChannel(c)===wantRadio)&&(!gGenre||c.genre===gGenre)&&(!gq||(c.name||'').toLowerCase().indexOf(gq)>-1); });
         var GUIDE_CAP=S._guideCap||150; var chans=filtered.slice(0,GUIDE_CAP);
         var gl=$('guide-daylabel'); // (set above)
         if(!chans.length){ $('guide-rows').innerHTML='<div class="section-empty" style="padding:40px">No channels loaded. Connect a source or load demo data.</div>'; $('guide-times').innerHTML=''; return; }
@@ -11458,12 +11464,14 @@ var Pin=(function(){
     // ---- One shared de-duplication step for EVERY source (M3U, Xtream, combined playlists) ----
     // Providers list the same film / show several times (different categories, qualities, language
     // tags). Collapse to one card per cleaned title (+ year); keep the extra copies as backup sources.
-    var __VOD_TAG=/^\s*(?:\[[^\]]{1,12}\]|\([^)]{1,8}\)|[A-Za-z0-9+]{1,6}\s*[|:\u2502\-\u2013]\s+)/;
+    var __VOD_TAG=/^\s*(?:\[[^\]]{1,12}\]|\([^)]{1,8}\)|[A-Z0-9+]{1,6}\s*[|\u2502]\s*|[A-Z0-9+]{2,6}\s*[:\-\u2013]\s+)/;
     function __vodKey(t, yr){ var s=String(t||'');
         for(var i=0;i<3;i++){ var m=s.match(__VOD_TAG); if(m&&m[0].length<s.length) s=s.slice(m[0].length); else break; }
         var y=String(yr||''); var ym=s.match(/\((19|20)\d{2}\)|\b(19|20)\d{2}\s*$/); if(ym){ if(!y) y=ym[0].replace(/[^0-9]/g,''); s=s.replace(ym[0],' '); }
         s=s.toLowerCase().replace(/\b(4k|uhd|fhd|hd|sd|hevc|h265|x265|1080p|720p|2160p|multi[\s-]?sub|multi|vost|vo|dual|eng|en)\b/g,' ').replace(/[^a-z0-9]+/g,' ').trim();
         return s ? (s+'|'+String(y).slice(0,4)) : ''; }
+    function __plotKey(p){ return String(p||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,60); }
+    function __diffWork(a, b){ if(!a.logo||!b.logo||a.logo===b.logo) return false; var pa=__plotKey(a.plot), pb=__plotKey(b.plot); if(pa.length<25||pb.length<25) return false; return pa!==pb; }
     function dedupeVod(list, isSeries){ if(!Array.isArray(list)||list.length<2) return list||[];
         var byT={}, out=[];
         for(var i=0;i<list.length;i++){ var x=list[i]; if(!x){ continue; } var k=__vodKey(x.title||x.name, x.year);
@@ -11471,6 +11479,7 @@ var Pin=(function(){
             // same title matches when the years agree, or when either copy has no year
             var bucket=byT[t]||(byT[t]=[]), ex=null;
             for(var b2=0;b2<bucket.length;b2++){ var by2=bucket[b2]._dy, t1=String(bucket[b2].tmdb||''), t2=String(x.tmdb||''); if(t1&&t2&&t1!==t2) continue;   // different works (e.g. a remake) never merge
+                if(__diffWork(bucket[b2], x)) continue;   // same name, but clearly two different shows (own poster and own synopsis each)
                 if(!y||!by2||by2===y){ ex=bucket[b2]; break; } }
             if(!ex){ x._dy=y; bucket.push(x); out.push(x); continue; }
             if(!ex._dy&&y) ex._dy=y;
@@ -11586,6 +11595,7 @@ var Pin=(function(){
         var sgj=$('seg-jellyfin'); if(sgj) sgj.addEventListener('click',function(){ setMode('jellyfin'); });
         $('btn-connect').addEventListener('click',connect); $('btn-loaddemo').addEventListener('click',loadDemo);
         $('btn-clear-history').addEventListener('click',function(){ Store.clearHistory(); renderHistory(); renderHome(); Nav.focusFirst(); });
+        (function(){ var a=$('guide-kind-tv'), b=$('guide-kind-radio'); if(a) a.addEventListener('click',function(){ S.guideKind='tv'; renderGuide(); }); if(b) b.addEventListener('click',function(){ S.guideKind='radio'; renderGuide(); }); })();
         $('guide-now').addEventListener('click',function(){ if(S._guideScrollToNow) S._guideScrollToNow(); });
         $('nt-play').addEventListener('click',function(){ if(S.nextEpisode){ var n=S.nextEpisode; hideNextToast(); playEpisode(n.s,n.seasonIdx,n.epIdx); } });
         $('nt-cancel').addEventListener('click',function(){ hideNextToast(); flashOverlay(); });

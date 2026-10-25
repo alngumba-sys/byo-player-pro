@@ -1,6 +1,6 @@
 {
-  "versionCode": 182,
-  "versionName": "3.36.70",
+  "versionCode": 183,
+  "versionName": "3.36.71",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Sports channel cards cleaned up: full names, the match and competition for event channels, a letter tile when a logo cannot load, no LIVE badge or filler text, and finished events are no longer listed anywhere in Sports."
+  "notes": "Posters: two different shows that share a name are no longer merged into one card (that is what put one show's title on another's poster). Guide: TV Guide and Radio Guide are now separate, with a switch at the top when your playlist has radio."
 }
