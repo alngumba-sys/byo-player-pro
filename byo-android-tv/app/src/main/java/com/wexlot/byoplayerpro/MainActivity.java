@@ -486,9 +486,14 @@ public class MainActivity extends Activity {
                         .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
                         .setEnableDecoderFallback(true);
                 // Small buffers: a preview should start fast and not hoard memory/bandwidth.
+                // ExoPlayer's DefaultLoadControl requires minBufferMs >= bufferForPlaybackAfterRebufferMs
+                // (and >= bufferForPlaybackMs); the previous values (2000, _, _, 2500) violated that and
+                // threw an IllegalArgumentException the instant the preview player was first built, on
+                // every device and every title -- which is exactly why the preview never once showed a
+                // frame and Featured always fell back to the still backdrop.
                 androidx.media3.exoplayer.DefaultLoadControl lc =
                         new androidx.media3.exoplayer.DefaultLoadControl.Builder()
-                        .setBufferDurationsMs(2000, 15000, 1000, 2500)
+                        .setBufferDurationsMs(3000, 15000, 1000, 2500)
                         .setPrioritizeTimeOverSizeThresholds(true).build();
                 previewPlayer = new androidx.media3.exoplayer.ExoPlayer.Builder(MainActivity.this, rf)
                         .setMediaSourceFactory(msf).setLoadControl(lc).build();

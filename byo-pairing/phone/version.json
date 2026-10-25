@@ -1,6 +1,6 @@
 {
-  "versionCode": 155,
-  "versionName": "3.36.43",
+  "versionCode": 156,
+  "versionName": "3.36.44",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Fixed the Featured hero's live video preview not actually playing on TV: the native preview player was being told to jump 90 seconds into the stream right at the start, before it knew whether that position was even valid - which could silently stall it on some titles and leave just the still backdrop showing. It now waits until the player confirms the content is a long, seekable video before skipping ahead, so the preview starts reliably and still opens on real footage for movies."
+  "notes": "Found the real cause of the Featured hero never playing video: the native preview player's buffer settings were invalid (one value exceeded another ExoPlayer requires it to stay under), so building the player threw an error the instant it was first used - on every device, for every title, every time. Fixed the values so the player actually builds, so the live preview can finally play."
 }
