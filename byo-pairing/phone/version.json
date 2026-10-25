@@ -1,6 +1,6 @@
 {
-  "versionCode": 176,
-  "versionName": "3.36.64",
+  "versionCode": 177,
+  "versionName": "3.36.65",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Opening a channel, movie or series now plays it straight away instead of showing its page first. Press Back while watching to see the page (details, favourites, episodes). Favourite a live channel from the player's star. Settings > Startup has a switch to bring the page-first behaviour back."
+  "notes": "Channels and movies play the moment you open them. A series opens on its episodes, and the episode you press plays at once. Favourite a live channel from the player's star."
 }

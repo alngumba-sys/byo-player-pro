@@ -9320,7 +9320,7 @@ var Pin=(function(){
         acts.appendChild(feedbackBtns(s,'series'));
         var fabs=fixArtworkBtn(s,'series'); if(fabs) acts.appendChild(fabs);
         renderSeasons(s); appendSimilarRow($('detail-body'),s); showView('detail'); enrichDetail(s,'series'); setTimeout(function(){ Nav.setFocus(playS||$('detail-body').querySelector('[data-focusable="true"]')||acts.querySelector('[data-focusable="true"]')); },30);
-        if(playS&&directPlay()){ cancelDetailAutoplay(); setTimeout(function(){ playS.click(); },0); } else if(playS) armDetailAutoplay(playS, function(){ playS.click(); }); }
+        cancelDetailAutoplay(); }   // a series opens on its episodes; the episode you press plays at once
     function renderSeasons(s){ var body=$('detail-body'); body.innerHTML=''; var tabs=document.createElement('div'); tabs.className='season-tabs';
         s.seasons.forEach(function(se,idx){ var t=document.createElement('div'); t.className='season-tab'+(idx===S.currentSeason?' active-season':''); t.setAttribute('data-focusable','true'); t.tabIndex=0; t.textContent='Season '+se.n+' ('+se.episodes.length+')';
             t.addEventListener('click',function(){ S.currentSeason=idx; renderSeasons(s); }); tabs.appendChild(t); });
