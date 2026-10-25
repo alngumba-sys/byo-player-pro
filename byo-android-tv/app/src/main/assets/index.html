@@ -13012,11 +13012,10 @@ var Pin=(function(){
             '<div class="h2-feat-poster"></div>'+
             '<div class="h2-feat-shade"></div>'+
             '<span class="hero-livedot hidden" id="hero-livedot"><i></i>PREVIEW</span>'+
-            '<button class="hero-sound hidden" id="hero-sound" data-focusable="true" tabindex="0">'+icon('i-mute')+'</button>'+
             '<div class="h2-feat-bottom"><div class="h2-feat-left">'+
             '<div class="h2-feat-top"><span class="h2-pill">'+icon('i-flame')+'Featured today</span></div>'+
             '<h2 class="h2-feat-title"></h2><div class="h2-feat-meta"></div>'+
-            '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button><button class="h2-btn h2-btn-info" data-focusable="true" tabindex="0">'+icon('i-info')+'More info</button></div></div>'+
+            '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button></div></div>'+
             '<p class="h2-feat-tagline"></p></div>';
         // Backdrop behind the video: the real poster immediately, upgraded to a wide TMDB backdrop
         // (same lookup h2FeaturedPhone uses) once one loads, so the full-bleed crop looks right.
@@ -13038,7 +13037,6 @@ var Pin=(function(){
             // Kept playing (looped) for as long as Home stays open -- no rotation to interrupt it.
             if(heroPreviewAllowed()){ requestAnimationFrame(function(){ startHeroPreview(m.url); setTimeout(function(){ startHeroPreview(m.url); },120); }); } else stopHeroPreview(); }
         el.querySelector('.h2-btn-play').addEventListener('click',function(){ stopHeroPreview(); playContent(m.url,m.title,(m.genre||'')+(m.year?' \u00b7 '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); });
-        el.querySelector('.h2-btn-info').addEventListener('click',function(){ stopHeroPreview(); h2Open(m); });
         render();
         if(S._h2Rot){ clearInterval(S._h2Rot); S._h2Rot=null; }
         return el; }
@@ -13055,11 +13053,10 @@ var Pin=(function(){
             '<div class="h2-feat-poster"></div>'+
             '<div class="h2-feat-shade"></div>'+
             '<span class="hero-livedot hidden" id="hero-livedot"><i></i>PREVIEW</span>'+
-            '<button class="hero-sound hidden" id="hero-sound" data-focusable="true" tabindex="0">'+icon('i-mute')+'</button>'+
             '<div class="h2-feat-bottom"><div class="h2-feat-left">'+
             '<div class="h2-feat-top"><span class="h2-pill">'+icon('i-flame')+'Featured today</span></div>'+
             '<h2 class="h2-feat-title"></h2><div class="h2-feat-meta"></div>'+
-            '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button><button class="h2-btn h2-btn-info" data-focusable="true" tabindex="0">'+icon('i-info')+'More info</button></div></div></div>';
+            '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button></div></div></div>';
         function paintBackdrop(){ var box=el.querySelector('.h2-feat-poster'); if(!box) return;
             var src=m._bd||m.logo, wide=!!m._bd;
             box.innerHTML='<div class="h2-feat-ph" style="background:'+g(m.gi)+'"></div>'+
@@ -13073,8 +13070,7 @@ var Pin=(function(){
             S._heroUrl=m.url;
             if(heroPreviewAllowed()){ requestAnimationFrame(function(){ startHeroPreview(m.url); setTimeout(function(){ startHeroPreview(m.url); },120); }); } else stopHeroPreview(); }
         el.querySelector('.h2-btn-play').addEventListener('click',function(e){ e.stopPropagation(); stopHeroPreview(); playContent(m.url,m.title,(m.genre||'')+(m.year?' \u00b7 '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); });
-        el.querySelector('.h2-btn-info').addEventListener('click',function(e){ e.stopPropagation(); stopHeroPreview(); h2Open(m); });
-        el.addEventListener('click',function(e){ if(e.target.closest('.h2-btn,.hero-sound')) return; stopHeroPreview(); h2Open(m); });
+        el.addEventListener('click',function(e){ if(e.target.closest('.h2-btn')) return; stopHeroPreview(); h2Open(m); });
         render();
         if(S._h2Rot){ clearInterval(S._h2Rot); S._h2Rot=null; }
         return el; }

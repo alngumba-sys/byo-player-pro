@@ -1,6 +1,6 @@
 {
-  "versionCode": 157,
-  "versionName": "3.36.45",
+  "versionCode": 158,
+  "versionName": "3.36.46",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Two fixes: (1) the native preview surface was being made visible immediately, before it had any video frame to show, which painted a stuck black box over the Featured banner on some TVs while it buffered - it now stays hidden until a real frame is ready, then fades in, so you see the still backdrop (not black) until the video actually starts. (2) Featured no longer picks 4K-tagged titles, since those are the heaviest to preview live - it lands on a regular title instead."
+  "notes": "Featured hero now shows only the Play button - removed More info and the mute icon, so Play is the one and only action and gets focus by default."
 }
