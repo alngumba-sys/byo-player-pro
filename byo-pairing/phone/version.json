@@ -1,6 +1,6 @@
 {
-  "versionCode": 167,
-  "versionName": "3.36.55",
+  "versionCode": 168,
+  "versionName": "3.36.56",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Faster start: the app keeps a copy of your library on the TV, but a 4-second limit meant a big library was downloaded again on every launch. It now waits for the saved copy (up to 25s), so you land straight on your channels, movies and series; it only re-downloads when the copy is over 6 hours old, quietly in the background. Settings > About now shows how the library came up this launch."
+  "notes": "Opening a movie or series now shows a full-screen title page - the title's own artwork across the whole screen with the name, details, cast and actions over it - then after a short countdown it fades out and plays (from where you left off). Press OK on Play to start at once, or any other key to stay and read. Series open straight on the next episode to watch."
 }

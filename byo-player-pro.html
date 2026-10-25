@@ -7639,7 +7639,7 @@ var Pin=(function(){
         else a.sort(function(x,y){ return s*((y.order||0)-(x.order||0)); });
         return a; }
 
-    function showView(name){ if(name!=='home') stopHeroPreview(); if(name==='detail'){ try{ $('view-detail').scrollTop=0; }catch(_e){} }
+    function showView(name){ if(name!=='home') stopHeroPreview(); if(name==='detail'){ try{ $('view-detail').scrollTop=0; }catch(_e){} } else { try{ cancelDetailAutoplay(); $('view-detail').classList.remove('fading'); }catch(_e){} }
         // Hard guarantee: a content view is never shown with the profile picker (or its full-screen
         // backdrop) still behind it. Force the picker hidden and clear its hero image on every nav.
         try{ var pk=$('profile-picker'); if(pk && !pk.classList.contains('hidden')){ stopPickerHeroRotation(); pk.classList.add('hidden'); } var ph=$('pp-hero'); if(ph) ph.style.backgroundImage='none'; }catch(e){}
@@ -9126,7 +9126,41 @@ var Pin=(function(){
         if(x.logo){ pos.style.background='#0a0d13'; pos.innerHTML='<img class="detail-poster-img" src="'+esc(x.logo)+'" onerror="this.remove();"/>'; }
         else { pos.style.background=g(x.gi); pos.innerHTML=''; }
         setHeroBackdrop(x);
+        paintTitleBackdrop(x);
     }
+    // Netflix-style title screen: the whole hero is the title's art. A true LANDSCAPE backdrop when
+    // TMDB has verified this exact title (the same lookup the Home hero uses), else a blurred crop of
+    // its own poster as ambient colour (never another title's art) with the poster card kept visible.
+    function paintTitleBackdrop(x){ var view=$('view-detail'), wrap=$('detail-hero-bg'), img=$('detail-hero-img'); if(!view||!wrap||!img) return;
+        view.classList.add('title-screen'); view.classList.remove('has-bd');
+        function show(src, wide){ if(!S.currentDetail||S.currentDetail.data!==x) return; wrap.classList.toggle('is-fallback',!wide); img.onload=function(){ view.classList.toggle('has-bd',!!wide); wrap.classList.add('bd-ok'); }; img.onerror=function(){ img.removeAttribute('src'); wrap.classList.remove('bd-ok'); view.classList.remove('has-bd'); }; wrap.classList.remove('bd-ok'); img.src=src; }
+        if(x._bd){ show(x._bd,true); return; }
+        if(x.logo) show(x.logo,false);
+        if(!x._bdTried && __byoTmdbOn()){ x._bdTried=true; try{ TMDB.lookupItem(x,(x.seasons!==undefined)?'series':'movie',function(r){ if(r&&r.backdrop){ x._bd=r.backdrop; var pre=new Image(); pre.onload=function(){ show(x._bd,true); }; pre.src=x._bd; } }); }catch(e){} } }
+    // Auto-play countdown on the title screen: the user already chose this title from a card, so
+    // after a short beat the screen fades out and it plays (resume point respected). Any other key or
+    // tap cancels the countdown so the details can be read / another action chosen; OK plays at once.
+    var _dapT=null, _dapKey=null, _dapBtn=null;
+    function cancelDetailAutoplay(){ if(_dapT){ clearInterval(_dapT); _dapT=null; }
+        if(_dapKey){ try{ document.removeEventListener('keydown',_dapKey,true); document.removeEventListener('pointerdown',_dapKey,true); }catch(e){} _dapKey=null; }
+        if(_dapBtn){ try{ _dapBtn.classList.remove('auto'); var f=_dapBtn.querySelector('.pb-fill'); if(f) f.remove(); var c=_dapBtn.querySelector('.pb-count'); if(c) c.remove(); }catch(e){} _dapBtn=null; } }
+    function armDetailAutoplay(btn, go){ cancelDetailAutoplay(); if(!btn) return;
+        if(Store.settings&&Store.settings.openAutoplay===false) return;
+        var secs=6, n=secs; _dapBtn=btn; btn.classList.add('auto');
+        var fill=document.createElement('i'); fill.className='pb-fill'; btn.insertBefore(fill,btn.firstChild);
+        var cnt=document.createElement('span'); cnt.className='pb-count'; cnt.textContent=n; btn.appendChild(cnt);
+        requestAnimationFrame(function(){ fill.style.transitionDuration=secs+'s'; fill.style.width='100%'; });
+        _dapT=setInterval(function(){ n--; if(n<=0){ cancelDetailAutoplay(); detailFadeThenPlay(go); return; } cnt.textContent=n; },1000);
+        _dapKey=function(e){ if(e.type==='keydown'){ var k=e.keyCode; var isOk=(k===13||k===Nav.KEY.ENTER); if(isOk&&Nav.current===btn){ cancelDetailAutoplay(); return; } } cancelDetailAutoplay(); };
+        document.addEventListener('keydown',_dapKey,true); document.addEventListener('pointerdown',_dapKey,true); }
+    function detailFadeThenPlay(go){ var v=$('view-detail'); if(!v||!v.classList.contains('active-view')){ return; } v.classList.add('fading'); setTimeout(function(){ try{ go(); }finally{ setTimeout(function(){ v.classList.remove('fading'); },300); } },480); }
+    // Next episode to play for a series: the most recent in-progress one, else the first unwatched, else S1 E1.
+    function seriesNextUp(s){ if(!s||!s.seasons||!s.seasons.length) return null;
+        var r=latestSeriesResume(s); var out=null;
+        s.seasons.forEach(function(se,si){ (se.episodes||[]).forEach(function(ep,ei){ if(out) return; if(r&&r._ep&&ep.id===r._ep.id) out={seasonIdx:si,epIdx:ei,ep:ep,se:se,resume:r}; }); });
+        if(!out){ s.seasons.forEach(function(se,si){ (se.episodes||[]).forEach(function(ep,ei){ if(out) return; if(!Store.isWatched('ep:'+ep.id)) out={seasonIdx:si,epIdx:ei,ep:ep,se:se,resume:null}; }); }); }
+        if(!out){ var se0=s.seasons[0]; if(se0&&se0.episodes&&se0.episodes.length) out={seasonIdx:0,epIdx:0,ep:se0.episodes[0],se:se0,resume:null}; }
+        return out; }
     // people: [{name, character?, photo?}] — real TMDB credits (with photos) or the provider's own
     // "cast" field (names only). Shows the first three; the rest reveal on request. Hides itself
     // completely when there's nothing real to show — never invents a cast.
@@ -9237,7 +9271,8 @@ var Pin=(function(){
         acts.appendChild(favButton('movies',m.id,{id:m.id,title:m.title,genre:m.genre,year:m.year,rating:m.rating,gi:m.gi,url:m.url,plot:m.plot,order:m.order,dur:m.dur}));
         acts.appendChild(feedbackBtns(m,'movie'));
         var fab=fixArtworkBtn(m,'movie'); if(fab) acts.appendChild(fab);
-        var db=$('detail-body'); db.innerHTML=''; appendSimilarRow(db,m); showView('detail'); enrichDetail(m,'movie'); setTimeout(function(){ Nav.setFocus(play); },30); }
+        var db=$('detail-body'); db.innerHTML=''; appendSimilarRow(db,m); showView('detail'); enrichDetail(m,'movie'); setTimeout(function(){ Nav.setFocus(play); },30);
+        armDetailAutoplay(play, function(){ play.click(); }); }
 
     function openSeries(s){ if(!s.seasons){ ensureSeriesLoaded(s,function(){ openSeries(s); }); return; }
         S.currentDetail={type:'series',data:s}; S.currentSeason=0; S.prevView=curSection();
@@ -9249,10 +9284,16 @@ var Pin=(function(){
         renderCastFromItem(s);
         // Series-level resume: show the most recent in-progress episode, if any.
         setDetailResume(latestSeriesResume(s));
-        var acts=$('detail-actions'); acts.innerHTML=''; acts.appendChild(favButton('series',s.id,{id:s.id,title:s.title,genre:s.genre,year:s.year,rating:s.rating,gi:s.gi,seasons:s.seasons,plot:s.plot,order:s.order,epCount:epc}));
+        var acts=$('detail-actions'); acts.innerHTML='';
+        var nu=seriesNextUp(s); var playS=null;
+        if(nu){ playS=document.createElement('button'); playS.className='play-btn'; playS.setAttribute('data-focusable','true'); playS.tabIndex=0;
+            playS.innerHTML=icon('i-play')+(nu.resume?'Resume':'Play')+' S'+nu.se.n+' E'+nu.ep.n;
+            playS.addEventListener('click',function(){ playEpisode(s,nu.seasonIdx,nu.epIdx); }); acts.appendChild(playS); }
+        acts.appendChild(favButton('series',s.id,{id:s.id,title:s.title,genre:s.genre,year:s.year,rating:s.rating,gi:s.gi,seasons:s.seasons,plot:s.plot,order:s.order,epCount:epc}));
         acts.appendChild(feedbackBtns(s,'series'));
         var fabs=fixArtworkBtn(s,'series'); if(fabs) acts.appendChild(fabs);
-        renderSeasons(s); appendSimilarRow($('detail-body'),s); showView('detail'); enrichDetail(s,'series'); setTimeout(function(){ Nav.setFocus($('detail-body').querySelector('[data-focusable="true"]')||acts.querySelector('[data-focusable="true"]')); },30); }
+        renderSeasons(s); appendSimilarRow($('detail-body'),s); showView('detail'); enrichDetail(s,'series'); setTimeout(function(){ Nav.setFocus(playS||$('detail-body').querySelector('[data-focusable="true"]')||acts.querySelector('[data-focusable="true"]')); },30);
+        if(playS) armDetailAutoplay(playS, function(){ playS.click(); }); }
     function renderSeasons(s){ var body=$('detail-body'); body.innerHTML=''; var tabs=document.createElement('div'); tabs.className='season-tabs';
         s.seasons.forEach(function(se,idx){ var t=document.createElement('div'); t.className='season-tab'+(idx===S.currentSeason?' active-season':''); t.setAttribute('data-focusable','true'); t.tabIndex=0; t.textContent='Season '+se.n+' ('+se.episodes.length+')';
             t.addEventListener('click',function(){ S.currentSeason=idx; renderSeasons(s); }); tabs.appendChild(t); });
@@ -9287,6 +9328,7 @@ var Pin=(function(){
         var dp=$('detail-poster'); dp.style.backgroundImage='none'; dp.style.background=g((c.order||0));
         if(c.logo){ dp.innerHTML='<img src="'+esc(c.logo)+'" style="width:100%;height:100%;object-fit:contain;padding:14px;box-sizing:border-box" onerror="this.parentNode.innerHTML=\''+icon('i-live').replace(/'/g,"\\'")+'\'"/>'; }
         else { dp.innerHTML=icon('i-live'); }
+        cancelDetailAutoplay(); $('view-detail').classList.remove('title-screen','has-bd','fading');   // a channel page, not a title screen
         $('detail-title').textContent=c.name;
         renderCastSection([]);
         var e=c.epgGenre?epgFor(c.epgGenre):null; var rc=replayCountFor(c.id);

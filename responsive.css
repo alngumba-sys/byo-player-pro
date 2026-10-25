@@ -3331,3 +3331,32 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 .ssn-head-name{ font-size:clamp(24px,2.2vw,40px); font-weight:800; letter-spacing:-.01em; line-height:1.1; }
 .ssn-head-sub{ font-size:clamp(13px,1vw,18px); color:rgba(255,255,255,.85); margin-top:4px; font-weight:600; }
 @media (max-width:899px){ .ssn-card{ flex-basis:min(78vw,300px); } }
+
+/* ---- Title screen (movie / series detail): full-bleed art, details bottom-left, auto-play countdown ---- */
+#view-detail.title-screen .detail-hero{ height:calc(100vh - var(--tbh,93px)) !important; min-height:calc(100vh - var(--tbh,93px)) !important; max-height:none !important;
+  padding:clamp(18px,3vw,56px) clamp(24px,3.4vw,66px) clamp(22px,3.2vw,60px) !important; align-items:flex-end !important; }
+#view-detail.title-screen .detail-hero-bg img{ opacity:0; transition:opacity .5s ease; }
+#view-detail.title-screen .detail-hero-bg.bd-ok img{ opacity:1; }
+#view-detail.title-screen .detail-hero-bg.is-fallback img{ filter:blur(40px) brightness(.5) saturate(1.1); transform:scale(1.25); }
+#view-detail.title-screen .detail-hero::after{ background:
+    linear-gradient(90deg, rgba(5,8,13,.94) 0%, rgba(5,8,13,.78) 26%, rgba(5,8,13,.32) 52%, rgba(5,8,13,.04) 74%, transparent 100%),
+    linear-gradient(0deg, var(--bg) 0%, rgba(5,8,13,.72) 20%, rgba(5,8,13,.1) 52%, transparent 70%) !important; }
+/* a real landscape backdrop IS the picture: no poster card competing with it */
+#view-detail.title-screen.has-bd .detail-poster{ display:none !important; }
+#view-detail.title-screen:not(.has-bd) .detail-poster{ width:clamp(150px,15.5vw,300px) !important; align-self:flex-end !important; aspect-ratio:2/3; }
+#view-detail.title-screen .detail-info{ max-width:min(980px,56vw) !important; }
+#view-detail.title-screen .detail-info h2{ font-size:clamp(34px,4.4vw,76px) !important; line-height:1.02 !important; letter-spacing:-.015em; text-shadow:0 4px 28px rgba(0,0,0,.55); margin-bottom:clamp(8px,.9vw,16px) !important; }
+#view-detail.title-screen .detail-plot{ max-width:min(760px,46vw) !important; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; text-shadow:0 2px 10px rgba(0,0,0,.5); }
+#view-detail.title-screen .detail-actions{ margin-top:clamp(14px,1.4vw,26px); }
+/* the countdown lives inside the Play button: a fill sweeping left to right, and the seconds left */
+.play-btn.auto{ position:relative; overflow:hidden; }
+.play-btn.auto > *{ position:relative; z-index:1; }
+.play-btn.auto .pb-fill{ position:absolute !important; left:0; top:0; bottom:0; width:0; z-index:0 !important; background:rgba(255,255,255,.34); transition:width 6s linear; pointer-events:none; }
+.play-btn.auto .pb-count{ margin-left:.35em; min-width:1.3em; height:1.3em; border-radius:50%; background:rgba(4,16,31,.22); display:inline-flex; align-items:center; justify-content:center; font-size:.78em; font-variant-numeric:tabular-nums; }
+#view-detail{ transition:opacity .48s ease; }
+#view-detail.fading{ opacity:0; pointer-events:none; }
+@media (max-width:899px){
+  #view-detail.title-screen .detail-hero{ height:auto !important; min-height:72vh !important; }
+  #view-detail.title-screen .detail-info{ max-width:none !important; }
+  #view-detail.title-screen .detail-plot{ max-width:none !important; -webkit-line-clamp:3; }
+}
