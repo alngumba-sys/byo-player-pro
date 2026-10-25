@@ -40,6 +40,7 @@ public class MainActivity extends Activity {
     private android.view.TextureView previewView;
     private int previewVidW = 0, previewVidH = 0;
     private String previewUrl;
+    private boolean previewSkippedIntro = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -497,6 +498,21 @@ public class MainActivity extends Activity {
                     @Override public void onPlaybackStateChanged(int st) {
                         String s = st==androidx.media3.common.Player.STATE_READY?"ready":st==androidx.media3.common.Player.STATE_BUFFERING?"buffering":st==androidx.media3.common.Player.STATE_ENDED?"ended":"idle";
                         reportPreview(s, "");
+                        // Jump a VOD movie ~90s in once we actually know it's long enough and seekable,
+                        // instead of requesting that seek blind at prepare() time. A blind seek on a live
+                        // channel or a short clip (no known/seekable duration) could silently stall the
+                        // player before it ever renders a frame -- which looked exactly like "no preview,
+                        // just the still backdrop" even though the stream itself was perfectly playable.
+                        if (st==androidx.media3.common.Player.STATE_READY && !previewSkippedIntro) {
+                            previewSkippedIntro = true;
+                            try {
+                                long dur = previewPlayer.getDuration();
+                                if (dur != androidx.media3.common.C.TIME_UNSET && dur > 180000L
+                                        && previewPlayer.isCurrentMediaItemSeekable()) {
+                                    previewPlayer.seekTo(90000L);
+                                }
+                            } catch (Exception ignored) {}
+                        }
                     }
                     @Override public void onVideoSizeChanged(androidx.media3.common.VideoSize vs) {
                         previewVidW = (int) Math.round(vs.width * (vs.pixelWidthHeightRatio > 0 ? vs.pixelWidthHeightRatio : 1f));
@@ -519,10 +535,12 @@ public class MainActivity extends Activity {
             if (!same) {
                 previewUrl = url;
                 previewVidW = 0; previewVidH = 0;
+                previewSkippedIntro = false;
                 previewView.setAlpha(0f);   // hidden until the first frame of THIS title renders
-                // Start the preview ~90s in, so a VOD movie opens on real footage instead of its static
-                // title card. ExoPlayer clamps/ignores this for live streams and very short clips.
-                previewPlayer.setMediaItem(androidx.media3.common.MediaItem.fromUri(android.net.Uri.parse(url)), 90000L);
+                // Always start at 0 here -- the ~90s-in jump (so a VOD movie opens on real footage
+                // instead of its static title card) happens later, once STATE_READY confirms the
+                // content actually has a known, seekable duration long enough for that to be safe.
+                previewPlayer.setMediaItem(androidx.media3.common.MediaItem.fromUri(android.net.Uri.parse(url)));
                 previewPlayer.prepare();
                 previewPlayer.setPlayWhenReady(true);
             }

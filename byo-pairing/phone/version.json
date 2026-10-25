@@ -1,6 +1,6 @@
 {
-  "versionCode": 154,
-  "versionName": "3.36.42",
+  "versionCode": 155,
+  "versionName": "3.36.43",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Featured hero fixes: removed the duplicate BYO Player badge inside the banner (the app's own top bar already shows it), it now features a single title instead of rotating through several, its live preview keeps playing for as long as Home is open, and the banner is now much larger - sized closer to the Netflix reference instead of the small box it was shrinking to. Also fixed the featured title being nearly invisible in light theme."
+  "notes": "Fixed the Featured hero's live video preview not actually playing on TV: the native preview player was being told to jump 90 seconds into the stream right at the start, before it knew whether that position was even valid - which could silently stall it on some titles and leave just the still backdrop showing. It now waits until the player confirms the content is a long, seekable video before skipping ahead, so the preview starts reliably and still opens on real footage for movies."
 }

@@ -10900,6 +10900,9 @@ var Pin=(function(){
                 uw.innerHTML='<button class="s-btn primary" id="ab-upd-btn" data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-reload"/></svg></span>Check for updates</button><span id="ab-upd-msg" class="sxa-msg"></span>';
                 // The diagnostic line sits under the description (full width, wrapped) so a long message can't squeeze the text column.
                 try{ var li=window.ByoAndroid&&ByoAndroid.lastIssue?ByoAndroid.lastIssue():''; var slot=$('ab-issue-slot'); if(li&&slot) slot.innerHTML='<div class="sxa-issue">Last issue: '+esc(li)+'</div>'; }catch(e){}
+                // Featured-hero live preview state, so a "no video on Home" report can be diagnosed from
+                // here (what it last reported trying) instead of needing a dev console on the TV.
+                try{ var hp=S._heroPrevState; var slot2=$('ab-issue-slot'); if(hp&&slot2) slot2.innerHTML+='<div class="sxa-issue">Featured preview: '+esc(hp)+'</div>'; }catch(e){}
                 var btn=$('ab-upd-btn'), msg=$('ab-upd-msg');
                 btn.addEventListener('click',function(){ msg.textContent='Checking…'; Updater.check(function(info){
                     if(!info){ msg.textContent='Could not check right now.'; return; }
