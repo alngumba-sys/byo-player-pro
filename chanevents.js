@@ -39,23 +39,28 @@
             return isNaN(t)?null:t; }
         var LONG={ 'Tennis':4*3600000, 'Cricket':8*3600000, 'Golf':6*3600000, 'Formula 1':2.5*3600000, 'Motorsport':3*3600000, 'Boxing':4*3600000, 'MMA':4*3600000, 'American Football':3.5*3600000, 'Baseball':3.5*3600000 };
         function clean(name){ var t=String(name||'');
-            t=t.replace(/\s*@.*$/,'');                              // drop the time part
+            t=t.replace(/\s*@\s*(?:[A-Za-z]{3},?\s*)?(?:\d{1,2}\s+[A-Za-z]{3,4}\.?\s+\d{1,2}[:.]\d{2}|[A-Za-z]{3,4}\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{1,2}[:.]\d{2}).*$/,'');   // drop the "@ 25 Oct 5:30 PM London" part only
+            t=t.replace(/\s*@\s*\d.*$/,'');                        // "@ 10/10 20:00" style; "Packers @ Giants" is kept
             t=t.replace(/^[^:]{1,40}?\d{1,3}\s*:\s*/,'');             // "Sky Sports + 01: " / "MAX UK 07: "
             t=t.replace(/\s*[-|]\s*(premier sports|sky sports|tnt sports|dazn|espn|bein)[^-|]*$/i,''); // trailing "- Premier Sports 1 Sat,"
             t=t.replace(/\s*\|\s*xtra time\s*$/i,' (Xtra Time)');
             return t.replace(/\s{2,}/g,' ').replace(/[,\s]+$/,'').trim(); }
+        // Competitions that providers write in front of the teams without a colon ("Premier League Liverpool v Everton")
+        var COMP_RE=/^((?:(?:uefa|barclays|fa|efl|sky bet|scottish|english|spanish|italian|german|french|dutch|women'?s|men'?s|international|caf|concacaf|afc)\s+)*(?:premier league|super league|champions league|europa league|conference league|carabao cup|efl cup|league cup|fa cup|world cup|club world cup|nations league|copa america|afcon|africa cup of nations|euro 20\d\d|championship|league one|league two|la liga|laliga|serie a|bundesliga|ligue 1|eredivisie|primeira liga|premiership|spfl|mls|nfl|nba|nhl|mlb|ncaa(?: football| basketball)?|atp tennis|wta tennis|tennis atp|tennis wta|atp|wta|tennis|cricket|rugby union|rugby league|rugby|formula 1|f1|motogp|golf|pga tour|darts|snooker|boxing|ufc|mma|netball|friendly|international friendly|pre-season)(?:\s+\d{4}(?:[\/-]\d{2,4})?)?)\s*[:|-]?\s+(.+)$/i;
         function teams(title){ var body=title; var comp='';
             var c=title.match(/^([^:]{3,40}):\s*(.+)$/); if(c){ comp=c[1].trim(); body=c[2].trim(); }
             body=body.replace(/\s*\((?:[^)]*)\)\s*$/,'').trim();
-            var v=body.match(/^(.{2,80}?)\s+(?:vs\.?|v\.?|-|–)\s+(.{2,60})$/i); if(!v) return { comp:comp, home:'', away:'' };
-            var home=v[1].trim(), away=v[2].trim();
+            var v=body.match(/^(.{2,80}?)\s+(?:vs\.?|v\.?|-|–|@)\s+(.{2,60})$/i);
+            if(!v){ var c2=body.match(COMP_RE); if(c2&&!comp) comp=c2[1].trim(); return { comp:comp, home:'', away:'', single:c2?c2[2].trim():body }; }
+            var home=v[1].trim(), away=v[2].trim(), sep=/\s@\s/.test(v[0])?'@':'v';
+            var cp=home.match(COMP_RE); if(cp){ comp=comp?comp+' · '+cp[1].trim():cp[1].trim(); home=cp[2].trim(); }
             // "WTA Tour Semi-Finals at the China Open Zheng Qinwen" -> competition + "Zheng Qinwen"
             if(home.length>24){ var w=home.split(/\s+/), keep=[]; var STOP=/^(open|finals?|semi-finals?|quarter-finals?|cup|league|championship|tour|masters|round|grand|prix|series|one|two|three|trophy|classic|games|day|week|\d+)$/i;
                 for(var k=w.length-1;k>=0&&keep.length<4;k--){ var t=w[k]; if(STOP.test(t)||!/^[A-Z0-9&'.-]/.test(t)) break; keep.unshift(t); }
                 if(!keep.length||keep.join(' ').length>26) return { comp:comp, home:'', away:'' };
                 var rest=w.slice(0,w.length-keep.length).join(' ').replace(/[-:,\s]+$/,''); if(rest) comp=comp?comp+' · '+rest:rest; home=keep.join(' '); }
             if(away.length>34) return { comp:comp, home:'', away:'' };
-            return { comp:comp, home:home, away:away }; }
+            return { comp:comp, home:home, away:away, sep:sep }; }
         function build(){ var list=(typeof profFilter==='function')?profFilter(S.live||[]):(S.live||[]); var key=list.length+'|'+(S.live&&S.live.length)+'|'+Store.activeId;
             if(cache&&cacheKey===key) return cache;
             var byKey={}, out=[], now=Date.now();

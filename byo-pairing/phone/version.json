@@ -1,6 +1,6 @@
 {
-  "versionCode": 173,
-  "versionName": "3.36.61",
+  "versionCode": 174,
+  "versionName": "3.36.62",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Live TV now reads match channels for you: the card shows the two teams, the competition and the channel number instead of a cut-off name, and lists in a sports category put the biggest matches first (live games, the teams you follow and watch, the big competitions), then by kick-off."
+  "notes": "Match channels in Live TV now show the full team names (never cut short) with the competition underneath; the provider's channel numbers are gone. Competitions written in front of the teams (Premier League Liverpool v Everton) and American-style fixtures (Packers @ Giants) are read correctly."
 }

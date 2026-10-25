@@ -3374,3 +3374,7 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 .live-card.ev .lc-meta{ flex-wrap:wrap; row-gap:4px; }
 .live-card.ev .lc-live-plain{ display:none; }
 .live-card.ev .lc-country.lc-comp{ max-width:100%; }
+
+/* Match cards: the full team names, never cut short */
+.live-card.ev .lc-name{ display:block !important; -webkit-line-clamp:unset !important; overflow:visible !important; text-overflow:clip !important; white-space:normal !important; }
+.live-card.ev{ height:auto !important; }
