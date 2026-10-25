@@ -268,5 +268,5 @@
             // loose contains match (e.g. "Real Madrid CF" vs "Real Madrid")
             for(var key in _crestIdx){ if(key.length>=4 && (k.indexOf(key)>-1||key.indexOf(k)>-1)) return _crestIdx[key]; }
             return null; }
-        return { leagueBlock:leagueBlock, matchRow:matchRow, start:start, refresh:refresh, events:events, results:results, decorate:decorate, decorateDetail:decorateDetail, follow:follow, isFollowed:isFollowed, scheduleLive:scheduleLive, crestFor:crestFor, _list:function(){ return list; } };
+        return { leagueLogo:function(slug){ return leagueLogo[slug]||''; }, leagueBlock:leagueBlock, matchRow:matchRow, start:start, refresh:refresh, events:events, results:results, decorate:decorate, decorateDetail:decorateDetail, follow:follow, isFollowed:isFollowed, scheduleLive:scheduleLive, crestFor:crestFor, _list:function(){ return list; } };
     })();

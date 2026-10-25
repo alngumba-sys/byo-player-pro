@@ -40,7 +40,6 @@ public class MainActivity extends Activity {
     private android.view.TextureView previewView;
     private int previewVidW = 0, previewVidH = 0;
     private String previewUrl;
-    private boolean previewSkippedIntro = false;
     // True once the CURRENT title has actually rendered a real frame. Visibility must stay gated on
     // this, not just set eagerly -- see doPreviewStart/doPreviewRect.
     private boolean previewHasFrame = false;
@@ -468,6 +467,8 @@ public class MainActivity extends Activity {
 
         // Load the bundled app.
         webView.loadUrl("file:///android_asset/index.html" + (resume ? "#resume" : ""));
+        // Pre-build the Featured-preview player while the page is still loading.
+        webView.postDelayed(new Runnable() { public void run() { ensurePreviewPlayer(); } }, 1500);
     }
 
     // CSS pixels (web layout) -> device pixels. The TV build lays the page out on a 1920-wide canvas
@@ -477,8 +478,10 @@ public class MainActivity extends Activity {
     // reported layout width, which the JS passes along implicitly by sending the hero rect in CSS px
     // and us scaling by (webView.getWidth() / cssViewportWidth). cssViewportWidth is cached from JS.
     private double cssViewportW = 0;
-    private void doPreviewStart(String url, double xCss, double yCss, double wCss, double hCss, boolean muted) {
-        if (url == null || url.length() == 0) return;
+    private static final long PREVIEW_START_MS = 20L * 60L * 1000L;
+    // Build the TextureView + ExoPlayer ahead of the first preview (called shortly after launch), so
+    // the first Featured title doesn't also pay for player construction before it can buffer.
+    private void ensurePreviewPlayer() {
         try {
             if (previewView == null) {
                 previewView = new android.view.TextureView(MainActivity.this);
@@ -524,7 +527,7 @@ public class MainActivity extends Activity {
                 // frame and Featured always fell back to the still backdrop.
                 androidx.media3.exoplayer.DefaultLoadControl lc =
                         new androidx.media3.exoplayer.DefaultLoadControl.Builder()
-                        .setBufferDurationsMs(3000, 15000, 1000, 2500)
+                        .setBufferDurationsMs(2500, 12000, 500, 1500)
                         .setPrioritizeTimeOverSizeThresholds(true).build();
                 previewPlayer = new androidx.media3.exoplayer.ExoPlayer.Builder(MainActivity.this, rf)
                         .setMediaSourceFactory(msf).setLoadControl(lc).build();
@@ -562,17 +565,6 @@ public class MainActivity extends Activity {
                         previewHasFrame = true;
                         try { previewView.animate().alpha(1f).setDuration(350).start(); } catch (Exception ignored) {}
                         if (first) reportPreview("playing", "");
-                        // Only now jump a long VOD movie ~90s in (past studio logos / title card). Doing
-                        // it at the first STATE_READY threw the buffer away and re-buffered before any
-                        // frame had shown, adding seconds to every start.
-                        if (first && !previewSkippedIntro) {
-                            previewSkippedIntro = true;
-                            try {
-                                long dur = previewPlayer.getDuration();
-                                if (dur != androidx.media3.common.C.TIME_UNSET && dur > 180000L
-                                        && previewPlayer.isCurrentMediaItemSeekable()) previewPlayer.seekTo(90000L);
-                            } catch (Exception ignored) {}
-                        }
                     }
                     @Override public void onPlayerError(androidx.media3.common.PlaybackException e) {
                         previewHasFrame = false;
@@ -581,18 +573,25 @@ public class MainActivity extends Activity {
                     }
                 });
             }
+        } catch (Exception e) { reportPreview("error", "BUILD_" + e.getClass().getSimpleName()); }
+    }
+    private void doPreviewStart(String url, double xCss, double yCss, double wCss, double hCss, boolean muted) {
+        if (url == null || url.length() == 0) return;
+        try {
+            ensurePreviewPlayer();
+            if (previewPlayer == null || previewView == null) return;
             boolean same = url.equals(previewUrl) && previewPlayer.getPlaybackState() != androidx.media3.common.Player.STATE_IDLE;
             previewPlayer.setVolume(muted ? 0f : 1f);
             if (!same) {
                 previewUrl = url;
                 previewVidW = 0; previewVidH = 0;
-                previewSkippedIntro = false;
                 previewHasFrame = false;
                 previewView.setAlpha(0f);   // drawn (so the decoder has a surface) but transparent until a real frame renders
-                // Always start at 0 here -- the ~90s-in jump (so a VOD movie opens on real footage
-                // instead of its static title card) happens later, once STATE_READY confirms the
-                // content actually has a known, seekable duration long enough for that to be safe.
-                previewPlayer.setMediaItem(androidx.media3.common.MediaItem.fromUri(android.net.Uri.parse(url)));
+                // Open 20 minutes in, requested at prepare() time so there is ONE buffering pass (a
+                // start-at-0-then-seek costs a second one and was the visible delay). A VOD movie then
+                // opens on real footage instead of logos/titles; ExoPlayer clamps the position for a
+                // live stream or a clip shorter than that, and REPEAT_MODE_ALL loops it from the start.
+                previewPlayer.setMediaItem(androidx.media3.common.MediaItem.fromUri(android.net.Uri.parse(url)), PREVIEW_START_MS);
                 previewPlayer.prepare();
                 previewPlayer.setPlayWhenReady(true);
             }

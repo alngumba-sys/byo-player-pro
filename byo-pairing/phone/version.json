@@ -1,6 +1,6 @@
 {
-  "versionCode": 165,
-  "versionName": "3.36.53",
+  "versionCode": 166,
+  "versionName": "3.36.54",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "New profile pictures: ten illustrated portrait avatars replace the old flat faces. Existing profiles on the old faces are moved to the new portraits automatically; pick a different one under Manage profiles."
+  "notes": "Sports: a new 'In season now' row puts the competitions running right now (Premier League, Champions League, LaLiga, Serie A, Bundesliga and more) at the top of the hub and of the Football filter; tap one for its live matches, fixtures, results and the channels that carry it. High-school feeds now sink to the bottom of a sport's channel grid. Home: the Featured preview starts faster and opens 20 minutes into the movie."
 }

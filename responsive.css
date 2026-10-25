@@ -3298,3 +3298,36 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 .art-diag .ad-t{ font-weight:700; font-size:clamp(13px,.95vw,17px); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .art-diag .ad-t i{ font-style:normal; font-weight:600; color:var(--fg-dim); font-size:.85em; }
 .art-diag .ad-r{ color:var(--fg-dim); font-size:clamp(12px,.85vw,15px); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---- Sports: seasons in play (competitions running right now, promoted above the channel grid) ---- */
+.sports-row-title.sports-row-season{ color:var(--accent-2); }
+.sports-row-title.sports-row-season svg{ color:#f5b942; }
+.ssn-strip{ display:flex; gap:clamp(12px,1vw,18px); overflow-x:auto; padding:6px 4px 12px; scroll-behavior:smooth; scrollbar-width:none; }
+.ssn-strip::-webkit-scrollbar{ display:none; }
+.ssn-card{ flex:0 0 clamp(230px,18.5vw,350px); min-height:clamp(118px,9.2vw,172px); border-radius:clamp(14px,1vw,18px); padding:clamp(12px,1vw,18px) clamp(14px,1.1vw,20px);
+  display:flex; flex-direction:column; justify-content:space-between; gap:8px; cursor:pointer; position:relative; overflow:hidden; color:#fff;
+  border:2px solid rgba(255,255,255,.14); box-shadow:0 10px 26px rgba(0,0,0,.35); transition:transform .15s ease, border-color .15s ease; }
+.ssn-card::after{ content:""; position:absolute; inset:0; background:radial-gradient(120% 90% at 100% 0%, rgba(255,255,255,.16), transparent 55%); pointer-events:none; }
+.ssn-card.focused{ transform:scale(1.04); border-color:var(--focus-ring); box-shadow:0 0 0 2px #04101f, 0 0 0 6px var(--focus-ring), 0 14px 34px rgba(0,0,0,.5); z-index:2; }
+.ssn-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.ssn-logo{ width:clamp(40px,3.2vw,58px); height:clamp(40px,3.2vw,58px); border-radius:12px; background:rgba(255,255,255,.92); color:#0b1020; font-weight:900; font-size:clamp(13px,1vw,18px); letter-spacing:.02em;
+  display:flex; align-items:center; justify-content:center; overflow:hidden; flex:0 0 auto; box-sizing:border-box; padding:5px; }
+.ssn-logo img{ width:100%; height:100%; object-fit:contain; }
+.ssn-logo.big{ width:clamp(56px,4.6vw,88px); height:clamp(56px,4.6vw,88px); border-radius:16px; font-size:clamp(16px,1.3vw,24px); }
+.ssn-season{ font-size:clamp(12px,.9vw,16px); font-weight:800; letter-spacing:.06em; background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.22); border-radius:999px; padding:3px 10px; }
+.ssn-name{ font-size:clamp(18px,1.45vw,27px); font-weight:800; line-height:1.15; letter-spacing:-.01em; text-shadow:0 2px 10px rgba(0,0,0,.35); }
+.ssn-status{ font-size:clamp(12px,.9vw,16px); font-weight:600; color:rgba(255,255,255,.82); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:7px; }
+.ssn-status.ssn-live{ color:#fff; font-weight:800; }
+.ssn-status.ssn-live i{ width:9px; height:9px; border-radius:50%; background:var(--danger); box-shadow:0 0 0 0 rgba(255,76,96,.6); animation:ssnPulse 1.6s infinite; flex:0 0 auto; }
+.ssn-status.ssn-next{ color:#fff; }
+@keyframes ssnPulse{ 0%{ box-shadow:0 0 0 0 rgba(255,76,96,.6); } 70%{ box-shadow:0 0 0 8px rgba(255,76,96,0); } 100%{ box-shadow:0 0 0 0 rgba(255,76,96,0); } }
+/* competition page header */
+.ssn-head{ border-radius:clamp(14px,1.2vw,22px); padding:clamp(14px,1.2vw,22px) clamp(16px,1.4vw,26px); margin:0 0 clamp(14px,1.3vw,24px); color:#fff; position:relative; overflow:hidden; border:2px solid rgba(255,255,255,.14); }
+.ssn-head::after{ content:""; position:absolute; inset:0; background:radial-gradient(120% 100% at 100% 0%, rgba(255,255,255,.14), transparent 55%); pointer-events:none; }
+.ssn-back{ position:relative; z-index:1; display:inline-flex; align-items:center; gap:6px; background:rgba(0,0,0,.3); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:999px; padding:6px 14px 6px 10px; font-size:clamp(13px,.95vw,17px); font-weight:700; cursor:pointer; margin-bottom:clamp(10px,1vw,18px); }
+.ssn-back svg{ width:16px; height:16px; }
+.ssn-back.focused{ box-shadow:0 0 0 2px #04101f, 0 0 0 5px var(--focus-ring); }
+.ssn-head-row{ position:relative; z-index:1; display:flex; align-items:center; gap:clamp(12px,1.2vw,20px); }
+.ssn-head-name{ font-size:clamp(24px,2.2vw,40px); font-weight:800; letter-spacing:-.01em; line-height:1.1; }
+.ssn-head-sub{ font-size:clamp(13px,1vw,18px); color:rgba(255,255,255,.85); margin-top:4px; font-weight:600; }
+@media (max-width:899px){ .ssn-card{ flex-basis:min(78vw,300px); } }

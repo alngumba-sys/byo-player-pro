@@ -7203,7 +7203,7 @@ var Pin=(function(){
 
     function renderSportsSubnav(){ var w=$('sports-subnav'); w.innerHTML='';
         SPORTS_SUBNAV.forEach(function(t){ var b=document.createElement('button'); b.className='sub-tab'+(t===sportsSub?' active-sub':''); b.setAttribute('data-focusable','true'); b.tabIndex=0; b.textContent=t;
-            b.addEventListener('click',function(){ sportsSub=t; sportsFilter='All'; renderSports(); }); w.appendChild(b); }); }
+            b.addEventListener('click',function(){ sportsSub=t; sportsFilter='All'; sportsSeason=null; renderSports(); }); w.appendChild(b); }); }
     function renderSportsFilters(){ var w=$('sports-filters'); w.innerHTML='';
         // Only show the quick sport filters on All/Live/Upcoming views
         if(sportsSub==='My Teams'||sportsSub==='My Sports'){ w.style.display='none'; var trig0=$('sports-filter-trigger'); if(trig0) trig0.classList.add('hidden'); return; } w.style.display='flex';
@@ -7219,7 +7219,7 @@ var Pin=(function(){
         // If classification found nothing (thin catalogue), fall back to the canonical set.
         if(filters.length<=3) filters=SPORT_FILTERS;
         filters.forEach(function(f){ var b=document.createElement('button'); b.className='sport-filter'+(f===sportsFilter?' active-filter':''); b.setAttribute('data-focusable','true'); b.tabIndex=0;
-            var sp=SPORT_META[f]; b.innerHTML=(sp?sp.icon+' ':'')+f; b.addEventListener('click',function(){ sportsFilter=f; renderSportsFilters(); renderSportsBody();
+            var sp=SPORT_META[f]; b.innerHTML=(sp?sp.icon+' ':'')+f; b.addEventListener('click',function(){ sportsFilter=f; sportsSeason=null; renderSportsFilters(); renderSportsBody();
                 // keep focus on the chip the user just activated so the active + focus states are both visible
                 setTimeout(function(){ var chips=[].slice.call(document.querySelectorAll('#sports-filters .sport-filter')); var hit=chips.filter(function(x){ return x.textContent.replace(/^[^A-Za-z0-9]+/,'').trim()===f.replace(/^[^A-Za-z0-9]+/,'').trim(); })[0]; if(hit) Nav.setFocus(hit); },10);
             }); w.appendChild(b); });
@@ -7229,7 +7229,7 @@ var Pin=(function(){
             var valEl=$('sports-filter-trigger-val'); if(valEl) valEl.textContent=sportsFilter;
             trig.onclick=function(){
                 var items=filters.map(function(f){ var sp=SPORT_META[f]; return { id:f, label:f, lead:sp?(sp.icon+' '):'' }; });
-                openPickMenu(trig, items, sportsFilter, function(id){ sportsFilter=id; renderSportsFilters(); renderSportsBody(); });
+                openPickMenu(trig, items, sportsFilter, function(id){ sportsFilter=id; sportsSeason=null; renderSportsFilters(); renderSportsBody(); });
             };
         }
     }
@@ -7364,6 +7364,102 @@ var Pin=(function(){
             var b2=document.createElement('button'); b2.className='play-btn'; b2.setAttribute('data-focusable','true'); b2.tabIndex=0; b2.innerHTML=icon('i-clock')+'View upcoming'; b2.addEventListener('click',function(){ sportsSub='Upcoming'; renderSports(); }); d.appendChild(b2); }
         return d; }
 
+    /* ---- Seasons in play: the competitions whose season is running right now, promoted to the top
+       of the Sports hub so (e.g.) the Premier League stands out from hundreds of generic channels.
+       Date-driven from each competition's calendar (windows may span the new year or carry a fixed
+       year for one-off tournaments); enriched with real fixtures/scores when LiveScores has them
+       (slug = the ESPN league id it uses), and with the playlist's own channels via name keywords. */
+    var SEASONS=[
+        // key, name, short, sport, slug, colours [a,b], channel keywords, windows [[m,d, m,d, (year)]...], prio
+        {k:'epl',  n:'Premier League',  s:'PL',  sport:'Football', slug:'eng.1',           c:['#3d0a4e','#00d47a'], kw:['premier league','epl','sky sports premier','supersport premier','ss premier'], w:[[8,15,5,24]], p:1},
+        {k:'ucl',  n:'Champions League',s:'UCL', sport:'Football', slug:'uefa.champions',  c:['#071a4a','#2a56c6'], kw:['champions league','ucl'], w:[[9,15,5,31]], p:2},
+        {k:'liga', n:'LaLiga',          s:'LL',  sport:'Football', slug:'esp.1',           c:['#b3191a','#ff6b3d'], kw:['laliga','la liga'], w:[[8,14,5,24]], p:3},
+        {k:'seriea',n:'Serie A',        s:'SA',  sport:'Football', slug:'ita.1',           c:['#06305f','#1aa3e8'], kw:['serie a','calcio'], w:[[8,22,5,24]], p:4},
+        {k:'buli', n:'Bundesliga',      s:'BL',  sport:'Football', slug:'ger.1',           c:['#8a0a12','#e2242b'], kw:['bundesliga'], w:[[8,21,5,16]], p:5},
+        {k:'l1',   n:'Ligue 1',         s:'L1',  sport:'Football', slug:'fra.1',           c:['#0c1a52','#d9e233'], kw:['ligue 1','ligue1'], w:[[8,14,5,16]], p:6},
+        {k:'uel',  n:'Europa League',   s:'UEL', sport:'Football', slug:'uefa.europa',     c:['#5a2a00','#f58220'], kw:['europa league','europa'], w:[[9,23,5,20]], p:7},
+        {k:'kpl',  n:'Kenyan Premier League',s:'KPL',sport:'Football',slug:'ken.1',        c:['#0a3d1e','#2bb55a'], kw:['kenyan premier','fkf','kpl','kenya premier'], w:[[8,29,5,30]], p:8},
+        {k:'cafcl',n:'CAF Champions League',s:'CAF',sport:'Football',slug:'caf.champions', c:['#4a3a00','#f0c419'], kw:['caf champions','caf cl'], w:[[9,19,5,30]], p:9},
+        {k:'afcon',n:'Africa Cup of Nations',s:'AFCON',sport:'Football',slug:'caf.nations',c:['#0f5a2e','#f5b942'], kw:['afcon','africa cup','cup of nations'], w:[[12,21,1,18,2025],[6,21,7,18,2027]], p:9},
+        {k:'wc',   n:'FIFA World Cup',  s:'WC',  sport:'Football', slug:'fifa.world',      c:['#4a0a30','#e6007e'], kw:['world cup'], w:[[6,11,7,19,2026]], p:2},
+        {k:'unl',  n:'UEFA Nations League',s:'UNL',sport:'Football',slug:'uefa.nations',   c:['#0e1e4f','#4a7bd0'], kw:['nations league'], w:[[9,1,11,20],[3,20,3,31],[6,1,6,10]], p:12},
+        {k:'facup',n:'FA Cup',          s:'FAC', sport:'Football', slug:'eng.fa',          c:['#7a0a14','#e2001a'], kw:['fa cup'], w:[[11,1,5,16]], p:11},
+        {k:'efl',  n:'Carabao Cup',     s:'EFL', sport:'Football', slug:'eng.league_cup',  c:['#1b4d2a','#3cc26b'], kw:['carabao','league cup','efl cup'], w:[[8,11,3,22]], p:13},
+        {k:'uecl', n:'Conference League',s:'UECL',sport:'Football',slug:'uefa.europa.conf',c:['#0a4a2a','#15a84c'], kw:['conference league'], w:[[10,1,5,27]], p:15},
+        {k:'psl',  n:'South African Premiership',s:'PSL',sport:'Football',slug:'rsa.1',    c:['#1a1a1a','#d4a017'], kw:['psl','betway premiership','south african premiership'], w:[[8,8,5,30]], p:16},
+        {k:'spl',  n:'Saudi Pro League',s:'SPL', sport:'Football', slug:'ksa.1',           c:['#0f3d1e','#38a35a'], kw:['saudi pro','roshn','ssc'], w:[[8,20,5,25]], p:17},
+        {k:'mls',  n:'MLS',             s:'MLS', sport:'Football', slug:'usa.1',           c:['#0d1f3c','#d9343b'], kw:['mls','major league soccer'], w:[[2,21,12,6]], p:18},
+        {k:'chmp', n:'EFL Championship',s:'CH',  sport:'Football', slug:'eng.2',           c:['#15245a','#5b7bd5'], kw:['championship','efl'], w:[[8,7,5,24]], p:21},
+        // other sports (shown under their own filter and on the All view)
+        {k:'nba',  n:'NBA',             s:'NBA', sport:'Basketball',slug:'',               c:['#102a6b','#c8102e'], kw:['nba'], w:[[10,21,6,20]], p:3},
+        {k:'nfl',  n:'NFL',             s:'NFL', sport:'Other',    slug:'',                c:['#013369','#d50a0a'], kw:['nfl','redzone'], w:[[9,10,2,8]], p:4},
+        {k:'f1',   n:'Formula 1',       s:'F1',  sport:'Formula 1',slug:'',                c:['#3a0000','#e10600'], kw:['f1','formula 1','formula1'], w:[[3,6,12,6]], p:3},
+        {k:'nhl',  n:'NHL',             s:'NHL', sport:'Ice Hockey',slug:'',               c:['#111','#5aa9e6'], kw:['nhl'], w:[[10,7,6,25]], p:5},
+        {k:'mlb',  n:'MLB',             s:'MLB', sport:'Baseball', slug:'',                c:['#002d72','#d50032'], kw:['mlb'], w:[[3,26,11,1]], p:6},
+        {k:'6n',   n:'Six Nations',     s:'6N',  sport:'Rugby',    slug:'',                c:['#0a2a4a','#3fa0ff'], kw:['six nations','6 nations'], w:[[2,5,3,20]], p:4},
+        {k:'ipl',  n:'IPL',             s:'IPL', sport:'Cricket',  slug:'',                c:['#1a1a5e','#f5a623'], kw:['ipl','indian premier'], w:[[3,20,5,30]], p:4}
+    ];
+    // Is this window open on day `now`? [m1,d1,m2,d2,(year)] -- a window whose end month is before its
+    // start month wraps across New Year (Aug→May). A fixed year pins a one-off tournament.
+    function seasonWindowOpen(w, now){ var y=now.getFullYear();
+        function at(yy,m,d){ return new Date(yy,m-1,d).getTime(); }
+        var t=now.getTime();
+        if(w[4]){ var e2=(w[2]<w[0]||(w[2]===w[0]&&w[3]<w[1]))?w[4]+1:w[4]; return t>=at(w[4],w[0],w[1]) && t<=at(e2,w[2],w[3])+86399999; }
+        if(w[2]<w[0]||(w[2]===w[0]&&w[3]<w[1])){ return (t>=at(y,w[0],w[1])) || (t<=at(y,w[2],w[3])+86399999); }
+        return t>=at(y,w[0],w[1]) && t<=at(y,w[2],w[3])+86399999; }
+    function seasonLabel(sn, now){ var y=now.getFullYear(); var w=sn.w.filter(function(x){ return seasonWindowOpen(x,now); })[0]||sn.w[0];
+        if(w[4]) return String(w[4]);
+        if(w[2]<w[0]){ var sy=(now.getMonth()+1>=w[0])?y:y-1; return sy+'/'+String(sy+1).slice(2); }
+        return String(y); }
+    // Seasons currently in play, for one sport filter (or every sport on the All view).
+    function seasonsInPlay(sport){ var now=new Date(); var want=(!sport||sport==='All'||sport==='Live'||sport==='Upcoming')?null:sport;
+        var motor=(want==='Motorsport');
+        return SEASONS.filter(function(sn){ if(want && sn.sport!==want && !(motor&&sn.sport==='Formula 1')) return false; return sn.w.some(function(w){ return seasonWindowOpen(w,now); }); })
+            .sort(function(a,b){ var fa=a.sport==='Football'?0:1, fb=b.sport==='Football'?0:1; return (fa-fb)||(a.p-b.p); }); }
+    // Real fixtures for a season (LiveScores/ESPN), when loaded.
+    function seasonEvents(sn){ if(!sn.slug) return []; try{ return allSportEvents().filter(function(e){ return e._espn && e.league===sn.slug; }); }catch(e){ return []; } }
+    // Playlist channels that carry this competition (by name), amateur feeds excluded.
+    function seasonChannels(sn){ var out=[]; try{ var kws=sn.kw.map(function(k){ return new RegExp('(^|[^a-z0-9])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z0-9]|$)','i'); });
+        sportsChannelsList().forEach(function(c){ if(itemLowPriority(c)) return; var n=String(c.name||'')+' '+String(c.genre||''); if(kws.some(function(r){ return r.test(n); })) out.push(c); }); }catch(e){}
+        return out; }
+    function seasonLogo(sn){ try{ return (sn.slug && typeof LiveScores!=='undefined' && LiveScores.leagueLogo)?LiveScores.leagueLogo(sn.slug):''; }catch(e){ return ''; } }
+    function seasonStatus(sn){ var evs=seasonEvents(sn); var live=evs.filter(function(e){ return evStatus(e)==='live'; });
+        if(live.length){ var e=live[0]; return {cls:'live', txt:'LIVE · '+e.home+' '+(e.score||'v')+' '+e.away+(live.length>1?' +'+(live.length-1):'')}; }
+        var up=evs.filter(function(e){ return evStatus(e)==='upcoming'; }).sort(function(a,b){ return a.start-b.start; });
+        if(up.length){ var u=up[0]; var d=+u.start-Date.now(); var when=(d<86400000&&new Date(u.start).getDate()===new Date().getDate())?('Today '+TimeService.fmtTime(+u.start)):fmtEvTime(u.start); return {cls:'next', txt:'Next · '+when+' · '+u.home+' v '+u.away}; }
+        var ch=seasonChannels(sn).length; return {cls:'on', txt:'In season'+(ch?' · '+ch+' channel'+(ch===1?'':'s'):'')}; }
+    var sportsSeason=null;
+    function seasonCard(sn){ var now=new Date(); var st=seasonStatus(sn); var logo=seasonLogo(sn);
+        var card=document.createElement('div'); card.className='ssn-card'+(st.cls==='live'?' ssn-live':''); card.setAttribute('data-focusable','true'); card.tabIndex=0;
+        card.style.background='linear-gradient(135deg, '+sn.c[0]+' 0%, '+sn.c[0]+' 55%, '+sn.c[1]+' 140%)';
+        card.innerHTML='<div class="ssn-top"><span class="ssn-logo">'+(logo?'<img src="'+esc(logo)+'" alt="" onerror="this.parentNode.textContent=\''+esc(sn.s)+'\'"/>':esc(sn.s))+'</span><span class="ssn-season">'+esc(seasonLabel(sn,now))+'</span></div>'+
+            '<div class="ssn-name">'+esc(sn.n)+'</div><div class="ssn-status ssn-'+st.cls+'">'+(st.cls==='live'?'<i></i>':'')+esc(st.txt)+'</div>';
+        card.addEventListener('click',function(){ sportsSeason=sn.k; renderSportsBody(); setTimeout(function(){ var f=$('sports-body').querySelector('.ls-match, .spchan-card, .ssn-back'); if(f) Nav.setFocus(f); },30); });
+        return card; }
+    function seasonsRow(sport){ var list=seasonsInPlay(sport); if(!list.length) return null;
+        var r=rowEl(icon('i-flame'),'In season now','sports-row-season'); var strip=document.createElement('div'); strip.className='ssn-strip';
+        list.slice(0,10).forEach(function(sn){ strip.appendChild(seasonCard(sn)); }); r.appendChild(strip); return r; }
+    // The competition page: real fixtures/scores (when loaded) + the playlist channels that carry it.
+    function renderSeasonPage(sn){ var body=$('sports-body'); var now=new Date(); var logo=seasonLogo(sn); var st=seasonStatus(sn);
+        var head=document.createElement('div'); head.className='ssn-head'; head.style.background='linear-gradient(135deg, '+sn.c[0]+' 0%, '+sn.c[0]+' 50%, '+sn.c[1]+' 150%)';
+        head.innerHTML='<button class="ssn-back" data-focusable="true" tabindex="0">'+icon('i-chev-l')+'Sports</button>'+
+            '<div class="ssn-head-row"><span class="ssn-logo big">'+(logo?'<img src="'+esc(logo)+'" alt="" onerror="this.parentNode.textContent=\''+esc(sn.s)+'\'"/>':esc(sn.s))+'</span>'+
+            '<div><div class="ssn-head-name">'+esc(sn.n)+'</div><div class="ssn-head-sub">'+esc(seasonLabel(sn,now))+' season · '+esc(st.txt)+'</div></div></div>';
+        head.querySelector('.ssn-back').addEventListener('click',function(){ sportsSeason=null; renderSportsBody(); setTimeout(function(){ var f=$('sports-body').querySelector('.ssn-card'); if(f) Nav.setFocus(f); },30); });
+        body.appendChild(head);
+        var evs=seasonEvents(sn); var hasLS=(typeof LiveScores!=='undefined');
+        if(evs.length && hasLS){
+            var live=evs.filter(function(e){ return evStatus(e)==='live'; });
+            var up=evs.filter(function(e){ return evStatus(e)==='upcoming'; }).sort(function(a,b){ return a.start-b.start; });
+            var fin=evs.filter(function(e){ return evStatus(e)==='finished'; }).sort(function(a,b){ return b.start-a.start; });
+            if(live.length) body.appendChild(LiveScores.leagueBlock('Live now',live,{sub:live.length+' match'+(live.length===1?'':'es')+' in play',max:10}));
+            if(up.length) body.appendChild(LiveScores.leagueBlock('Fixtures',up,{sub:'Next '+up.length+' match'+(up.length===1?'':'es'),max:8}));
+            if(fin.length) body.appendChild(LiveScores.leagueBlock('Results',fin,{sub:'Latest results',max:6}));
+        } else if(sn.slug){ var n=document.createElement('div'); n.className='sd-note'; n.textContent=hasLS?'No fixtures in the next few days, or live scores haven’t loaded yet.':'Fixtures and scores appear here once live scores load.'; body.appendChild(n); }
+        var chans=seasonChannels(sn);
+        if(chans.length){ var rch=rowEl(icon('i-live'),'Channels showing '+sn.n+' ('+chans.length+')'); var g=document.createElement('div'); g.className='spchan-grid'; chans.slice(0,120).forEach(function(c){ g.appendChild(spChanCard(c)); }); rch.appendChild(g); body.appendChild(rch); }
+        else { var n2=document.createElement('div'); n2.className='sd-note'; n2.textContent='No channels in your playlist are named after this competition. Matches still link to a channel from the fixtures above when one carries them.'; body.appendChild(n2); }
+    }
     function renderSportsBody(){
         var body=$('sports-body'); body.innerHTML='';
         if(!sportsPresent()){ body.appendChild(emptyState('none')); return; }
@@ -7372,6 +7468,7 @@ var Pin=(function(){
 
         if(sportsSub==='My Teams'){ return renderMyTeams(); }
         if(sportsSub==='My Sports'){ return renderMySports(); }
+        if(sportsSeason){ var snp=SEASONS.filter(function(x){ return x.k===sportsSeason; })[0]; if(snp){ body.innerHTML=''; renderSeasonPage(snp); return; } sportsSeason=null; }
 
         var live=filteredEvents(liveSportEvents());
         var up=filteredEvents(upcomingSportEvents());
@@ -7388,6 +7485,9 @@ var Pin=(function(){
         }
 
         // ALL view — the full hub
+        // Seasons in play first: the competitions running right now (Premier League etc.) stand out
+        // from the hundreds of generic channels below them.
+        var srow=seasonsRow(sportsFilter); if(srow) body.appendChild(srow);
         // Multi-View entry (only when enough compatible live streams exist)
         if(mvAvailable()){ body.appendChild(mvEntryCard()); }
         // Your teams playing
@@ -7411,6 +7511,8 @@ var Pin=(function(){
         // strip) so hundreds of beIN/Sky/etc channels are all browsable, with a count + cap note.
         var chans=channelsForSport(sportsFilter);
         var allView=(sportsFilter==='All'||sportsFilter==='Live'||sportsFilter==='Upcoming');
+        // High-school/amateur feeds (NFHS etc) sink below the professional channels in a sport's grid.
+        if(!allView) chans=chans.slice().sort(function(a,b){ return (itemLowPriority(a)?1:0)-(itemLowPriority(b)?1:0); });
         if(chans.length){ var chTitle=allView?'Channels — sports first':(sportsFilter+' channels');
             var rch=rowEl(icon('i-live'),chTitle+' ('+chans.length+')');
             var SP_CAP=300; var shownChans=chans.slice(0,SP_CAP);
@@ -11368,6 +11470,7 @@ var Pin=(function(){
                 exitPlayer(); return; }
             if($('view-detail').classList.contains('active-view')){ if(S.prevView==='home') renderHome(); goTo(S.prevView); return; }
             if($('view-sportdetail').classList.contains('active-view')){ goTo('sports'); return; }
+            if($('view-sports').classList.contains('active-view') && sportsSeason){ sportsSeason=null; renderSportsBody(); setTimeout(function(){ var f=$('sports-body').querySelector('.ssn-card'); if(f) Nav.setFocus(f); },30); return; }
             if($('view-ask').classList.contains('active-view') && !$('ask-results').classList.contains('hidden')){ renderAskHome(); setTimeout(function(){ Nav.setFocus($('ask-mic')); },20); return; }
             if(!$('view-home').classList.contains('active-view')){ goTo('home'); return; }
             showExit(); };
