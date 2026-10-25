@@ -417,13 +417,14 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
         </div>
         <div class="msg devmsg hidden" id="x-err"></div>
         <div class="ended hidden" id="s-ended"></div>
+        <div class="ended hidden" id="s-stale"></div>
       </div>
 
       <div class="grid3" id="grid" data-tab="connect">
         <!-- column 1: connections -->
         <div class="col c1" data-panel="connect">
           <div class="card flex scroll thin">
-            <div class="ch"><h2>Connections</h2><span class="note ell">Passwords and links are never shown</span></div>
+            <div class="ch"><h2>Connections</h2><span class="note ell" id="s-cmode">Passwords and links are never shown</span></div>
             <div class="conns thin" id="s-conns"></div>
             <div class="kicker">Add a connection</div>
             <div class="seg" id="a-mode"><button data-m="xtream" class="on">Xtream</button><button data-m="m3u">M3U</button><button data-m="emby">Emby</button><button data-m="jellyfin">Jellyfin</button></div>
@@ -436,7 +437,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
               <div id="f-pass"><label class="lbl" for="a-pass">Password</label><input class="inp" id="a-pass" type="password" autocomplete="new-password"></div>
             </div>
             <div class="foot" style="justify-content:space-between">
-              <label class="chk"><input type="checkbox" id="a-combine"><span class="box"></span><span class="ell">Keep other connections</span></label>
+              <label class="chk" title="Ticked: the new connection joins the TV's library next to the existing ones (all active, shown together). Unticked: it replaces them as the only active connection."><input type="checkbox" id="a-combine" checked><span class="box"></span><span class="ell">Keep the other connections (one combined library)</span></label>
               <button class="btn pri" id="a-send">Add to TV</button>
             </div>
             <div class="msg" id="a-err"></div>
@@ -596,6 +597,10 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
     var h=chips.map(function(c){ return '<span class="meta">'+esc(c[0])+' <b>'+esc(c[1])+'</b></span>'; }).join('');
     h+='<span class="meta">Last seen <b>'+esc(hm(s.last_seen))+'</b></span>';
     $('s-kv').innerHTML=h;
+    var seenMs=s.last_seen?Date.parse(s.last_seen):0, staleS=seenMs?Math.round((Date.now()+fSkew-seenMs)/1000):0, stale=live&&(!seenMs||staleS>45);
+    $('s-stale').classList.toggle('hidden', !stale);
+    if(stale) $('s-stale').textContent='The TV has not checked in for '+(staleS>=120?Math.round(staleS/60)+' min':staleS+' s')+'. It is probably off, asleep, or BYO Player is not open. Anything you send waits here and is applied the moment the TV comes back.';
+    $('s-cmode').textContent=lib.mode==='combined'?'Combined library: every connection switched on is active and shown together. Passwords and links are never shown.':(lib.mode==='single'?'One connection at a time: only the active one is shown. Tick "Keep the other connections" below to combine them. Passwords and links are never shown.':'Passwords and links are never shown.');
     $('s-ended').classList.toggle('hidden', live); $('s-ended').textContent=live?'':('This session has '+s.status+(s.ended_by?' ('+s.ended_by+')':'')+'. Ask the customer for a new code to make more changes.');
     [].forEach.call(document.querySelectorAll('#grid button, #grid input, #grid select, #grid textarea'),function(b){ b.disabled=!live; });
     ['s-end','s-more','x-refresh','x-signout'].forEach(function(id){ $(id).disabled=!live; });
