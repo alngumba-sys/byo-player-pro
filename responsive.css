@@ -2629,40 +2629,58 @@ html.no-topbar #app{ padding-top:0 !important; }
 #home-body .h2{ display:flex; flex-direction:column; gap:28px; color:var(--h2-text); padding-bottom:40px; }
 #home-body .h2 button{ font-family:inherit; }
 /* 1. hero row */
-.h2-hero{ display:grid; grid-template-columns:minmax(0,998fr) minmax(0,770fr); gap:24px; }   /* Featured 20% narrower, What's on now wider by the same amount */
-.h2-hero.no-feat{ grid-template-columns:minmax(0,1fr); }
-.h2-feat, .h2-now{ height:400px; border-radius:20px; box-sizing:border-box; overflow:hidden; }
-.h2-feat{ display:flex; align-items:center; gap:40px; padding:30px 40px; background:linear-gradient(90deg,#0f2747 0%,#0a1a33 38%,#05080d 100%); position:relative; }
-.h2-feat-poster{ position:relative; width:240px; height:340px; flex:0 0 240px; border-radius:16px; overflow:hidden; box-shadow:0 18px 40px rgba(0,0,0,.55), 0 4px 12px rgba(0,0,0,.4); }
-.h2-feat-ph{ position:absolute; inset:0; display:flex; align-items:flex-end; padding:14px; font-weight:800; font-size:20px; line-height:1.2; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.6); }
-.h2-feat-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-.h2-feat-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:14px; }
+.h2-hero{ display:grid; grid-template-columns:minmax(0,1fr); }
+.h2-feat.hero{ display:block; margin:0; padding:0; align-items:unset; height:clamp(420px,54vh,620px); border-radius:20px; box-sizing:border-box; overflow:hidden; position:relative; background:#05080d; }
+.h2-feat.hero::before, .h2-feat.hero::after{ content:none; }
+.h2-feat-poster{ position:absolute; inset:0; z-index:0; overflow:hidden; }
+.h2-feat-ph{ position:absolute; inset:0; display:flex; align-items:flex-end; padding:24px; font-weight:800; font-size:26px; line-height:1.2; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.6); }
+.h2-feat-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 14%; opacity:0; transition:opacity .35s ease; }
+.h2-feat-img.wide{ object-position:center; }
+.h2-feat-img.ok{ opacity:1; }
+.h2-feat .hero-video{ z-index:1; }
+/* Bottom-to-top dark slate/navy gradient — the only overlay on the video, so the frame stays clean. */
+.h2-feat-shade{ position:absolute; inset:0; z-index:2; pointer-events:none;
+    background:linear-gradient(0deg, rgba(8,13,20,.97) 0%, rgba(8,13,20,.86) 20%, rgba(8,13,20,.45) 45%, rgba(8,13,20,.08) 68%, transparent 85%); }
+.h2-feat-brand{ position:absolute; left:28px; top:24px; z-index:3; display:flex; align-items:center; background:rgba(5,8,12,.4); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:8px 16px 8px 10px; border-radius:999px; }
+.h2-feat-brand .brand{ font-size:20px !important; gap:9px !important; margin:0 !important; }
+.h2-feat-brand .brand .ic, .h2-feat-brand .brand .ic svg, .h2-feat-brand .brand .brand-mark{ width:28px !important; height:28px !important; }
+.h2-feat .hero-sound{ top:24px; bottom:auto; right:28px; left:auto; width:44px; height:44px; background:rgba(5,8,12,.4); backdrop-filter:blur(10px); border-color:rgba(242,245,248,.3); }
+.h2-feat .hero-livedot{ top:24px; bottom:auto; right:84px; background:rgba(5,8,12,.4); backdrop-filter:blur(10px); font-size:13px; padding:6px 12px; }
+.h2-feat-bottom{ position:absolute; left:0; right:0; bottom:0; z-index:3; padding:0 44px 38px; display:flex; align-items:flex-end; justify-content:space-between; gap:40px; }
+.h2-feat-left{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:14px; max-width:980px; }
 .h2-feat-top{ display:flex; align-items:center; gap:14px; }
-.h2-pill{ background:var(--h2-accent); color:#03141a; font-weight:800; font-size:13px; letter-spacing:.08em; padding:6px 12px; border-radius:999px; }
+.h2-pill{ display:inline-flex; align-items:center; gap:8px; background:rgba(242,245,248,.14); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(242,245,248,.25); color:#fff; font-weight:800; font-size:13px; letter-spacing:.1em; text-transform:uppercase; padding:6px 14px; border-radius:999px; }
+.h2-pill svg{ width:14px; height:14px; color:#f5b942; }
 .h2-count{ color:var(--h2-muted); font-size:15px; font-weight:600; }
-.h2-feat-title{ margin:0; font-size:46px; line-height:1.08; font-weight:800; color:var(--h2-text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.h2-feat-meta{ color:var(--h2-muted); font-size:17px; font-weight:600; display:flex; flex-wrap:wrap; align-items:center; gap:0 10px; }
-.h2-sep{ opacity:.7; } .h2-star{ color:#ffc94d; }
-.h2-feat-desc{ margin:0; color:#c3ccd6; font-size:17px; line-height:1.45; max-width:760px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.h2-feat-actions{ display:flex; align-items:center; gap:14px; margin-top:6px; }
-.h2-btn{ height:54px; padding:0 26px; border-radius:12px; display:inline-flex; align-items:center; gap:10px; font-size:18px; font-weight:800; cursor:pointer; outline:none; transition:transform .12s, box-shadow .12s, background .12s; }
+.h2-feat-title{ margin:0; font-size:clamp(32px,4.4vw,62px); line-height:1.04; font-weight:800; color:#fff; letter-spacing:-.01em; text-shadow:0 4px 24px rgba(0,0,0,.5); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.h2-feat-meta{ color:#e7ebf0; font-size:17px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; display:flex; flex-wrap:wrap; align-items:center; gap:0 10px; text-shadow:0 2px 10px rgba(0,0,0,.5); }
+.h2-sep{ opacity:.6; } .h2-star{ color:#ffc94d; }
+.h2-feat-actions{ display:flex; align-items:center; gap:14px; margin-top:4px; flex-wrap:wrap; }
+.h2-btn{ height:54px; padding:0 30px; border-radius:999px; display:inline-flex; align-items:center; gap:10px; font-size:18px; font-weight:800; cursor:pointer; outline:none; transition:transform .12s, box-shadow .12s, background .12s; }
 .h2-btn svg{ width:20px; height:20px; }
-.h2-btn-play{ background:var(--h2-accent); color:#03141a; border:2px solid var(--h2-accent); }
-.h2-btn-info{ background:transparent; color:var(--h2-text); border:2px solid rgba(242,245,248,.55); }
-.h2-btn.focused, .h2-btn:focus-visible{ transform:scale(1.05); box-shadow:0 0 0 3px #fff, 0 8px 24px rgba(47,212,232,.35); }
-.h2-btn-info.focused{ background:rgba(242,245,248,.12); border-color:#fff; }
-.h2-dots{ margin-left:auto; display:flex; gap:10px; align-items:center; }
-.h2-dot{ width:10px; height:10px; padding:0; border-radius:999px; border:0; background:rgba(242,245,248,.3); cursor:pointer; outline:none; transition:width .2s, background .2s; }
-.h2-dot.on{ width:28px; background:var(--h2-accent); }
+.h2-btn-play{ background:#fff; color:#0a0e14; border:2px solid #fff; }
+.h2-btn-info{ background:rgba(242,245,248,.14); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); color:#fff; border:1px solid rgba(242,245,248,.4); }
+.h2-btn.focused, .h2-btn:focus-visible{ transform:scale(1.05); box-shadow:0 0 0 3px #fff, 0 10px 28px rgba(0,0,0,.4); }
+.h2-btn-info.focused{ background:rgba(242,245,248,.26); }
+.h2-dots{ display:flex; gap:10px; align-items:center; margin-left:4px; }
+.h2-dot{ width:10px; height:10px; padding:0; border-radius:999px; border:0; background:rgba(242,245,248,.35); cursor:pointer; outline:none; transition:width .2s, background .2s; }
+.h2-dot.on{ width:28px; background:#fff; }
 .h2-dot.focused{ box-shadow:0 0 0 3px #fff; }
-.h2-feat-nav{ position:absolute; top:50%; transform:translateY(-50%); height:96px; width:56px; border:none; background:none; padding:0; margin:0; cursor:pointer; outline:none;
+.h2-feat-tagline{ margin:0; flex:0 1 320px; align-self:flex-end; text-align:right; color:#e7ebf0; font-size:17px; font-style:italic; font-weight:600; line-height:1.4;
+    background:rgba(5,8,12,.32); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(242,245,248,.16); border-radius:14px; padding:14px 18px; text-shadow:0 2px 8px rgba(0,0,0,.4); }
+.h2-feat-nav{ position:absolute; top:40%; transform:translateY(-50%); height:96px; width:56px; border:none; background:none; padding:0; margin:0; cursor:pointer; outline:none;
     display:flex; align-items:center; z-index:4; color:#fff; }
 .h2-feat-prev{ left:0; justify-content:flex-start; padding-left:8px; }
 .h2-feat-next{ right:0; justify-content:flex-end; padding-right:8px; }
-.h2-feat-nav .ic{ width:42px; height:42px; border-radius:50%; background:rgba(10,13,19,.78); box-shadow:0 4px 16px rgba(0,0,0,.45);
+.h2-feat-nav .ic{ width:42px; height:42px; border-radius:50%; background:rgba(10,13,19,.6); backdrop-filter:blur(8px); box-shadow:0 4px 16px rgba(0,0,0,.45);
     display:flex; align-items:center; justify-content:center; flex:0 0 auto; transition:background .15s, transform .15s; }
-.h2-feat-nav:hover .ic{ background:var(--h2-accent); color:#03141a; }
-.h2-feat-nav.focused .ic, .h2-feat-nav:focus-visible .ic{ background:var(--h2-accent); color:#03141a; box-shadow:0 0 0 3px #fff, 0 4px 16px rgba(0,0,0,.45); transform:scale(1.08); }
+.h2-feat-nav:hover .ic{ background:rgba(255,255,255,.9); color:#0a0e14; }
+.h2-feat-nav.focused .ic, .h2-feat-nav:focus-visible .ic{ background:#fff; color:#0a0e14; box-shadow:0 0 0 3px #fff, 0 4px 16px rgba(0,0,0,.45); transform:scale(1.08); }
+/* Native Android preview draws the real video ABOVE the webview over the hero's top band — keep the
+   text panel compact and clear of it, and hide what it would otherwise cover. */
+.hero.native-preview .h2-feat-brand, .hero.native-preview .h2-feat-tagline{ display:none; }
+.hero.native-preview .h2-feat-bottom{ padding-bottom:26px; }
+.hero.native-preview .h2-feat-title{ font-size:clamp(26px,3.2vw,42px); -webkit-line-clamp:1; }
 /* what's on now */
 .h2-now{ background:#0f151d; border:1px solid #1a2330; padding:22px 22px 18px; display:flex; flex-direction:column; gap:14px; }
 .h2-now-head{ display:flex; align-items:center; justify-content:space-between; }
@@ -2701,20 +2719,18 @@ html.no-topbar #app{ padding-top:0 !important; }
 .h2-card-title{ margin-top:10px; font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--h2-text); }
 .h2-card-sub{ margin-top:3px; font-size:13px; color:var(--h2-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* narrower screens: stack the hero row, smaller type */
-@media (max-width:1300px){ .h2-hero{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .h2-feat{ gap:28px; padding:24px 28px; } .h2-feat-title{ font-size:38px; } }
+@media (max-width:1300px){ .h2-feat.hero{ height:clamp(360px,50vh,520px); } .h2-feat-bottom{ padding:0 32px 28px; } .h2-feat-title{ font-size:clamp(26px,5vw,42px); } }
 @media (max-width:1099px){
-  .h2-hero{ grid-template-columns:minmax(0,1fr); }
-  .h2-now{ height:auto; }
-  .h2-feat{ height:auto; min-height:0; padding:18px; gap:18px; align-items:flex-start; }
-  .h2-feat-poster{ width:120px; height:170px; flex-basis:120px; border-radius:12px; }
-  .h2-feat-title{ font-size:26px; } .h2-feat-meta, .h2-feat-desc{ font-size:14px; }
-  .h2-feat-desc{ -webkit-line-clamp:3; }
-  .h2-btn{ height:44px; padding:0 16px; font-size:15px; }
+  .h2-feat.hero{ height:clamp(320px,48vh,440px); }
+  .h2-feat-bottom{ padding:0 24px 22px; gap:20px; }
+  .h2-feat-tagline{ display:none; }
+  .h2-feat-title{ font-size:clamp(22px,5vw,32px); }
+  .h2-feat-meta{ font-size:14px; }
+  .h2-btn{ height:44px; padding:0 20px; font-size:15px; }
   .h2-feat-actions{ flex-wrap:wrap; }
   .h2-card{ width:132px; flex-basis:132px; } .h2-card-poster{ width:132px; height:190px; }
   .h2-h{ font-size:20px; } #home-body .h2{ gap:22px; }
 }
-@media (max-width:560px){ .h2-feat{ flex-direction:column; align-items:stretch; } .h2-feat-poster{ display:none; } }
 
 /* 71. Profile screen: library loading status */
 .pp-lib{ max-width:760px; margin:6px auto 18px; padding:16px 20px; border-radius:16px; background:rgba(15,21,29,.86); border:1px solid #1a2330; text-align:left; box-shadow:0 10px 30px rgba(0,0,0,.35); }
@@ -3164,9 +3180,8 @@ html.light .h2-tag{ border-color:rgba(11,18,32,.3) !important; color:#0b1220 !im
 /* Featured card text sits on a picture: keep it white */
 html.light .h2-feat-m .h2m-title{ color:#fff !important; }
 html.light .h2-feat-m .h2m-meta{ color:#e6ebf1 !important; }
-/* TV-size featured card: light panel instead of the dark gradient */
-html.light .h2-feat:not(.h2-feat-m){ background:linear-gradient(90deg,#e3f3f7 0%,#eef4f9 45%,#fff 100%) !important; border:1px solid rgba(10,20,40,.07); }
-html.light .h2-feat:not(.h2-feat-m) .h2-feat-desc{ color:#3c4757 !important; }
+/* TV-size featured hero: always a video/photo banner with white overlay text, same as dark theme —
+   it sits on a picture, not the app's own chrome, so it doesn't follow the light/dark toggle. */
 /* Channel logo tiles (Live, Guide, What's on now, Sports): light tile; a hairline shadow keeps white logos visible */
 html.light .lc-logo, html.light .wc-logo, html.light .ct-logo img, html.light .guide-chan .g-logo, html.light .h2-now-thumb, html.light .h2-now-logo,
 html.light .live-card .lc-logo{ background:#e7ecf3 !important; }

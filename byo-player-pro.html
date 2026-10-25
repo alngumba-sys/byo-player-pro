@@ -7871,12 +7871,9 @@ var Pin=(function(){
         S._heroBad=S._heroBad||{}; if(S._lastHeroId) S._heroBad[S._lastHeroId]=1;
         try{ var A=androidPreview(); if(A) A.previewStop(); }catch(e){}
         S._heroActiveUrl=null;
-        var old=document.querySelector('#home-body .hero'); if(!old) return;
-        old.classList.remove('native-preview');
-        S._heroTries=(S._heroTries||0)+1;
-        if(S._heroTries>=3) return;                       // give up quietly: keep the still hero
-        if(!$('view-home').classList.contains('active-view')) return;
-        try{ var nh=renderHero(); if(nh&&old.parentNode){ old.parentNode.replaceChild(nh,old); } }catch(e){}
+        var old=document.querySelector('#home-body .hero'); if(old) old.classList.remove('native-preview');
+        // The still backdrop is already underneath, so Featured just shows without a live preview for
+        // this title; S._heroBad keeps the next Home open from picking it again.
     }
     try{ window.__byoPreview=function(state,detail){
         S._heroPrevState=state+(detail?(' '+detail):'');
@@ -8028,18 +8025,35 @@ var Pin=(function(){
         var pool=profFilter(S.movies).filter(function(m){ return !itemLowPriority(m); }); if(!pool.length) pool=profFilter(S.movies);
         if(!pool.length) return null;
         var ranked=pool.slice().sort(function(a,b){ return (b.logo?1:0)-(a.logo?1:0) || num(b.rating)-num(a.rating); });
-        var top=ranked.slice(0,Math.min(30,ranked.length)); var picks=[]; var tries=0;
+        var top=ranked.slice(0,Math.min(30,ranked.length));
+        // Skip titles whose live preview already failed to play this session, so Featured lands on one that works.
+        if(S._heroBad){ var okTop=top.filter(function(m){ return !S._heroBad[m.id]; }); if(okTop.length) top=okTop; }
+        var picks=[]; var tries=0;
         while(picks.length<Math.min(4,top.length) && tries++<200){ var c=top[Math.floor(Math.random()*top.length)]; if(picks.indexOf(c)<0 && c.id!==S._lastHeroId) picks.push(c); if(top.length<=4 && picks.length===top.length) break; }
         if(!picks.length) picks=top.slice(0,4); S._lastHeroId=picks[0].id;
         if((window.innerWidth||1920)<900) return h2FeaturedPhone(picks);
-        var el=document.createElement('section'); el.className='h2-feat';
-        el.innerHTML='<div class="h2-feat-poster"></div><div class="h2-feat-body"><div class="h2-feat-top"><span class="h2-pill">FEATURED TODAY</span><span class="h2-count"></span></div>'+
-            '<h2 class="h2-feat-title"></h2><div class="h2-feat-meta"></div><p class="h2-feat-desc"></p>'+
+        // Netflix-style full-bleed hero: the actual stream plays muted behind the overlay (reusing the
+        // same video-preview plumbing — startHeroPreview/stopHeroPreview, native Android AVPlay bridge,
+        // hls.js — that the old single-title Home hero used), with title/metadata/actions pinned to the
+        // bottom and a brand badge top-left. Replaces the old side-by-side poster card + separate
+        // "What's on now" panel with one immersive banner.
+        var el=document.createElement('section'); el.className='h2-feat hero';
+        el.innerHTML='<video class="hero-video" id="hero-video" muted loop playsinline></video>'+
+            '<div class="h2-feat-poster"></div>'+
+            '<div class="h2-feat-shade"></div>'+
+            '<span class="hero-livedot hidden" id="hero-livedot"><i></i>PREVIEW</span>'+
+            '<button class="hero-sound hidden" id="hero-sound" data-focusable="true" tabindex="0">'+icon('i-mute')+'</button>'+
+            '<div class="h2-feat-bottom"><div class="h2-feat-left">'+
+            '<div class="h2-feat-top"><span class="h2-pill">'+icon('i-flame')+'Featured today</span><span class="h2-count"></span></div>'+
+            '<h2 class="h2-feat-title"></h2><div class="h2-feat-meta"></div>'+
             '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button><button class="h2-btn h2-btn-info" data-focusable="true" tabindex="0">'+icon('i-info')+'More info</button><div class="h2-dots"></div></div></div>'+
+            '<p class="h2-feat-tagline"></p></div>'+
             // Prev/Next: lets the viewer step through the featured picks on demand (mouse click, remote
             // OK, or arrow keys) instead of only via the tiny dots or waiting out the 9s auto-rotate.
             '<button class="h2-feat-nav h2-feat-prev" data-focusable="true" tabindex="0" aria-label="Previous featured title">'+icon('i-chev-l')+'</button>'+
             '<button class="h2-feat-nav h2-feat-next" data-focusable="true" tabindex="0" aria-label="Next featured title">'+icon('i-chev-r')+'</button>';
+        // Brand watermark: cloned from the topbar's own logo so the asset is never duplicated.
+        try{ var bsrc=document.querySelector('.topbar .brand'); if(bsrc){ var bw=document.createElement('div'); bw.className='h2-feat-brand'; bw.appendChild(bsrc.cloneNode(true)); el.appendChild(bw); } }catch(_e){}
         var idx=0, dots=el.querySelector('.h2-dots');
         picks.forEach(function(m,i){ var d=document.createElement('button'); d.className='h2-dot'; d.tabIndex=-1; d.setAttribute('aria-label','Featured '+(i+1));
             d.addEventListener('click',function(){ show(i); }); d.addEventListener('focus',function(){ show(i); }); dots.appendChild(d); });
@@ -8047,16 +8061,28 @@ var Pin=(function(){
             el.querySelector('.h2-feat-prev').addEventListener('click',function(){ show((idx-1+picks.length)%picks.length); });
             el.querySelector('.h2-feat-next').addEventListener('click',function(){ show((idx+1)%picks.length); });
         } else { [].forEach.call(el.querySelectorAll('.h2-feat-nav'),function(b){ b.remove(); }); }
+        // Backdrop behind the video: the real poster immediately, upgraded to a wide TMDB backdrop
+        // (same lookup h2FeaturedPhone uses) once one loads, so the full-bleed crop looks right.
+        function paintBackdrop(m){ var box=el.querySelector('.h2-feat-poster'); if(!box) return;
+            var src=m._bd||m.logo, wide=!!m._bd;
+            // No baked-in title text here: the real title already renders in the bottom overlay
+            // (.h2-feat-title), and a second copy painted into this gradient box only shows up as a
+            // faint ghost duplicate through the shade once the image (if any) loads over it.
+            box.innerHTML='<div class="h2-feat-ph" style="background:'+g(m.gi)+'"></div>'+
+                (src?'<img class="h2-feat-img'+(wide?' wide':'')+'" src="'+esc(src)+'" alt="" loading="lazy" onload="this.classList.add(\'ok\')" onerror="this.remove()"/>':''); }
         function show(i){ idx=i; var m=picks[i]; S._h2FeatIdx=i;
-            el.querySelector('.h2-feat-poster').innerHTML='<div class="h2-feat-ph" style="background:'+g(m.gi)+'"><span>'+esc(m.title)+'</span></div>'+h2Img(m.logo,'h2-feat-img');
+            paintBackdrop(m);
+            if(!m._bd && !m._bdTried && __byoTmdbOn()){ m._bdTried=true; try{ TMDB.lookupItem(m,'movie',function(r){ if(r&&r.backdrop){ m._bd=r.backdrop; if(picks[idx]===m){ var pre=new Image(); pre.onload=function(){ if(picks[idx]===m) paintBackdrop(m); }; pre.src=m._bd; } } }); }catch(e){} }
             el.querySelector('.h2-count').textContent=(i+1)+' of '+picks.length;
             el.querySelector('.h2-feat-title').textContent=m.title;
-            var meta=[]; if(m.year) meta.push(esc(m.year)); meta.push(m.seasons!==undefined?'Series':'Movie'); var gc=h2Clean(m.genre); if(gc) meta.push(esc(gc)); var rt=h2Rating(m); if(rt) meta.push('<span class="h2-star">★</span> '+rt);
-            el.querySelector('.h2-feat-meta').innerHTML=meta.join('<span class="h2-sep">·</span>');
-            var d=h2Sentence(m.plot||m.desc); var dp=el.querySelector('.h2-feat-desc'); dp.textContent=d; dp.style.display=d?'':'none';
-            [].forEach.call(dots.children,function(x,k){ x.classList.toggle('on',k===i); }); }
-        el.querySelector('.h2-btn-play').addEventListener('click',function(){ var m=picks[idx]; playContent(m.url,m.title,(m.genre||'')+(m.year?' · '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); });
-        el.querySelector('.h2-btn-info').addEventListener('click',function(){ h2Open(picks[idx]); });
+            var meta=[]; meta.push(m.seasons!==undefined?'Series':'Movie'); var gc=h2Clean(m.genre); if(gc) meta.push(esc(gc)); if(m.year) meta.push(esc(m.year)); var rt=h2Rating(m); if(rt) meta.push('<span class="h2-star">★</span> '+rt);
+            el.querySelector('.h2-feat-meta').innerHTML=meta.join('<span class="h2-sep">•</span>');
+            var d=h2Sentence(m.plot||m.desc); var tp=el.querySelector('.h2-feat-tagline'); tp.textContent=d?('\u201c'+d+'\u201d'):''; tp.style.display=d?'':'none';
+            [].forEach.call(dots.children,function(x,k){ x.classList.toggle('on',k===i); });
+            S._heroUrl=m.url;
+            if(heroPreviewAllowed()){ requestAnimationFrame(function(){ startHeroPreview(m.url); setTimeout(function(){ startHeroPreview(m.url); },120); }); } else stopHeroPreview(); }
+        el.querySelector('.h2-btn-play').addEventListener('click',function(){ var m=picks[idx]; stopHeroPreview(); playContent(m.url,m.title,(m.genre||'')+(m.year?' · '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); });
+        el.querySelector('.h2-btn-info').addEventListener('click',function(){ stopHeroPreview(); h2Open(picks[idx]); });
         show(0);
         // Rotate every 9 s, but never while the remote is on this card (the user is reading it).
         if(S._h2Rot) clearInterval(S._h2Rot);
@@ -8173,7 +8199,7 @@ var Pin=(function(){
         // 1) Hero row
         var heroRow=document.createElement('div'); heroRow.className='h2-hero';
         var f=h2Featured(); if(f) heroRow.appendChild(f); else heroRow.classList.add('no-feat');
-        heroRow.appendChild(h2NowCard()); wrap.appendChild(heroRow);
+        wrap.appendChild(heroRow);
         // 2) Top picks for you: what this profile watches most (genres), topped up by overall rating
         var used={}; if(S._lastHeroId) used[S._lastHeroId]=1;
         var likes={}; try{ (RecEngine.topGenres(4)||[]).forEach(function(gn){ likes[gn]=1; }); }catch(e){}

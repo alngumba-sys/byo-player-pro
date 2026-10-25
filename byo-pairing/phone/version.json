@@ -1,6 +1,6 @@
 {
-  "versionCode": 151,
-  "versionName": "3.36.39",
+  "versionCode": 152,
+  "versionName": "3.36.40",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Profiles: Manage profiles is easier to reach and to focus with the remote, Add profile / Add Kids are now tucked inside Manage profiles instead of cluttering the main picker, and you can delete a profile from its edit screen. Video player: paused screens are cleaner — the floating info card is gone, the top bar is slimmer with just a back button, title, and a favourite star, and the bottom controls get a tinted progress bar and glass-styled background."
+  "notes": "Home page: the featured area and What's on now panel are now one full-width Netflix-style hero banner with a live video preview, bottom-anchored title and details, a white Play button and glass More Info button, and a brand badge in the top-left corner."
 }
