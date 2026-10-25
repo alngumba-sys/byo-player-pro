@@ -504,13 +504,18 @@ public class MainActivity extends Activity {
                 previewPlayer.setRepeatMode(androidx.media3.common.Player.REPEAT_MODE_ALL);
                 previewPlayer.addListener(new androidx.media3.common.Player.Listener() {
                     @Override public void onPlaybackStateChanged(int st) {
-                        // STATE_IDLE after prepare() almost always means the player just failed (a bad
-                        // URL, a source it can't open, an immediate network error) -- ExoPlayer drops
-                        // back to idle WITH the error attached, but our generic "idle" report was
-                        // blindly overwriting whatever onPlayerError had just reported, so the real
-                        // reason never reached Settings > About -- it just said "idle" with nothing to
-                        // go on, even though something concrete had actually gone wrong.
                         if (st==androidx.media3.common.Player.STATE_IDLE) {
+                            // previewUrl is cleared (synchronously, before this async callback fires) by
+                            // doPreviewStop() -- i.e. by OUR OWN cleanup, whether that's the page moving
+                            // on after its 12s "no frame" timeout, swapping titles, or leaving Home. That
+                            // cleanup already set a meaningful diagnostic (e.g. "failed: no frame in
+                            // 12s"); reporting "idle" here would just stomp it back to a blank "idle"
+                            // with nothing to go on. So: nothing new to report on an intentional stop.
+                            if (previewUrl == null) return;
+                            // Otherwise this IDLE was NOT something we asked for -- the player dropped
+                            // back to idle on its own, which (after prepare()) almost always means a
+                            // fatal error (bad URL, unopenable source, network error). Surface the real
+                            // reason instead of a blank "idle".
                             androidx.media3.common.PlaybackException err = previewPlayer.getPlayerError();
                             if (err != null) { reportPreview("idle", "err=" + err.getErrorCodeName()); return; }
                         }

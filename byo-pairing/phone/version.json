@@ -1,6 +1,6 @@
 {
-  "versionCode": 159,
-  "versionName": "3.36.47",
+  "versionCode": 160,
+  "versionName": "3.36.48",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Found another bug in the diagnostic itself: when the preview player failed and dropped back to idle, the generic 'idle' status report was silently overwriting the real error reason, so Settings > About just said 'idle' instead of what actually went wrong. Now it reports the real cause when that happens, so the next check should show the actual problem instead of a blank idle."
+  "notes": "The 'idle' status was coming from our own cleanup: the preview tries to start, doesn't reach playing within 12 seconds, the page gives up and stops it - and that stop call itself was overwriting the meaningful 'failed: no frame in 12s' diagnostic with a blank 'idle' right after. Now an intentional stop no longer clobbers the real reason, so Settings > About should finally show what's actually happening."
 }
