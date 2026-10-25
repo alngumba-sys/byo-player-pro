@@ -1,6 +1,6 @@
 {
-  "versionCode": 183,
-  "versionName": "3.36.71",
+  "versionCode": 184,
+  "versionName": "3.36.72",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Posters: two different shows that share a name are no longer merged into one card (that is what put one show's title on another's poster). Guide: TV Guide and Radio Guide are now separate, with a switch at the top when your playlist has radio."
+  "notes": "Channels that are not sending video are now detected before you pick them: the app quietly checks channels as they scroll into view and remembers any that failed to play. Those are hidden from Sports and shown dimmed at the bottom of Live as 'Not available right now', re-checked every 30 minutes."
 }

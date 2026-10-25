@@ -5767,14 +5767,14 @@ var Pin=(function(){
     function upcomingSportEvents(){ return collegeOrder(allSportEvents().filter(function(e){ return evStatus(e)==='upcoming'; }).sort(function(a,b){ return a.start-b.start; })); }
     // Cached + capped: scanning 28k channels on every Sports render froze the TV.
     var _sportsChans=null, _sportsChansSig='';
-    function sportsChansSig(){ return (S.live?S.live.length:0)+'|'+Store.activeId+'|'+(_sportsIndex?_sportsIndex.built:0)+'|'+Math.floor(Date.now()/600000); }
+    function sportsChansSig(){ return (S.live?S.live.length:0)+'|'+Store.activeId+'|'+(_sportsIndex?_sportsIndex.built:0)+'|'+Math.floor(Date.now()/600000)+'|'+ChanHealth.ver(); }
     function sportsChannelsList(){ var sig=sportsChansSig();
         if(_sportsChans && _sportsChansSig===sig) return _sportsChans;
         // Scan the whole list (classification is memoised per channel via _spStatic, so this O(n)
         // name+genre check runs once and is cached), collecting up to CAP sports channels. Scanning
         // all of them matters: on a big playlist the sports channels can sit anywhere in the list.
         var out=[], list=profFilter(S.live), CAP=1500;
-        for(var i=0;i<list.length && out.length<CAP;i++){ if(isSportsChannel(list[i])&&!chanEventDead(list[i])) out.push(list[i]); }
+        for(var i=0;i<list.length && out.length<CAP;i++){ if(isSportsChannel(list[i])&&!chanEventDead(list[i])&&!ChanHealth.isBad(list[i])) out.push(list[i]); }
         _sportsChans=out; _sportsChansSig=sig; return out; }
     function sportsPresent(){ return (S.live&&S.live.length>0) || allSportEvents().length>0; }
     // The full channel list for the Sports hub's "All" view: EVERY channel, with detected sports
@@ -5782,7 +5782,7 @@ var Pin=(function(){
     var _sportsAllChans=null, _sportsAllSig='';
     function allChannelsSportsFirst(){ var sig=sportsChansSig(); if(_sportsAllChans && _sportsAllSig===sig) return _sportsAllChans;
         var list=profFilter(S.live), sporty=[], rest=[];
-        for(var i=0;i<list.length;i++){ if(chanEventDead(list[i])) continue; if(isSportsChannel(list[i])) sporty.push(list[i]); else rest.push(list[i]); }
+        for(var i=0;i<list.length;i++){ if(chanEventDead(list[i])||ChanHealth.isBad(list[i])) continue; if(isSportsChannel(list[i])) sporty.push(list[i]); else rest.push(list[i]); }
         _sportsAllChans=sporty.concat(rest); _sportsAllSig=sig; return _sportsAllChans; }
     // Sports channels narrowed to a specific sport (by channel name classification + bound live events).
     // Used so the Sports filters (Tennis / Basketball / …) also surface matching CHANNELS, not only events.
@@ -7271,7 +7271,7 @@ var Pin=(function(){
         var sub=_t&&_t.comp?'<div class="spc-comp">'+esc(_t.comp)+'</div>':'';
         card.innerHTML='<div class="spc-top"><div class="spc-logo'+(c.logo?'':' spc-logo-ph')+'">'+logo+'</div><div><div class="spc-name">'+esc(nm)+'</div>'+sub+liveTag+'</div></div>'+
             (e?'<div class="spc-now">'+esc(e.now)+'</div><div class="spc-next">Next: '+esc(e.next)+' · '+esc(e.nextTime)+'</div>':'');
-        card.title=c.name; if(_t) card.classList.add('ev');
+        card.title=c.name; if(_t) card.classList.add('ev'); try{ ChanHealth.observe(card,c); }catch(_e){}
         card.addEventListener('click',function(){ playSportChannel(c); }); return card;
     }
     function tlItem(e){ var st=evStatus(e); var it=document.createElement('div'); it.className='tl-item'+(st==='live'?' tl-live':''); it.setAttribute('data-focusable','true'); it.tabIndex=0;
@@ -8774,6 +8774,7 @@ var Pin=(function(){
                 metaRow+bar+
             '</div>'+qualHtml;
         if(pr.cur) card.setAttribute('data-epg','1'); else { try{ LiveEpg.observe(card,c); }catch(_e){} }
+        try{ ChanHealth.observe(card,c); }catch(_e){}
         card.addEventListener('click',function(){ guardGenre(c.genre,function(){ openLive(c); }); }); return card; }
     // When TMDB enrichment reveals new genres for Movies/Series, refresh that view's genre chips
     // (debounced) so the newly-available genres become selectable without a manual reload.
@@ -8846,6 +8847,7 @@ var Pin=(function(){
         if(!q){ base=base.filter(function(c){ return !chanEventDead(c); }); }   // finished event channels send no video
         var f=base.filter(function(c){ return (q ? true : (wantRadio||S.liveGenre==='All'||c.genre===S.liveGenre)) && (!q||c.name.toLowerCase().indexOf(q)>-1); });
         var sorted=sortList(f,S.liveSort,S.liveDir); S._liveSmart=false;
+        if(!q&&S.liveSort==='added'){ var okL=[], offL=[]; for(var _i=0;_i<sorted.length;_i++){ (ChanHealth.isBad(sorted[_i])?offL:okL).push(sorted[_i]); } if(offL.length) sorted=okL.concat(offL); }
         if(!q&&S.liveSort==='added'&&!wantRadio){ var sm=null; try{ sm=smartEventOrder(sorted, S.liveGenre==='All'); }catch(e){} if(sm){ sorted=sm; S._liveSmart=true; } }
         // (g) On the default ordering, float channels in the app's language to the top (stable), so an
         // English user sees English channels first without disturbing an explicit A–Z / other sort.
@@ -10049,6 +10051,64 @@ var Pin=(function(){
         var st=(now<t-EV_LEAD)?'upcoming':(now>end?'ended':'live');
         c._evInfo={ start:t, end:end, status:st }; return c._evInfo; }
     function chanEventDead(c){ var ev=chanEventInfo(c); return !!(ev&&ev.status==='ended'); }
+    /* ======== Channel health: never offer a channel that is not sending video ========
+       Two sources of truth, kept per stream URL on this TV:
+         1. Playback: a channel opened and no video arrived before the user gave up (web or native player).
+         2. A quiet probe of the stream itself for channels that come into view (one tiny request: HTTP 4xx/5xx,
+            an empty playlist, or no data within a few seconds = not sending). Never while something is playing.
+       A channel marked off is hidden from Sports and sinks to the bottom of Live, dimmed, with "Not available
+       right now"; pressing it still tries (and re-checks). Marks expire after 30 minutes; "ok" after 2 hours. */
+    var ChanHealth=(function(){
+        var LS='byo_chan_health_v1', H={}, BAD_TTL=30*60000, OK_TTL=2*3600000, MAXN=2500, saveT=null, q=[], active=0, MAXA=3, inflight={};
+        try{ H=JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(e){ H={}; }
+        function save(){ if(saveT) return; saveT=setTimeout(function(){ saveT=null; try{ var ks=Object.keys(H); if(ks.length>MAXN){ ks.sort(function(a,b){ return H[a].at-H[b].at; }).slice(0,ks.length-MAXN).forEach(function(k){ delete H[k]; }); } localStorage.setItem(LS,JSON.stringify(H)); }catch(e){} },1500); }
+        function key(c){ var u=c&&c.url; if(!u) return ''; var h=0; u=String(u); for(var i=0;i<u.length;i++){ h=((h<<5)-h)+u.charCodeAt(i); h|=0; } return 'u'+(h>>>0).toString(36); }
+        function state(c){ var k=key(c); if(!k) return null; var e=H[k]; if(!e) return null; var age=Date.now()-e.at; if(e.ok&&age<OK_TTL) return 'ok'; if(!e.ok&&age<BAD_TTL) return 'bad'; return null; }
+        function why(c){ var e=H[key(c)]; return e?e.why||'':''; }
+        var ver=0;
+        function mark(c, ok, why){ var k=key(c); if(!k) return; var was=state(c); H[k]={ ok:!!ok, at:Date.now(), why:why||'' }; if(was!==state(c)) ver++; save(); try{ paintAll(c, ok); }catch(e){} }
+        function isBad(c){ return state(c)==='bad'; }
+        // ---- probe ----
+        function playing(){ try{ return $('view-player').classList.contains('active-view')||$('view-mvplay').classList.contains('active-view')||!!S._inNative; }catch(e){ return false; } }
+        function probe(c, cb){ var k=key(c); if(!k){ cb&&cb(null); return; } if(inflight[k]){ inflight[k].push(cb); return; } inflight[k]=[cb];
+            q.push(c); pump(); }
+        function finish(c, res, why){ var k=key(c); var cbs=inflight[k]||[]; delete inflight[k]; active--; if(res!==null) mark(c, res, why); cbs.forEach(function(f){ try{ f&&f(res); }catch(e){} }); pump(); }
+        function pump(){ if(playing()){ setTimeout(pump, 4000); return; } while(active<MAXA&&q.length){ var c=q.shift(); if(state(c)){ var cbs=inflight[key(c)]||[]; delete inflight[key(c)]; cbs.forEach(function(f){ try{ f&&f(state(c)==='ok'); }catch(e){} }); continue; } active++; run(c); } }
+        function run(c){ var url=String(c.url||''); if(!/^https?:/i.test(url)){ finish(c, null, ''); return; }
+            try{ if(window.__directLink) url=window.__directLink(url)||url; }catch(e){}
+            var x=new XMLHttpRequest(), done=false, gotHead=false, t0=Date.now(), isM3u=/\.m3u8(\?|$)/i.test(url)||/m3u8/i.test(url);
+            function end(res, why){ if(done) return; done=true; clearTimeout(tm); clearTimeout(tb); try{ x.abort(); }catch(e){} finish(c, res, why); }
+            var tm=setTimeout(function(){ end(gotHead?false:null, gotHead?'no data within 8 s':''); }, 8000);   // no headers at all: unknown (slow network), not "off"
+            var tb=null;
+            try{ x.open('GET', url, true); try{ x.setRequestHeader('Range','bytes=0-65535'); }catch(e){} }catch(e){ end(null,''); return; }
+            x.onreadystatechange=function(){ if(done) return;
+                if(x.readyState>=2&&!gotHead){ gotHead=true; var st=x.status;
+                    if(st>=400){ end(false, 'HTTP '+st); return; }
+                    if(st===0){ end(null, ''); return; }   // blocked by CORS on a web browser: no verdict
+                    if(!isM3u){ clearTimeout(tm); tb=setTimeout(function(){ end(false, 'no data within 8 s'); }, 8000); } }
+                if(x.readyState===3&&gotHead&&!isM3u){ var n=0; try{ n=(x.responseText||'').length; }catch(e){} if(n>0) end(true, ''); }
+                if(x.readyState===4){ var txt=''; try{ txt=x.responseText||''; }catch(e){}
+                    if(isM3u){ if(x.status>=200&&x.status<300){ var okm=/#EXTINF|#EXT-X-STREAM-INF/i.test(txt); end(okm, okm?'':'empty playlist'); } else end(x.status>=400?false:null, x.status>=400?('HTTP '+x.status):''); }
+                    else end(txt.length>0, txt.length>0?'':'no data'); } };
+            x.onerror=function(){ end(null, ''); }; x.ontimeout=function(){ end(null,''); };
+            try{ x.send(); }catch(e){ end(null,''); } }
+        // ---- cards: probe when seen, paint the verdict ----
+        var io=null, seen={};
+        function paint(card, c, ok){ if(!card) return; var bad=(ok===false); card.classList.toggle('ch-off', bad);
+            var chip=card.querySelector('.ch-off-chip'); if(bad&&!chip){ chip=document.createElement('span'); chip.className='ch-off-chip'; chip.textContent='Not available right now'; (card.querySelector('.lc-meta')||card.querySelector('.spc-top > div')||card).appendChild(chip); }
+            else if(!bad&&chip) chip.parentNode.removeChild(chip);
+            if(bad&&card.classList.contains('spchan-card')&&!card.classList.contains('focused')) card.classList.add('ch-hide'); }
+        function paintAll(c, ok){ var k=key(c); document.querySelectorAll('[data-ch="'+c.id+'"]').forEach(function(el){ paint(el, c, ok); }); }
+        function observe(card, c){ if(!card||!c||!c.url) return; card.setAttribute('data-ch', c.id);
+            var st=state(c); if(st){ paint(card, c, st==='ok'); if(st==='bad') return; if(st==='ok') return; }
+            if(!('IntersectionObserver' in window)) return;
+            if(!io) io=new IntersectionObserver(function(es){ es.forEach(function(en){ if(!en.isIntersecting) return; io.unobserve(en.target); var cc=en.target.__ch; if(cc&&!state(cc)) probe(cc, function(ok){ if(ok!==null) paint(en.target, cc, ok); }); }); }, { rootMargin:'120px' });
+            card.__ch=c; io.observe(card); }
+        // ---- playback verdicts ----
+        function noVideo(c, how){ if(!c) return; mark(c, false, how||'no video when played'); }
+        function played(c){ if(!c) return; mark(c, true, ''); }
+        return { state:state, isBad:isBad, why:why, probe:probe, observe:observe, noVideo:noVideo, played:played, mark:mark, ver:function(){ return ver; }, _all:function(){ return H; } };
+    })();
     /* ---- Event channels, read as matches. "Sky Sports + 05: Premier League: Arsenal v Chelsea @ 25 Oct 5:30 PM London"
        becomes match "Arsenal v Chelsea", competition "Premier League", channel label "Sky Sports + 05". ---- */
     function chanEventTitle(c){ if(!c||!c.name) return null; if(c._evT!==undefined&&c._evTName===c.name) return c._evT; c._evTName=c.name;
@@ -10094,7 +10154,7 @@ var Pin=(function(){
         if(!has){ try{ Store.addReminder({channelId:c.id,channelName:c.name,title:title,start:ev.start,end:ev.end,url:c.url,order:c.order||0,fired:false}); }catch(e){} }
         setToast('Starts '+fmtEvTime(ev.start)+'. '+(has?'You have a reminder set':'Reminder set: you will be told when it starts')+'.'); }
     // Test hook (only when localStorage.byo_debug is '1'): lets an automated check reach module-scoped functions.
-    try{ if(localStorage.getItem('byo_debug')==='1'){ window.__byoDbg={ S:S, Store:Store, chanEventInfo:chanEventInfo, chanEventTitle:chanEventTitle, eventPopularity:eventPopularity, liveCard:liveCard, playLiveByChannel:function(c){ return playLiveByChannel(c); }, computeLiveView:function(){ return computeLiveView(); }, toasts:[] };
+    try{ if(localStorage.getItem('byo_debug')==='1'){ window.__byoDbg={ S:S, Store:Store, ChanHealth:ChanHealth, chanEventInfo:chanEventInfo, chanEventTitle:chanEventTitle, eventPopularity:eventPopularity, liveCard:liveCard, playLiveByChannel:function(c){ return playLiveByChannel(c); }, computeLiveView:function(){ return computeLiveView(); }, toasts:[] };
         var _st0=setToast; setToast=function(m,x){ try{ window.__byoDbg.toasts.push(String(m)); }catch(e){} return _st0(m,x); }; } }catch(e){}
     function playLiveByChannel(c){ var _ev=chanEventInfo(c); if(_ev&&_ev.status!=='live'){ eventNotLive(c,_ev); return; }
         var idx=computeLiveView().indexOf(c); if(idx<0){ S.liveView=[c]; idx=0; } S.currentLiveIndex=idx; S.playerFrom='live';
@@ -10107,7 +10167,7 @@ var Pin=(function(){
         b.classList.toggle('hidden',!S.playFav); paintPlayerFav(); }
     function paintPlayerFav(){ var b=$('tb-fav'); if(!b||!S.playFav) return; var on=Store.isFav(S.playFav.kind,S.playFav.x.id);
         b.classList.toggle('fav-on',on); b.querySelector('use').setAttribute('href',on?'#i-star':'#i-star-o'); $('tb-fav-lbl').textContent=on?'In favourites':'Favourite'; }
-    function playContent(url,title,sub,opts){ opts=opts||{}; S.playerExiting=false; S.playerFrom=opts.from||'live'; S.playOpts=opts; try{ playerFavSetup(opts); }catch(_f){} showView('player');
+    function playContent(url,title,sub,opts){ opts=opts||{}; S.playerExiting=false; S.playerFrom=opts.from||'live'; S.playOpts=opts; S._liveStartAt=Date.now(); S._liveGotVideo=false; try{ playerFavSetup(opts); }catch(_f){} showView('player');
         // ---- Emby/Jellyfin: negotiate the best playback mode BEFORE touching the player ----
         // This is what makes it "just play like Netflix": we ask the server whether the file can be
         // DirectPlayed / remuxed (instant, no transcode) and only transcode when truly needed. We do
@@ -10437,6 +10497,8 @@ var Pin=(function(){
         var label=ASPECTS.filter(function(a){return a.id===id;})[0]; $('tb-aspect-val').textContent=label?label.label:'Fit'; }
     function exitPlayer(){
         if(trickActive()) trickReset(false);   // drop any pending skip before teardown
+        // Live channel opened, no video ever arrived and the user gave up: remember it is not sending.
+        try{ if(isLiveContent()&&!S._liveGotVideo&&S.playOpts&&S.playOpts.channelId&&Date.now()-(S._liveStartAt||0)>8000){ ChanHealth.noVideo(chanById(S.playOpts.channelId), 'no video when played'); } }catch(_h){}
         // Record how much was actually watched (completion is a strong recommendation signal).
         try{ var pct; if(isLiveContent()){ pct=Math.min(1,(Date.now()-(S.recPlayStart||Date.now()))/1800000); } else { pct=(Player.v&&Player.v.duration)?(Player.v.currentTime/Player.v.duration):0; } RecEngine.updateLastPlay(pct); }catch(e){}
         // Teardown order matters on the TV: stop Smart Recovery FIRST so no pending reconnect/
@@ -11892,6 +11954,7 @@ var Pin=(function(){
     function init(){ Nav.init(); wire();
         Player.init({ onBuffering:function(){ if(S.playerExiting) return; $('player-spinner').classList.remove('hidden'); $('player-state').innerHTML='Buffering...'; },
             onPlaying:function(){ if(S.playerExiting) return; $('player-spinner').classList.add('hidden');
+                try{ if(!S._liveGotVideo&&isLiveContent()&&S.playOpts&&S.playOpts.channelId){ S._liveGotVideo=true; ChanHealth.played(chanById(S.playOpts.channelId)); } }catch(_h){}
                 // Playback is alive → clear any stale "Stream unavailable" overlay and pending re-check.
                 if(!$('player-msg').classList.contains('hidden')) hidePlayerMsg(); if(S._errRecheckT){ clearTimeout(S._errRecheckT); S._errRecheckT=null; }
                 updatePlayIcon(); $('player-state').innerHTML=isLiveContent()?'<i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent-2)"></i> Live':'Playing'; Recovery.onPlaying(); },

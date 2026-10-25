@@ -1161,7 +1161,7 @@ public class PlayerActivity extends Activity {
         r.putExtra("status", status);
         long pos = 0, dur = 0;
         if (player != null) { pos = Math.max(0, player.getCurrentPosition()); long d = player.getDuration(); dur = (d == C.TIME_UNSET || live) ? 0 : d; }
-        r.putExtra("fav", favChanged ? (favOn ? "1" : "0") : ""); r.putExtra("posMs", pos); r.putExtra("durMs", dur); r.putExtra("chIndex", chIndex); r.putExtra("epIndex", epAdvanced); r.putExtra("err", lastErr); r.putExtra("pick", pickIdx);
+        r.putExtra("played", everPlayed); r.putExtra("fav", favChanged ? (favOn ? "1" : "0") : ""); r.putExtra("posMs", pos); r.putExtra("durMs", dur); r.putExtra("chIndex", chIndex); r.putExtra("epIndex", epAdvanced); r.putExtra("err", lastErr); r.putExtra("pick", pickIdx);
         // Movies/episodes: grab the frame we stopped on → "Continue watching" shows exactly where you are.
         if (!live && everPlayed && Build.VERSION.SDK_INT >= 24 && view != null && view.getVideoSurfaceView() instanceof SurfaceView
                 && player != null && player.getVideoSize().width > 0) {

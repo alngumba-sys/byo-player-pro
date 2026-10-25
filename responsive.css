@@ -3434,3 +3434,8 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 /* TV Guide / Radio Guide switch */
 .guide-kind{ display:inline-flex; gap:8px; margin-left:14px; }
 .guide-kind .sort-btn.seg-on{ background:var(--accent); color:#04101f; border-color:var(--accent); }
+/* Channels known not to be sending video: dimmed and labelled in Live, hidden in Sports */
+.live-card.ch-off{ opacity:.55; }
+.live-card.ch-off .lc-logo, .live-card.ch-off .lc-logo-ph{ filter:grayscale(1); }
+.ch-off-chip{ display:inline-block; font-size:var(--rp-fs-micro,12px); color:#ffb4bb; border:1px solid rgba(255,100,115,.5); border-radius:999px; padding:2px 9px; margin-left:6px; white-space:nowrap; }
+.spchan-card.ch-hide{ display:none !important; }

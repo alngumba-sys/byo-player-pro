@@ -782,7 +782,8 @@ public class MainActivity extends Activity {
         String th = (thumb != null && thumb.matches("^data:image/jpeg;base64,[A-Za-z0-9+/=]+$")) ? ("'" + thumb + "'") : "null";
         String fav = data != null && data.getStringExtra("fav") != null ? data.getStringExtra("fav").replaceAll("[^01]", "") : "";
         int pick = data != null ? data.getIntExtra("pick", -1) : -1;
-        String js = "window.__byoNativeResult&&window.__byoNativeResult('" + status.replaceAll("[^A-Za-z]", "") + "'," + pos + "," + dur + "," + ch + "," + th + "," + ep + ",'" + err + "','" + fav + "'," + pick + ")";
+        boolean played = data != null && data.getBooleanExtra("played", true);
+        String js = "window.__byoNativePlayed=" + (played ? "true" : "false") + ";window.__byoNativeResult&&window.__byoNativeResult('" + status.replaceAll("[^A-Za-z]", "") + "'," + pos + "," + dur + "," + ch + "," + th + "," + ep + ",'" + err + "','" + fav + "'," + pick + ")";
         if (webView == null || rebuildPending) pendingResultJs = js;
         else webView.evaluateJavascript(js, null);
     }

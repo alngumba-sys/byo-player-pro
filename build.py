@@ -332,7 +332,7 @@ s=s.replace(_pc, """    function playContent(url,title,sub,opts){ opts=opts||{};
                         .filter(function(q){ return q.bitrate<__ob; }).sort(function(a,b){ return b.bitrate-a.bitrate; });
                     var __seen={}; __alts=__alts.filter(function(q){ if(__seen[q.label]) return false; __seen[q.label]=1; return true; });
                     if(__alts.length) P.qualities=__alts; } }catch(_q){}
-                S._inNative=true;
+                S._inNative=true; window.__byoNativeStartAt=Date.now(); window.__byoNativePlayed=undefined;
                 window.__byoNativeCtx={url:url,title:title,sub:sub,opts:opts,chIds:chIds,eps:eps,fav:__favCtx};
                 try{ localStorage.setItem('byo_native_ctx', JSON.stringify(window.__byoNativeCtx)); }catch(e){}
                 try{ Store.addHistory({ url:url, title:title, sub:sub||'', type:opts.type||'live', poster:opts.poster||'', genre:opts.genre||'', key:opts.key||'', channelId:opts.channelId||'', ts:Date.now() }); }catch(e){}
@@ -342,7 +342,7 @@ s=s.replace(_pc, """    function playContent(url,title,sub,opts){ opts=opts||{};
             }catch(e){}
         }
         S.playerExiting=false;""")
-native_js = r"""<script id="rp-native">window.__byoNativeResult=function(status,posMs,durMs,chIdx,thumb,epIdx,nerr,fav,pick){ try{ var __pk=window.__byoEpPick; window.__byoEpPick=null; if(status==='pickEp') status='ok'; if(status==='paused'){ try{ Support.checkin(); }catch(_p){} status='ok'; } window.__byoNativeErr=(status==='error'&&nerr)?String(nerr):'';
+native_js = r"""<script id="rp-native">window.__byoNativeResult=function(status,posMs,durMs,chIdx,thumb,epIdx,nerr,fav,pick){ try{ var __pk=window.__byoEpPick; window.__byoEpPick=null; try{ var _nc=window.__byoNativeCtx; var _lv=_nc&&_nc.opts&&_nc.opts.type==='live'&&_nc.opts.channelId; if(_lv){ var _chn=(typeof chanById==='function')?chanById(_nc.opts.channelId):null; if(window.__byoNativePlayed===true) ChanHealth.played(_chn); else if(window.__byoNativePlayed===false&&status!=='error'&&Date.now()-(window.__byoNativeStartAt||0)>8000) ChanHealth.noVideo(_chn,'no video when played'); } }catch(_hh){} if(status==='pickEp') status='ok'; if(status==='paused'){ try{ Support.checkin(); }catch(_p){} status='ok'; } window.__byoNativeErr=(status==='error'&&nerr)?String(nerr):'';
  var c=window.__byoNativeCtx; if(!c){ try{ c=JSON.parse(localStorage.getItem('byo_native_ctx')||'null'); }catch(e){} } if(!c) return;
  try{ if((fav==='1'||fav==='0')&&c.fav){ var _now=Store.isFav(c.fav.kind,c.fav.id); if((fav==='1')!==_now) Store.toggleFav(c.fav.kind,c.fav.id,c.fav.obj); } }catch(_fv){}
  // Auto-played on to later episodes: the earlier ones were watched to the end; the last one is where we stopped.
