@@ -3380,7 +3380,8 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 .live-card.ev{ height:auto !important; }
 
 /* ===== Sports: the five league cards at the top ===== */
-#view-sports{ background:linear-gradient(180deg,#082F2D 0%,#062B29 45%,#031D20 100%); }
+#view-sports{ background:linear-gradient(180deg,#0B3A37 0%,#062B29 40%,#031D20 100%) !important; }
+#view-sports .sports-body, #view-sports .view-head, #view-sports .sports-sub{ background:transparent !important; }
 .lg-row{ display:flex; gap:22px; padding:8px 0 22px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; scroll-snap-type:x proximity; }
 .lg-row::-webkit-scrollbar{ display:none; }
 .lg-card{ position:relative; flex:1 1 0; min-width:272px; height:clamp(300px, 23.5vw, 430px); box-sizing:border-box; border-radius:18px; border:2px solid var(--lb); padding:clamp(18px,1.6vw,30px);
@@ -3412,3 +3413,11 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
   .lg-title{ font-size:24px; } .lg-tag{ font-size:15px; }
 }
 @media (prefers-reduced-motion: reduce){ .lg-card{ transition:none; } .lg-card:hover{ transform:none; } }
+
+/* Other competitions in play, as chips under the league cards */
+.ssn-chips{ display:flex; flex-wrap:wrap; gap:10px 12px; padding:4px 0 8px; }
+.ssn-chip{ display:inline-flex; align-items:center; gap:10px; height:clamp(40px,2.6vw,52px); padding:0 16px 0 6px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#fff; font:inherit; font-weight:600; font-size:clamp(13px,.95vw,18px); cursor:pointer; outline:none; transition:background .15s, border-color .15s; }
+.ssn-chip:hover, .ssn-chip.focused{ background:rgba(255,255,255,.14); border-color:var(--accent,#22d3ee); box-shadow:0 0 0 3px rgba(34,211,238,.35); }
+.ssn-chip-logo{ width:clamp(30px,2vw,40px); height:clamp(30px,2vw,40px); border-radius:50%; background:#fff; display:inline-flex; align-items:center; justify-content:center; padding:4px; box-sizing:border-box; color:#0b1020; font-size:11px; font-weight:900; }
+.ssn-chip-logo img{ width:100%; height:100%; object-fit:contain; }
+.ssn-chip-live{ width:9px; height:9px; border-radius:50%; background:var(--danger,#ff4d5e); box-shadow:0 0 8px var(--danger,#ff4d5e); }

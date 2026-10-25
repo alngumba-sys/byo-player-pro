@@ -7486,6 +7486,12 @@ var Pin=(function(){
         var row=document.createElement('div'); row.className='lg-row'; var n=0;
         LEAGUE_CARDS.forEach(function(L){ var c=leagueCard(L); if(c){ row.appendChild(c); n++; } });
         return n?row:null; }
+    function seasonsChips(sport){ var list=seasonsInPlay(sport).filter(function(sn){ return !LEAGUE_CARDS.some(function(L){ return L.k===sn.k; }); }); if(!list.length) return null;
+        var r=rowEl(icon('i-flame'),'More competitions in season','sports-row-season'); var strip=document.createElement('div'); strip.className='ssn-chips';
+        list.slice(0,14).forEach(function(sn){ var st=seasonStatus(sn), logo=seasonLogo(sn); var ch=document.createElement('button'); ch.className='ssn-chip'+(st.cls==='live'?' live':''); ch.setAttribute('data-focusable','true'); ch.tabIndex=0; ch.style.setProperty('--c', sn.c[0]);
+            ch.innerHTML='<span class="ssn-chip-logo">'+(logo?'<img src="'+esc(logo)+'" alt=""/>':'<b>'+esc(sn.s)+'</b>')+'</span><span class="ssn-chip-name">'+esc(sn.n)+'</span>'+(st.cls==='live'?'<i class="ssn-chip-live"></i>':'');
+            ch.title=st.txt; ch.addEventListener('click',function(){ sportsSeason=sn.k; renderSportsBody(); setTimeout(function(){ var f=$('sports-body').querySelector('.ls-match, .spchan-card, .ssn-back'); if(f) Nav.setFocus(f); },30); }); strip.appendChild(ch); });
+        r.appendChild(strip); return r; }
     function seasonsRow(sport){ var list=seasonsInPlay(sport).filter(function(sn){ return !LEAGUE_CARDS.some(function(L){ return L.k===sn.k; }); }); if(!list.length) return null;
         var r=rowEl(icon('i-flame'),'In season now','sports-row-season'); var strip=document.createElement('div'); strip.className='ssn-strip';
         list.slice(0,10).forEach(function(sn){ strip.appendChild(seasonCard(sn)); }); r.appendChild(strip); return r; }
@@ -7538,7 +7544,8 @@ var Pin=(function(){
         // Seasons in play first: the competitions running right now (Premier League etc.) stand out
         // from the hundreds of generic channels below them.
         var lrow=leagueCardsRow(sportsFilter); if(lrow) body.insertBefore(lrow, body.firstChild);   // the five league cards come first, above the hero
-        var srow=seasonsRow(sportsFilter); if(srow) body.appendChild(srow);
+        // With the big cards on show, the other competitions in play are a compact chip strip (no second row of cards).
+        var srow=lrow?seasonsChips(sportsFilter):seasonsRow(sportsFilter); if(srow) body.appendChild(srow);
         // Multi-View entry (only when enough compatible live streams exist)
         if(mvAvailable()){ body.appendChild(mvEntryCard()); }
         // Your teams playing

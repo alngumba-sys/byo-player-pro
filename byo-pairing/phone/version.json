@@ -1,6 +1,6 @@
 {
-  "versionCode": 179,
-  "versionName": "3.36.67",
+  "versionCode": 180,
+  "versionName": "3.36.68",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Sports opens on five big league cards: Premier League, Champions League, LaLiga, Serie A and Bundesliga, each in its own colours with the official badge, season, team count and status. Press one to open that competition."
+  "notes": "Sports: deep teal background, and the other competitions in season sit under the five league cards as compact chips instead of a second row of cards."
 }
