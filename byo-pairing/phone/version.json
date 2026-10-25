@@ -1,6 +1,6 @@
 {
-  "versionCode": 163,
-  "versionName": "3.36.51",
+  "versionCode": 164,
+  "versionName": "3.36.52",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Featured preview fixes from the event log: the hidden video surface is now kept drawn (just transparent) so the decoder has somewhere to render, the 90-second intro skip now happens after the first frame instead of forcing a re-buffer before it, the preview gets 30 seconds to start instead of 12, it starts as soon as the splash screen clears instead of up to a minute later, and the PREVIEW badge only shows once real video is playing."
+  "notes": "Featured video now fills the whole banner, Netflix-style, with the title and Play button over it instead of a black strip underneath. The banner also has softly rounded corners and a thin semi-transparent white border."
 }

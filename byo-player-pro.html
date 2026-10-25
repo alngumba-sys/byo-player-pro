@@ -477,10 +477,11 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
 /* Android native-preview: the native video sits ON TOP, filling the hero's top 70% (a trailer band).
    The title/buttons move into the bottom 30% on a solid panel so they're never hidden by the video. */
 .hero.native-preview .hero-video { display:none; }
-.hero.native-preview::before, .hero.native-preview::after { background:linear-gradient(0deg, rgba(6,16,30,1) 0%, rgba(6,16,30,1) 26%, transparent 42%) !important; }
-.hero.native-preview { align-items:flex-end; padding:0 56px 26px; }
+/* (old single-title hero only -- the Featured banner .h2-feat has its own layout) */
+.hero:not(.h2-feat).native-preview::before, .hero:not(.h2-feat).native-preview::after { background:linear-gradient(0deg, rgba(6,16,30,1) 0%, rgba(6,16,30,1) 26%, transparent 42%) !important; }
+.hero:not(.h2-feat).native-preview { align-items:flex-end; padding:0 56px 26px; }
 .hero.native-preview .hero-inner { position:relative; z-index:4; }
-.hero.native-preview .hero-livedot { display:none; }
+.hero:not(.h2-feat).native-preview .hero-livedot { display:none; }
 .hero.native-preview .hero-sound { bottom:26px; right:24px; z-index:6; }
 .hero-tag { display:inline-flex; align-items:center; gap:9px; font-size:19px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:16px; }
 .hero-title { font-size:64px; font-weight:800; margin:0 0 14px; line-height:1.05; }
@@ -7845,23 +7846,50 @@ var Pin=(function(){
     // showed only a still. There we drive a NATIVE ExoPlayer preview surface (via the ByoAndroid
     // bridge) positioned over the hero. Browser and Tizen keep the in-page <video> path below.
     function androidPreview(){ try{ return (window.ByoAndroid && ByoAndroid.previewStart) ? ByoAndroid : null; }catch(e){ return null; } }
+    // Newer Android builds put the preview video BEHIND the page and the page opens a transparent
+    // window over the hero (heroHole), so the video fills the whole banner like Netflix with the
+    // title/Play drawn over it. Older builds drew it on top, so it could only use the top band.
+    function heroHoleSupported(){ var A=androidPreview(); return !!(A&&A.previewHole); }
     function heroRectCss(){ var hero=document.querySelector('#home-body .hero'); if(!hero) return null;
         var r=hero.getBoundingClientRect(); if(!r.width||!r.height) return null;
         // Send the hero rectangle as FRACTIONS of the viewport (0..1). The native side multiplies by the
-        // real WebView pixel size, so there is no CSS-px/device-px/scale guessing to get wrong. The
-        // native video sits ON TOP and fills the hero's TOP band (the title/buttons live in the lower
-        // band on the page background, so they are never hidden behind the video).
+        // real WebView pixel size, so there is no CSS-px/device-px/scale guessing to get wrong.
         var vw=window.innerWidth||document.documentElement.clientWidth||1920;
         var vh=window.innerHeight||document.documentElement.clientHeight||1080;
-        var videoH=r.height*0.70;   // top 70% is the trailer; bottom 30% holds the text
-        // The native video is drawn ABOVE the page, so hide it (zero rect) whenever it would cover
-        // something: the hero scrolled up under the menu bar, or any popup/modal open over Home.
+        var hole=heroHoleSupported();
+        var videoH=hole?r.height:r.height*0.70;
+        // Covered / scrolled away: the hero scrolled up under the menu bar, or a popup open over Home.
         var tb=document.querySelector('.topbar'); var tbB=tb?tb.getBoundingClientRect().bottom:0;
-        var blocked = (r.top < tbB-2) || (r.top+videoH > vh) ||
+        var blocked = (r.top < tbB-2) || (!hole && r.top+videoH > vh) ||
             !!document.querySelector('.modal-back:not(.hidden), #upd-modal') ||
             !$('profile-picker').classList.contains('hidden');
-        if(blocked) return { x:0, y:0, w:0, h:0, frac:true, hidden:true };
-        return { x:r.left/vw, y:r.top/vh, w:r.width/vw, h:videoH/vh, frac:true }; }
+        // Behind-the-page mode: always send the real rect (the page hides the video simply by closing
+        // its transparent window); on-top mode: a zero rect hides it.
+        if(blocked && !hole) return { x:0, y:0, w:0, h:0, frac:true, hidden:true };
+        return { x:r.left/vw, y:r.top/vh, w:r.width/vw, h:videoH/vh, frac:true, blocked:blocked }; }
+    // Open/close the transparent window over the hero. Every element from the hero up to <html> has
+    // its background cleared (inline !important, restored on close); the native side paints the page's
+    // own background gradient behind the WebView, so only the hero area actually changes.
+    function heroHole(on){
+        if(!!S._heroHoleOn===!!on) return;
+        var A=androidPreview(); if(!A||!A.previewHole) return;
+        if(on){ var hero=document.querySelector('#home-body .hero'); if(!hero) return;
+            var cols=[]; try{ var src=$('stage')||document.body; var bi=getComputedStyle(src).backgroundImage||'';
+                (bi.match(/rgba?\([^)]*\)/g)||[]).forEach(function(c){ var n=c.match(/[\d.]+/g); if(n&&n.length>=3) cols.push(n[0]+','+n[1]+','+n[2]); });
+                if(!cols.length){ var bc=(getComputedStyle(document.body).backgroundColor||'').match(/[\d.]+/g); if(bc) cols.push(bc[0]+','+bc[1]+','+bc[2]); } }catch(e){}
+            try{ var rad=parseFloat(getComputedStyle(hero).borderTopLeftRadius)||0; A.previewShape && A.previewShape(rad/(window.innerWidth||1920)); }catch(e){}
+            try{ A.previewHole(true, cols.join(';')); }catch(e){ return; }
+            S._heroHoleOn=true;
+            // One frame later, so the native background is already painted when the page goes clear.
+            setTimeout(function(){ if(!S._heroHoleOn) return; var h=document.querySelector('#home-body .hero'); if(!h) return;
+                S._heroHoleSaved=[];
+                for(var n=h; n; n=n.parentElement){ S._heroHoleSaved.push([n, n.style.getPropertyValue('background'), n.style.getPropertyPriority('background')]); n.style.setProperty('background','transparent','important'); }
+                h.classList.add('hero-hole'); },60);
+        } else {
+            S._heroHoleOn=false;
+            (S._heroHoleSaved||[]).forEach(function(s){ try{ if(s[1]) s[0].style.setProperty('background',s[1],s[2]); else s[0].style.removeProperty('background'); }catch(e){} });
+            S._heroHoleSaved=null; var hh=document.querySelector('.hero-hole'); if(hh) hh.classList.remove('hero-hole');
+        } }
     // Native preview feedback. 'playing' = a real frame is on screen. On 'error', or no frame within
     // 12s, mark this title bad and swap Featured to another movie (max 3 tries per Home visit); if all
     // fail, fall back to the normal still hero. A running LOG (not just the latest value) is kept for
@@ -7874,7 +7902,11 @@ var Pin=(function(){
         S._heroLog.push(p2(t.getHours())+':'+p2(t.getMinutes())+':'+p2(t.getSeconds())+' '+entry);
         if(S._heroLog.length>10) S._heroLog.shift();
     }catch(e){} }
+    // Window open only while real video is playing and the hero is fully in view and uncovered.
+    function heroSyncHole(){ if(!heroHoleSupported()) return; var rc=S._heroPlaying?heroRectCss():null; heroHole(!!(rc&&!rc.blocked)); }
+    try{ document.addEventListener('scroll',function(){ if(S._heroHoleOn) heroSyncHole(); },true); }catch(e){}
     function heroPreviewFailed(reason){
+        S._heroPlaying=false; heroHole(false);
         if(S._heroFailT){ clearTimeout(S._heroFailT); S._heroFailT=null; }
         heroLog('failed: '+reason+' ('+(S._lastHeroId||'?')+')');
         S._heroBad=S._heroBad||{}; if(S._lastHeroId) S._heroBad[S._lastHeroId]=1;
@@ -7889,7 +7921,8 @@ var Pin=(function(){
         if(state==='playing'){ if(S._heroFailT){ clearTimeout(S._heroFailT); S._heroFailT=null; } S._heroTries=0;
             var h=document.querySelector('#home-body .hero'); if(h) h.classList.add('preview-live');
             // PREVIEW badge only once real video is on screen, never over a still image.
-            var ld=$('hero-livedot'); if(ld) ld.classList.remove('hidden'); }
+            var ld=$('hero-livedot'); if(ld) ld.classList.remove('hidden');
+            S._heroPlaying=true; heroSyncHole(); }
         else if(state==='error'){ heroPreviewFailed(detail||'error'); }
     }; }catch(e){}
     // Splash screen / profile picker still covering Home: try again shortly instead of waiting for the
@@ -7910,7 +7943,7 @@ var Pin=(function(){
         var fresh=(S._heroActiveUrl!==url);
         try{ A.previewStart(url, rc.x, rc.y, rc.w, rc.h, (S.heroMuted!==false)); }catch(e){ heroLog('start ERR '+e.message); }
         S._heroActiveUrl=url;
-        if(fresh){ heroLog('starting');
+        if(fresh){ heroLog('starting'); S._heroPlaying=false; heroHole(false);
             // No real frame within 30s = give up on this title. (12s was too short: these VOD files
             // over IPTV regularly take longer than that just to buffer the first segment.)
             if(S._heroFailT) clearTimeout(S._heroFailT);
@@ -7918,7 +7951,7 @@ var Pin=(function(){
         // Keep the native rect aligned as Home scrolls/relayouts while the hero is on screen. Reads the
         // CURRENT url each tick (not a captured one), so a swapped title keeps being positioned.
         if(!S._heroRectTimer){ S._heroRectTimer=setInterval(function(){ var a=androidPreview(); if(!a||!S._heroActiveUrl){ return; }
-            var rr=heroRectCss(); if(rr){ try{ a.previewRect(rr.x,rr.y,rr.w,rr.h); }catch(e){} } },200); }
+            var rr=heroRectCss(); if(rr){ try{ a.previewRect(rr.x,rr.y,rr.w,rr.h); }catch(e){} } heroSyncHole(); },200); }
         // Mark the hole in the hero so the still background doesn't peek through behind the native video.
         var hero=document.querySelector('#home-body .hero'); if(hero) hero.classList.add('native-preview');
         var hs=$('hero-sound'); if(hs){ hs.classList.remove('hidden');
@@ -7952,7 +7985,7 @@ var Pin=(function(){
         // Wire the sound toggle once.
         var hs=$('hero-sound'); if(hs && !hs._wired){ hs._wired=true; hs.addEventListener('click',function(){ v.muted=!v.muted; S.heroMuted=v.muted; hs.querySelector('use').setAttribute('href', v.muted?'#i-mute':'#i-vol'); }); }
     }
-    function stopHeroPreview(){ S._heroActiveUrl=null; if(S._heroRetryT){ clearTimeout(S._heroRetryT); S._heroRetryT=null; }
+    function stopHeroPreview(){ S._heroActiveUrl=null; S._heroPlaying=false; heroHole(false); if(S._heroRetryT){ clearTimeout(S._heroRetryT); S._heroRetryT=null; }
         if(S._heroRectTimer){ clearInterval(S._heroRectTimer); S._heroRectTimer=null; }
         var A=androidPreview(); if(A){ try{ A.previewStop(); }catch(e){} }
         var hn=document.querySelector('#home-body .hero.native-preview'); if(hn) hn.classList.remove('native-preview');

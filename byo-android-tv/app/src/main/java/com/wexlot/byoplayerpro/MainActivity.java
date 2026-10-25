@@ -170,12 +170,12 @@ public class MainActivity extends Activity {
         // Featured-hero rectangle (the inline preview). The WebView stays on top so the hero's text,
         // buttons and the rest of the UI draw normally; the preview is inserted BELOW it and shows
         // through the hero's transparent media area.
-        root.addView(webView, 0, new android.widget.FrameLayout.LayoutParams(
+        // Appended (not inserted at 0) so the WebView is always ABOVE the Featured-preview video, which
+        // lives at index 0. While the preview plays, the page opens a transparent "window" over the
+        // hero (see previewHole) so the video shows through with the title and Play button drawn on top.
+        root.addView(webView, new android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
-        // The native Featured-preview video is added ON TOP of the WebView, filling the hero banner
-        // like a trailer; the page keeps the title/buttons in a strip just below the hero so nothing
-        // the user needs is hidden behind the video.
 
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
@@ -392,6 +392,21 @@ public class MainActivity extends Activity {
             public void previewViewport(final double wCss) {
                 runOnUiThread(new Runnable() { public void run() { setCssViewportW(wCss); } });
             }
+            // Corner radius of the hero, as a fraction of the viewport width.
+            @JavascriptInterface
+            public void previewShape(final double radiusFrac) {
+                runOnUiThread(new Runnable() { public void run() {
+                    previewRadiusFrac = radiusFrac;
+                    if (previewView != null) previewView.invalidateOutline();
+                } });
+            }
+            // The page is about to make itself transparent over the hero ("on") so the video below shows
+            // through. colors = "r,g,b;r,g,b;..." -- the page background (top-to-bottom gradient stops),
+            // painted natively behind the now-transparent WebView so everything else looks unchanged.
+            @JavascriptInterface
+            public void previewHole(final boolean on, final String colors) {
+                runOnUiThread(new Runnable() { public void run() { doPreviewHole(on, colors); } });
+            }
 
             // Movies/episodes: hand off to the native ExoPlayer screen (plays MKV/HEVC/AC3 directly).
             @JavascriptInterface
@@ -469,13 +484,22 @@ public class MainActivity extends Activity {
                 previewView = new android.view.TextureView(MainActivity.this);
                 previewView.setOpaque(false);
                 previewView.setFocusable(false);
-                // Added ON TOP of the WebView, VISIBLE but at alpha 0 until the first real frame is
-                // decoded. It must stay VISIBLE: a TextureView only creates its SurfaceTexture when it
-                // is actually drawn, and neither GONE nor INVISIBLE views are drawn, so in either
-                // state the decoder has no surface and onRenderedFirstFrame never fires (the player
-                // still reaches STATE_READY, since buffering needs no surface). Alpha 0 keeps it
-                // drawn (surface exists) while showing nothing, so the backdrop stays visible below.
-                root.addView(previewView, new android.widget.FrameLayout.LayoutParams(1, 1));
+                // Added BELOW the WebView (index 0); the page makes the hero transparent once a frame
+                // is up, so the video fills the whole banner with the title/Play drawn over it.
+                // VISIBLE but at alpha 0 until the first real frame is decoded. It must stay VISIBLE:
+                // a TextureView only creates its SurfaceTexture when it is actually drawn, and neither
+                // GONE nor INVISIBLE views are drawn, so in either state the decoder has no surface and
+                // onRenderedFirstFrame never fires (the player still reaches STATE_READY, since
+                // buffering needs no surface).
+                root.addView(previewView, 0, new android.widget.FrameLayout.LayoutParams(1, 1));
+                // Rounded corners matching the hero's CSS border-radius (sent by the page).
+                previewView.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override public void getOutline(View v, android.graphics.Outline o) {
+                        float r = (float) (previewRadiusFrac * (webView != null ? webView.getWidth() : 0));
+                        o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), Math.max(0f, r));
+                    }
+                });
+                previewView.setClipToOutline(true);
                 previewView.setAlpha(0f);
                 previewView.setVisibility(View.VISIBLE);
             }
@@ -609,10 +633,32 @@ public class MainActivity extends Activity {
             android.widget.FrameLayout.LayoutParams cur = (android.widget.FrameLayout.LayoutParams) previewView.getLayoutParams();
             if (cur != null && cur.width == w && cur.height == h && cur.leftMargin == x && cur.topMargin == y) return;
             previewView.setLayoutParams(lp);
+            previewView.invalidateOutline();
             previewView.post(new Runnable() { public void run() { applyPreviewCrop(); } });
         } catch (Exception ignored) {}
     }
     void setCssViewportW(double w) { cssViewportW = w; }
+    private double previewRadiusFrac = 0;
+    private void doPreviewHole(boolean on, String colors) {
+        try {
+            if (!on || webView == null) return;   // closing needs nothing native: the page is opaque again
+            int[] cols = parseRgbList(colors);
+            android.graphics.drawable.Drawable bg = cols.length >= 2
+                    ? new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, cols)
+                    : new android.graphics.drawable.ColorDrawable(cols.length == 1 ? cols[0] : 0xFF04101F);
+            root.setBackground(bg);
+            webView.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        } catch (Exception ignored) {}
+    }
+    private static int[] parseRgbList(String s) {
+        java.util.ArrayList<Integer> out = new java.util.ArrayList<>();
+        if (s != null) for (String part : s.split(";")) {
+            String[] c = part.trim().split(",");
+            if (c.length < 3) continue;
+            try { out.add(android.graphics.Color.rgb((int) Double.parseDouble(c[0].trim()), (int) Double.parseDouble(c[1].trim()), (int) Double.parseDouble(c[2].trim()))); } catch (Exception ignored) {}
+        }
+        int[] a = new int[out.size()]; for (int i = 0; i < a.length; i++) a[i] = out.get(i); return a;
+    }
     private void reportUpdate(final String state, final int pct) { reportUpdate(state, pct, 0L, 0L); }
     private void reportUpdate(final String state, final int pct, final long got, final long total) {
         final String js = "window.__byoUpdate&&window.__byoUpdate('" + state + "'," + pct + "," + got + "," + total + ")";

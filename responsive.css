@@ -2639,7 +2639,7 @@ html.no-topbar #app{ padding-top:0 !important; }
 #home-body .h2 button{ font-family:inherit; }
 /* 1. hero row */
 .h2-hero{ display:grid; grid-template-columns:minmax(0,1fr); }
-.h2-feat.hero{ display:block; margin:0; padding:0; align-items:unset; height:clamp(560px,76vh,900px); border-radius:20px; box-sizing:border-box; overflow:hidden; position:relative; background:#05080d; }
+.h2-feat.hero{ display:block; margin:0; padding:0; align-items:unset; height:clamp(560px,76vh,900px); border-radius:16px; border:2px solid rgba(255,255,255,.5); box-sizing:border-box; overflow:hidden; position:relative; background:#05080d; }
 .h2-feat.hero::before, .h2-feat.hero::after{ content:none; }
 .h2-feat-poster{ position:absolute; inset:0; z-index:0; overflow:hidden; }
 .h2-feat-ph{ position:absolute; inset:0; display:flex; align-items:flex-end; padding:24px; font-weight:800; font-size:26px; line-height:1.2; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.6); }
@@ -2672,8 +2672,10 @@ html.no-topbar #app{ padding-top:0 !important; }
 /* Native Android preview draws the real video ABOVE the webview over the hero's top band — keep the
    text panel compact and clear of it, and hide what it would otherwise cover. */
 .hero.native-preview .h2-feat-tagline{ display:none; }
-.hero.native-preview .h2-feat-bottom{ padding-bottom:26px; }
-.hero.native-preview .h2-feat-title{ font-size:clamp(26px,3.2vw,42px); -webkit-line-clamp:1; }
+/* Video playing BEHIND the page through a transparent window over the hero (Netflix-style): the
+   still poster steps aside and a lighter shade keeps the title readable without a black band. */
+.h2-feat.hero-hole .h2-feat-poster{ opacity:0; transition:opacity .35s ease; }
+.h2-feat.hero-hole .h2-feat-shade{ background:linear-gradient(0deg, rgba(5,8,13,.78) 0%, rgba(5,8,13,.42) 22%, transparent 48%), linear-gradient(90deg, rgba(5,8,13,.55) 0%, rgba(5,8,13,.18) 38%, transparent 60%) !important; }
 /* what's on now */
 .h2-now{ background:#0f151d; border:1px solid #1a2330; padding:22px 22px 18px; display:flex; flex-direction:column; gap:14px; }
 .h2-now-head{ display:flex; align-items:center; justify-content:space-between; }
@@ -3125,7 +3127,7 @@ html.light .ls-row.focused{ color:#0b1220 !important; }
 /* ---- 89: Phones: the same Netflix-style video hero as TV, laid out for a phone-width card ---- */
 .h2-feat.h2-feat-m{ display:block !important; position:relative !important; height:auto !important; min-height:0 !important; padding:0 !important; gap:0 !important;
   aspect-ratio:10/13; width:100%; border-radius:16px !important; overflow:hidden !important; -webkit-tap-highlight-color:transparent;
-  background:#0b1426 !important; border:1px solid rgba(255,255,255,.07); box-shadow:0 10px 28px rgba(0,0,0,.45); }
+  background:#0b1426 !important; border:2px solid rgba(255,255,255,.5); box-shadow:0 10px 28px rgba(0,0,0,.45); }
 .h2-feat-m .h2-feat-poster, .h2-feat-m .h2-feat-ph{ position:absolute; inset:0; }
 .h2-feat-m .h2-feat-img{ object-position:center 22%; }
 .h2-feat-m .h2-feat-img.wide{ object-position:center 30%; }
@@ -3141,7 +3143,6 @@ html.light .ls-row.focused{ color:#0b1220 !important; }
 .h2-feat-m .h2-feat-actions{ margin-top:2px; gap:8px; }
 .h2-feat-m .h2-btn{ height:36px; padding:0 14px; font-size:13px; gap:6px; }
 .h2-feat-m .h2-btn svg{ width:15px; height:15px; }
-.h2-feat-m.hero.native-preview .h2-feat-title{ font-size:clamp(19px,5.6vw,24px) !important; -webkit-line-clamp:2 !important; }
 .h2-feat-m.focused{ outline:3px solid var(--accent); outline-offset:2px; }
 
 /* ---- 90: Phones: compact "What's on now" (smaller margins and text, logos fully visible) ---- */
