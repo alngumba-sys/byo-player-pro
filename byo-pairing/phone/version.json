@@ -1,6 +1,6 @@
 {
-  "versionCode": 166,
-  "versionName": "3.36.54",
+  "versionCode": 167,
+  "versionName": "3.36.55",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Sports: a new 'In season now' row puts the competitions running right now (Premier League, Champions League, LaLiga, Serie A, Bundesliga and more) at the top of the hub and of the Football filter; tap one for its live matches, fixtures, results and the channels that carry it. High-school feeds now sink to the bottom of a sport's channel grid. Home: the Featured preview starts faster and opens 20 minutes into the movie."
+  "notes": "Faster start: the app keeps a copy of your library on the TV, but a 4-second limit meant a big library was downloaded again on every launch. It now waits for the saved copy (up to 25s), so you land straight on your channels, movies and series; it only re-downloads when the copy is over 6 hours old, quietly in the background. Settings > About now shows how the library came up this launch."
 }

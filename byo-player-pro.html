@@ -8149,7 +8149,9 @@ var Pin=(function(){
             var lc=document.createElement('div'); lc.className='lib-loading'+(S._libFailed?' failed':'');
             lc.innerHTML=S._libFailed
                 ? '<div class="ll-ic">'+icon('i-info')+'</div><div class="ll-txt"><b>We couldn\u2019t load your library</b><span>Check your internet connection or your provider login, then try again.</span></div><button class="s-btn primary" id="ll-retry" data-focusable="true" tabindex="0">Try again</button><button class="s-btn" id="ll-settings" data-focusable="true" tabindex="0">Connection settings</button>'
-                : '<div class="ll-spin"></div><div class="ll-txt"><b>Loading your library\u2026</b><span>Fetching your channels, movies and series from your provider.</span></div>';
+                : (S._libFromSnapWait
+                    ? '<div class="ll-spin"></div><div class="ll-txt"><b>Opening your library\u2026</b><span>Reading the copy saved on this TV.</span></div>'
+                    : '<div class="ll-spin"></div><div class="ll-txt"><b>Loading your library\u2026</b><span>Fetching your channels, movies and series from your provider.</span></div>');
             body.appendChild(lc);
             if(S._libFailed){ setTimeout(function(){ var r=$('ll-retry'); if(r) r.addEventListener('click',function(){ S._libFailed=false; S._libLoading=true; renderHome(); try{ Multi.boot(); }catch(_e){} });
                 var st=$('ll-settings'); if(st) st.addEventListener('click',function(){ goTo('settings'); }); },0); }
@@ -11076,6 +11078,8 @@ var Pin=(function(){
                 // Full event sequence, not just the latest value -- a single "last state" kept getting
                 // raced/overwritten by whichever event fired next, hiding what actually happened.
                 try{ var hl=(S._heroLog&&S._heroLog.length)?S._heroLog.join('  →  '):S._heroPrevState; var slot2=$('ab-issue-slot'); if(hl&&slot2) slot2.innerHTML+='<div class="sxa-issue">Featured preview: '+esc(hl)+'</div>'; }catch(e){}
+                // How the library came up this launch: from the saved copy on the TV, or downloaded again (and why).
+                try{ var ll=(S._libLog&&S._libLog.length)?S._libLog.join('  →  '):''; var slot3=$('ab-issue-slot'); if(ll&&slot3) slot3.innerHTML+='<div class="sxa-issue">Library: '+esc(ll)+'</div>'; }catch(e){}
                 var btn=$('ab-upd-btn'), msg=$('ab-upd-msg');
                 btn.addEventListener('click',function(){ msg.textContent='Checking…'; Updater.check(function(info){
                     if(!info){ msg.textContent='Could not check right now.'; return; }
