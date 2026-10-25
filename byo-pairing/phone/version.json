@@ -1,6 +1,6 @@
 {
-  "versionCode": 175,
-  "versionName": "3.36.63",
+  "versionCode": 176,
+  "versionName": "3.36.64",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "The update prompt now waits until your library is loaded and you are on a normal screen, never over the profile picker or while the library is still loading, and choosing Later keeps it away for a day. Match channels show full team names with the competition underneath."
+  "notes": "Opening a channel, movie or series now plays it straight away instead of showing its page first. Press Back while watching to see the page (details, favourites, episodes). Favourite a live channel from the player's star. Settings > Startup has a switch to bring the page-first behaviour back."
 }

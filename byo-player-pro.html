@@ -2416,6 +2416,7 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                             <h3><span class="ic"><svg><use href="#i-power"/></svg></span>Startup</h3>
                             <p class="sec-sub">Choose what happens when the app opens.</p>
                             <div class="toggle-row"><button class="toggle" id="su-resume" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Resume last channel on start</span></div>
+                            <div class="toggle-row"><button class="toggle" id="su-direct" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Play straight away when a channel, movie or series is opened (off: show its page first)</span></div>
                         </div>
 
                         <div class="set-page" data-page="about">
@@ -9170,6 +9171,9 @@ var Pin=(function(){
     function cancelDetailAutoplay(){ if(_dapT){ clearInterval(_dapT); _dapT=null; }
         if(_dapKey){ try{ document.removeEventListener('keydown',_dapKey,true); document.removeEventListener('pointerdown',_dapKey,true); }catch(e){} _dapKey=null; }
         if(_dapBtn){ try{ _dapBtn.classList.remove('auto'); var f=_dapBtn.querySelector('.pb-fill'); if(f) f.remove(); var c=_dapBtn.querySelector('.pb-count'); if(c) c.remove(); }catch(e){} _dapBtn=null; } }
+    // Pressing a title or channel plays it straight away (the info page sits underneath for when you stop).
+    // Settings > Playback "Open titles straight into playback" off = show the page first (old behaviour).
+    function directPlay(){ return !(Store.settings&&Store.settings.openAutoplay===false); }
     function armDetailAutoplay(btn, go){ cancelDetailAutoplay(); if(!btn) return;
         if(Store.settings&&Store.settings.openAutoplay===false) return;
         var secs=6, n=secs; _dapBtn=btn; btn.classList.add('auto');   // no visible countdown: the page simply fades into the film
@@ -9295,7 +9299,7 @@ var Pin=(function(){
         acts.appendChild(feedbackBtns(m,'movie'));
         var fab=fixArtworkBtn(m,'movie'); if(fab) acts.appendChild(fab);
         var db=$('detail-body'); db.innerHTML=''; appendSimilarRow(db,m); showView('detail'); enrichDetail(m,'movie'); setTimeout(function(){ Nav.setFocus(play); },30);
-        armDetailAutoplay(play, function(){ play.click(); }); }
+        if(directPlay()){ cancelDetailAutoplay(); setTimeout(function(){ play.click(); },0); } else armDetailAutoplay(play, function(){ play.click(); }); }
 
     function openSeries(s){ if(!s.seasons){ ensureSeriesLoaded(s,function(){ openSeries(s); }); return; }
         S.currentDetail={type:'series',data:s}; S.currentSeason=0; S.prevView=curSection();
@@ -9316,7 +9320,7 @@ var Pin=(function(){
         acts.appendChild(feedbackBtns(s,'series'));
         var fabs=fixArtworkBtn(s,'series'); if(fabs) acts.appendChild(fabs);
         renderSeasons(s); appendSimilarRow($('detail-body'),s); showView('detail'); enrichDetail(s,'series'); setTimeout(function(){ Nav.setFocus(playS||$('detail-body').querySelector('[data-focusable="true"]')||acts.querySelector('[data-focusable="true"]')); },30);
-        if(playS) armDetailAutoplay(playS, function(){ playS.click(); }); }
+        if(playS&&directPlay()){ cancelDetailAutoplay(); setTimeout(function(){ playS.click(); },0); } else if(playS) armDetailAutoplay(playS, function(){ playS.click(); }); }
     function renderSeasons(s){ var body=$('detail-body'); body.innerHTML=''; var tabs=document.createElement('div'); tabs.className='season-tabs';
         s.seasons.forEach(function(se,idx){ var t=document.createElement('div'); t.className='season-tab'+(idx===S.currentSeason?' active-season':''); t.setAttribute('data-focusable','true'); t.tabIndex=0; t.textContent='Season '+se.n+' ('+se.episodes.length+')';
             t.addEventListener('click',function(){ S.currentSeason=idx; renderSeasons(s); }); tabs.appendChild(t); });
@@ -9342,6 +9346,7 @@ var Pin=(function(){
 
     // LIVE detail (read-more before playing)
     function openLive(c){ S.currentDetail={type:'live',data:c}; S.prevView=curSection();
+        if(directPlay()&&!c._page){ playLiveByChannel(c); return; }
         var idx=computeLiveView().indexOf(c); if(idx<0){ S.liveView=[c]; idx=0; } S.currentLiveIndex=idx;
         // Hero + poster: show the channel's own logo when it has one, falling back to the gradient tile.
         // Explicitly clear any backdrop image a PREVIOUS movie/series detail left on the hero (same
@@ -10037,7 +10042,8 @@ var Pin=(function(){
     // ★ Favourite in the player: the movie, or the whole series when an episode is playing.
     function playerFavSetup(opts){ var b=$('tb-fav'); if(!b) return; S.playFav=null;
         try{ if(opts.type==='movie'){ var mid=String(opts.key||'').replace(/^movie:/,''); (S.movies||[]).forEach(function(x){ if(String(x.id)===mid) S.playFav={kind:'movies',x:x}; }); }
-            else if(opts.type==='episode'&&opts.seriesId){ (S.series||[]).forEach(function(x){ if(x.id===opts.seriesId) S.playFav={kind:'series',x:x}; }); } }catch(e){}
+            else if(opts.type==='episode'&&opts.seriesId){ (S.series||[]).forEach(function(x){ if(x.id===opts.seriesId) S.playFav={kind:'series',x:x}; }); }
+            else if(opts.type==='live'&&opts.channelId){ var lc=chanById(opts.channelId); if(lc) S.playFav={kind:'live',x:{id:lc.id,title:lc.name,name:lc.name,genre:lc.genre,url:lc.url,logo:lc.logo,order:lc.order,epgGenre:lc.epgGenre,desc:lc.desc}}; } }catch(e){}
         b.classList.toggle('hidden',!S.playFav); paintPlayerFav(); }
     function paintPlayerFav(){ var b=$('tb-fav'); if(!b||!S.playFav) return; var on=Store.isFav(S.playFav.kind,S.playFav.x.id);
         b.classList.toggle('fav-on',on); b.querySelector('use').setAttribute('href',on?'#i-star':'#i-star-o'); $('tb-fav-lbl').textContent=on?'In favourites':'Favourite'; }
@@ -10767,8 +10773,9 @@ var Pin=(function(){
     }
 
     /* ---- startup ---- */
-    function renderStartup(){ $('su-resume').classList.toggle('on', !!(Store.cfg||{}).resumeLast); }
-    function wireStartup(){ $('su-resume').addEventListener('click',function(){ Store.cfg.resumeLast=!Store.cfg.resumeLast; Store.save(); renderStartup(); }); }
+    function renderStartup(){ $('su-resume').classList.toggle('on', !!(Store.cfg||{}).resumeLast); var sd=$('su-direct'); if(sd) sd.classList.toggle('on', directPlay()); }
+    function wireStartup(){ $('su-resume').addEventListener('click',function(){ Store.cfg.resumeLast=!Store.cfg.resumeLast; Store.save(); renderStartup(); });
+        var sd=$('su-direct'); if(sd) sd.addEventListener('click',function(){ Store.settings.openAutoplay=!directPlay(); Store.save(); renderStartup(); }); }
 
     /* ---- Personalisation settings (spec #45/#46/#47) ---- */
     function renderPersonalise(){ var s=Store.settings;
@@ -11564,7 +11571,7 @@ var Pin=(function(){
         $('tb-play').addEventListener('click',function(){ if(trickActive()){ trickReset(true); flashOverlay(); return; } Player.togglePause(); updatePlayIcon(); flashOverlay(); });
         $('tb-rwd').addEventListener('click',function(){ if(!isLiveContent()) trickStep(-1); });
         $('tb-ffwd').addEventListener('click',function(){ if(!isLiveContent()) trickStep(1); });
-        (function(){ var fb=$('tb-fav'); if(fb) fb.addEventListener('click',function(){ var f=S.playFav; if(!f) return; var x=f.x; Store.toggleFav(f.kind,x.id,{id:x.id,title:x.title,genre:x.genre,year:x.year,rating:x.rating,gi:x.gi,plot:x.plot,order:x.order,logo:x.logo}); paintPlayerFav(); setToast(Store.isFav(f.kind,x.id)?(f.kind==='series'?'Series added to favourites':'Added to favourites'):'Removed from favourites'); }); })();
+        (function(){ var fb=$('tb-fav'); if(fb) fb.addEventListener('click',function(){ var f=S.playFav; if(!f) return; var x=f.x; Store.toggleFav(f.kind,x.id,{id:x.id,title:x.title,name:x.name||x.title,genre:x.genre,year:x.year,rating:x.rating,gi:x.gi,plot:x.plot,order:x.order,logo:x.logo,url:x.url,epgGenre:x.epgGenre,desc:x.desc}); if(f.kind==='live'){ try{ renderLive(); }catch(_e){} } paintPlayerFav(); setToast(Store.isFav(f.kind,x.id)?(f.kind==='series'?'Series added to favourites':'Added to favourites'):'Removed from favourites'); }); })();
         $('tb-audio').addEventListener('click',function(){ openOptPop('audio'); });
         $('tb-subs').addEventListener('click',function(){ openOptPop('subs'); });
         $('tb-aspect').addEventListener('click',function(){ openOptPop('aspect'); });
