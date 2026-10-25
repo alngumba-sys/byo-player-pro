@@ -41,6 +41,9 @@ public class MainActivity extends Activity {
     private int previewVidW = 0, previewVidH = 0;
     private String previewUrl;
     private boolean previewSkippedIntro = false;
+    // True once the CURRENT title has actually rendered a real frame. Visibility must stay gated on
+    // this, not just set eagerly -- see doPreviewStart/doPreviewRect.
+    private boolean previewHasFrame = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -525,11 +528,17 @@ public class MainActivity extends Activity {
                         applyPreviewCrop();
                     }
                     @Override public void onRenderedFirstFrame() {
-                        // Real picture is on screen: fade the preview in and tell the page.
-                        try { previewView.animate().alpha(1f).setDuration(350).start(); } catch (Exception ignored) {}
+                        // Real picture is on screen for the first time on this title: ONLY now make the
+                        // view visible and fade it in. Before this, it must stay GONE -- a TextureView
+                        // with no frame attached yet paints solid black on plenty of TV hardware even at
+                        // alpha 0, so making it "visible but transparent" while buffering showed a stuck
+                        // black box over the backdrop instead of the still image the viewer should see.
+                        previewHasFrame = true;
+                        try { previewView.setVisibility(View.VISIBLE); previewView.animate().alpha(1f).setDuration(350).start(); } catch (Exception ignored) {}
                         reportPreview("playing", "");
                     }
                     @Override public void onPlayerError(androidx.media3.common.PlaybackException e) {
+                        previewHasFrame = false;
                         try { previewView.setAlpha(0f); previewView.setVisibility(View.GONE); } catch (Exception ignored) {}
                         reportPreview("error", e.getErrorCodeName());
                     }
@@ -541,7 +550,9 @@ public class MainActivity extends Activity {
                 previewUrl = url;
                 previewVidW = 0; previewVidH = 0;
                 previewSkippedIntro = false;
-                previewView.setAlpha(0f);   // hidden until the first frame of THIS title renders
+                previewHasFrame = false;
+                previewView.setAlpha(0f);
+                previewView.setVisibility(View.GONE);   // stays gone (not just transparent) until a real frame renders
                 // Always start at 0 here -- the ~90s-in jump (so a VOD movie opens on real footage
                 // instead of its static title card) happens later, once STATE_READY confirms the
                 // content actually has a known, seekable duration long enough for that to be safe.
@@ -549,7 +560,9 @@ public class MainActivity extends Activity {
                 previewPlayer.prepare();
                 previewPlayer.setPlayWhenReady(true);
             }
-            previewView.setVisibility(View.VISIBLE);
+            // Only reveal it here if THIS title already has a frame on screen (e.g. the rect/url is
+            // being re-sent while already playing) -- never before onRenderedFirstFrame has fired.
+            if (previewHasFrame) previewView.setVisibility(View.VISIBLE);
             doPreviewRect(xCss, yCss, wCss, hCss);   // may set INVISIBLE if the page says it's covered
         } catch (Exception e) { reportPreview("error", "START_" + e.getClass().getSimpleName()); }
     }
@@ -658,6 +671,7 @@ public class MainActivity extends Activity {
     }
     private void doPreviewStop() {
         try {
+            previewHasFrame = false;
             if (previewView != null) { previewView.animate().cancel(); previewView.setAlpha(0f); previewView.setVisibility(View.GONE); }
             if (previewPlayer != null) { previewPlayer.setPlayWhenReady(false); previewPlayer.stop(); }
             previewUrl = null;

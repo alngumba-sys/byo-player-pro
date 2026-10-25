@@ -8021,8 +8021,14 @@ var Pin=(function(){
                 { year:im.getAttribute('data-y')||'', tmdb:im.getAttribute('data-tm')||'', imdb:im.getAttribute('data-im')||'' }); }catch(e){ im.remove(); } };
     function __byoPosterFill(root){ [].forEach.call((root||document).querySelectorAll('img[data-t]:not([src])'),function(im){ window.__byoPosterFail(im); }); }
 
+    // 4K/UHD-tagged titles skip the Featured hero: this provider's catalog bakes the tag straight into
+    // the title ("4K They Will Kill You") rather than a separate field, and those are the heaviest
+    // streams to preview live, so Featured should land on an ordinary title instead.
+    function heroIs4K(m){ return /^\s*(4k|uhd)\b/i.test((m&&m.title)||''); }
     function h2Featured(){
-        var pool=profFilter(S.movies).filter(function(m){ return !itemLowPriority(m); }); if(!pool.length) pool=profFilter(S.movies);
+        var pool=profFilter(S.movies).filter(function(m){ return !itemLowPriority(m)&&!heroIs4K(m); });
+        if(!pool.length) pool=profFilter(S.movies).filter(function(m){ return !itemLowPriority(m); });
+        if(!pool.length) pool=profFilter(S.movies);
         if(!pool.length) return null;
         var ranked=pool.slice().sort(function(a,b){ return (b.logo?1:0)-(a.logo?1:0) || num(b.rating)-num(a.rating); });
         var top=ranked.slice(0,Math.min(30,ranked.length));

@@ -1,6 +1,6 @@
 {
-  "versionCode": 156,
-  "versionName": "3.36.44",
+  "versionCode": 157,
+  "versionName": "3.36.45",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Found the real cause of the Featured hero never playing video: the native preview player's buffer settings were invalid (one value exceeded another ExoPlayer requires it to stay under), so building the player threw an error the instant it was first used - on every device, for every title, every time. Fixed the values so the player actually builds, so the live preview can finally play."
+  "notes": "Two fixes: (1) the native preview surface was being made visible immediately, before it had any video frame to show, which painted a stuck black box over the Featured banner on some TVs while it buffered - it now stays hidden until a real frame is ready, then fades in, so you see the still backdrop (not black) until the video actually starts. (2) Featured no longer picks 4K-tagged titles, since those are the heaviest to preview live - it lands on a regular title instead."
 }
