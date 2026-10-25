@@ -3378,3 +3378,37 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 /* Match cards: the full team names, never cut short */
 .live-card.ev .lc-name{ display:block !important; -webkit-line-clamp:unset !important; overflow:visible !important; text-overflow:clip !important; white-space:normal !important; }
 .live-card.ev{ height:auto !important; }
+
+/* ===== Sports: the five league cards at the top ===== */
+#view-sports{ background:linear-gradient(180deg,#082F2D 0%,#062B29 45%,#031D20 100%); }
+.lg-row{ display:flex; gap:22px; padding:8px 0 22px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; scroll-snap-type:x proximity; }
+.lg-row::-webkit-scrollbar{ display:none; }
+.lg-card{ position:relative; flex:1 1 0; min-width:272px; height:clamp(300px, 23.5vw, 430px); box-sizing:border-box; border-radius:18px; border:2px solid var(--lb); padding:clamp(18px,1.6vw,30px);
+  display:flex; flex-direction:column; overflow:hidden; color:#fff; cursor:pointer; scroll-snap-align:start; box-shadow:0 12px 30px rgba(0,0,0,.38);
+  transition:transform .18s ease, filter .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.lg-card:hover{ transform:translateY(-3px); filter:brightness(1.07); border-color:var(--la); }
+.lg-card.focused, .lg-card:focus-visible{ outline:none; border-color:var(--la); box-shadow:0 0 0 4px var(--la), 0 0 30px var(--la), 0 12px 30px rgba(0,0,0,.4); }
+.lg-wm{ position:absolute; right:-6%; bottom:-20%; width:62%; height:auto; opacity:.13; filter:grayscale(1) brightness(2.6); pointer-events:none; z-index:0; }
+.lg-card > *:not(.lg-wm){ position:relative; z-index:1; }
+.lg-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.lg-logo{ width:clamp(64px,5.2vw,100px); height:clamp(64px,5.2vw,100px); border-radius:clamp(14px,1vw,18px); background:#FFFFFF; display:flex; align-items:center; justify-content:center; color:#0b1020; font-weight:900; font-size:clamp(14px,1.1vw,20px); box-sizing:border-box; padding:clamp(8px,.7vw,12px); }
+.lg-logo img{ width:100%; height:100%; object-fit:contain; }
+.lg-season{ border-radius:999px; padding:6px 14px; border:1px solid color-mix(in srgb, var(--la) 55%, transparent); background:rgba(255,255,255,.07); color:#fff; font-weight:700; font-size:clamp(13px,.95vw,18px); white-space:nowrap; }
+.lg-title{ margin-top:clamp(16px,1.4vw,26px); font-size:clamp(22px,1.6vw,30px); font-weight:800; line-height:1.12; color:#FFFFFF; }
+.lg-tag{ margin-top:8px; color:#E0E6F0; font-size:clamp(14px,.95vw,18px); font-weight:400; line-height:1.4; }
+.lg-foot{ margin-top:auto; padding-top:clamp(12px,1vw,18px); border-top:1px solid rgba(255,255,255,.18); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.lg-left{ display:flex; align-items:center; gap:12px; min-width:0; }
+.lg-ic{ width:clamp(22px,1.5vw,28px); height:clamp(22px,1.5vw,28px); color:#fff; flex:0 0 auto; }
+.lg-ic svg{ width:100%; height:100%; }
+.lg-teams{ color:#fff; font-weight:600; font-size:clamp(14px,.95vw,18px); }
+.lg-status{ color:#C5CEDD; font-weight:400; font-size:clamp(12px,.85vw,16px); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.lg-status.live{ color:#ff6b7a; font-weight:600; }
+.lg-arrow{ width:clamp(24px,1.6vw,32px); height:clamp(24px,1.6vw,32px); color:#fff; flex:0 0 auto; }
+.lg-arrow svg{ width:100%; height:100%; }
+@media (max-width:900px){
+  .lg-row{ gap:14px; padding:6px 0 16px; }
+  .lg-card{ flex:0 0 78vw; min-width:0; height:auto; min-height:300px; padding:20px; }
+  .lg-logo{ width:72px; height:72px; }
+  .lg-title{ font-size:24px; } .lg-tag{ font-size:15px; }
+}
+@media (prefers-reduced-motion: reduce){ .lg-card{ transition:none; } .lg-card:hover{ transform:none; } }

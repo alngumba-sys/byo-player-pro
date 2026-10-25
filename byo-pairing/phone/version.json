@@ -1,6 +1,6 @@
 {
-  "versionCode": 178,
-  "versionName": "3.36.66",
+  "versionCode": 179,
+  "versionName": "3.36.67",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Sports: the In season now cards and competition pages carry the real competition badges (Premier League, Champions League, LaLiga, Serie A, Bundesliga, Europa League, NBA, NFL, F1 and more)."
+  "notes": "Sports opens on five big league cards: Premier League, Champions League, LaLiga, Serie A and Bundesliga, each in its own colours with the official badge, season, team count and status. Press one to open that competition."
 }

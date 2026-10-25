@@ -7458,7 +7458,35 @@ var Pin=(function(){
             '<div class="ssn-name">'+esc(sn.n)+'</div><div class="ssn-status ssn-'+st.cls+'">'+(st.cls==='live'?'<i></i>':'')+esc(st.txt)+'</div>';
         card.addEventListener('click',function(){ sportsSeason=sn.k; renderSportsBody(); setTimeout(function(){ var f=$('sports-body').querySelector('.ls-match, .spchan-card, .ssn-back'); if(f) Nav.setFocus(f); },30); });
         return card; }
-    function seasonsRow(sport){ var list=seasonsInPlay(sport); if(!list.length) return null;
+    /* ---- The five big league cards at the top of Sports (Premier League, Champions League, LaLiga, Serie A,
+       Bundesliga): each with its own gradient, border and accent, the official badge in a white tile, the
+       season pill, a large low-opacity watermark of the badge, and a footer with the team count and status. ---- */
+    var LEAGUE_CARDS=[
+        { k:'epl',    n:'Premier League',   tag:'The best of English football',          teams:20, bg:['#26003F','#39004D','#180B36'], border:'#7B1FA2', accent:'#B52BDF' },
+        { k:'ucl',    n:'Champions League', tag:'Europe\u2019s elite competition',        teams:36, bg:['#00183F','#05245B','#001332'], border:'#0757B8', accent:'#1677E8', trophy:true },
+        { k:'liga',   n:'LaLiga',           tag:'Passion. Skill. Football.',              teams:20, bg:['#A9000B','#D01019','#72000A'], border:'#E21B2D', accent:'#FF3344' },
+        { k:'seriea', n:'Serie A',          tag:'Tradition. Talent. Italian Football.',   teams:20, bg:['#00305C','#064A7A','#002747'], border:'#087BC2', accent:'#159BE8' },
+        { k:'buli',   n:'Bundesliga',       tag:'Fast. Exciting. Unmissable.',            teams:18, bg:['#A0000A','#C40012','#72000A'], border:'#E51B32', accent:'#FF3045' } ];
+    var LG_ICON={ ball:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M12 7.2l4.3 3.1-1.6 5H9.3l-1.6-5z"/><path d="M12 7.2V2.9M16.3 10.3l4.2-1.3M14.7 15.3l2.6 3.5M9.3 15.3l-2.6 3.5M7.7 10.3L3.5 9"/></svg>',
+        trophy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/><path d="M12 14v3M8.5 20h7M9.5 17h5"/></svg>',
+        arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M12 5l7 7-7 7"/></svg>' };
+    function leagueCard(L){ var sn=SEASONS.filter(function(x){ return x.k===L.k; })[0]; if(!sn) return null;
+        var now=new Date(), st=seasonStatus(sn), logo=seasonLogo(sn)||'';
+        var card=document.createElement('div'); card.className='lg-card'+(st.cls==='live'?' lg-live':''); card.setAttribute('data-focusable','true'); card.tabIndex=0;
+        card.style.setProperty('--lb', L.border); card.style.setProperty('--la', L.accent);
+        card.style.background='linear-gradient(135deg, '+L.bg[0]+' 0%, '+L.bg[1]+' 50%, '+L.bg[2]+' 100%)';
+        var status=st.cls==='live'?st.txt:(st.cls==='next'?st.txt:'In season');
+        card.innerHTML=(logo?'<img class="lg-wm" src="'+esc(logo)+'" alt="" aria-hidden="true"/>':'')+
+            '<div class="lg-top"><span class="lg-logo">'+(logo?'<img src="'+esc(logo)+'" alt="'+esc(L.n)+'"/>':'<b>'+esc(sn.s)+'</b>')+'</span><span class="lg-season">'+esc(seasonLabel(sn,now))+'</span></div>'+
+            '<div class="lg-title">'+esc(L.n)+'</div><div class="lg-tag">'+esc(L.tag)+'</div>'+
+            '<div class="lg-foot"><div class="lg-left"><span class="lg-ic">'+(L.trophy?LG_ICON.trophy:LG_ICON.ball)+'</span><div><div class="lg-teams">'+L.teams+' Teams</div><div class="lg-status'+(st.cls==='live'?' live':'')+'">'+esc(status)+'</div></div></div><span class="lg-arrow">'+LG_ICON.arrow+'</span></div>';
+        card.addEventListener('click',function(){ sportsSeason=sn.k; renderSportsBody(); setTimeout(function(){ var f=$('sports-body').querySelector('.ls-match, .spchan-card, .ssn-back'); if(f) Nav.setFocus(f); },30); });
+        return card; }
+    function leagueCardsRow(sport){ var want=(!sport||sport==='All'||sport==='Live'||sport==='Upcoming')?null:sport; if(want&&want!=='Football') return null;
+        var row=document.createElement('div'); row.className='lg-row'; var n=0;
+        LEAGUE_CARDS.forEach(function(L){ var c=leagueCard(L); if(c){ row.appendChild(c); n++; } });
+        return n?row:null; }
+    function seasonsRow(sport){ var list=seasonsInPlay(sport).filter(function(sn){ return !LEAGUE_CARDS.some(function(L){ return L.k===sn.k; }); }); if(!list.length) return null;
         var r=rowEl(icon('i-flame'),'In season now','sports-row-season'); var strip=document.createElement('div'); strip.className='ssn-strip';
         list.slice(0,10).forEach(function(sn){ strip.appendChild(seasonCard(sn)); }); r.appendChild(strip); return r; }
     // The competition page: real fixtures/scores (when loaded) + the playlist channels that carry it.
@@ -7509,6 +7537,7 @@ var Pin=(function(){
         // ALL view — the full hub
         // Seasons in play first: the competitions running right now (Premier League etc.) stand out
         // from the hundreds of generic channels below them.
+        var lrow=leagueCardsRow(sportsFilter); if(lrow) body.insertBefore(lrow, body.firstChild);   // the five league cards come first, above the hero
         var srow=seasonsRow(sportsFilter); if(srow) body.appendChild(srow);
         // Multi-View entry (only when enough compatible live streams exist)
         if(mvAvailable()){ body.appendChild(mvEntryCard()); }
