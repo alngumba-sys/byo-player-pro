@@ -1,6 +1,6 @@
 {
-  "versionCode": 164,
-  "versionName": "3.36.52",
+  "versionCode": 165,
+  "versionName": "3.36.53",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Featured video now fills the whole banner, Netflix-style, with the title and Play button over it instead of a black strip underneath. The banner also has softly rounded corners and a thin semi-transparent white border."
+  "notes": "New profile pictures: ten illustrated portrait avatars replace the old flat faces. Existing profiles on the old faces are moved to the new portraits automatically; pick a different one under Manage profiles."
 }
