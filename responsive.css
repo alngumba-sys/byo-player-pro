@@ -3384,18 +3384,23 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 #view-sports .sports-body, #view-sports .view-head, #view-sports .sports-sub{ background:transparent !important; }
 .lg-row{ display:flex; gap:22px; padding:8px 0 22px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; scroll-snap-type:x proximity; }
 .lg-row::-webkit-scrollbar{ display:none; }
-.lg-card{ position:relative; flex:1 1 0; min-width:272px; height:clamp(300px, 23.5vw, 430px); box-sizing:border-box; border-radius:18px; border:2px solid var(--lb); padding:clamp(18px,1.6vw,30px);
+.lg-card{ position:relative; flex:1 1 0; min-width:272px; height:clamp(300px, 21.5vw, 410px); box-sizing:border-box; border-radius:18px; border:2px solid var(--lb); padding:clamp(18px,1.6vw,30px);
   display:flex; flex-direction:column; overflow:hidden; color:#fff; cursor:pointer; scroll-snap-align:start; box-shadow:0 12px 30px rgba(0,0,0,.38);
   transition:transform .18s ease, filter .18s ease, border-color .18s ease, box-shadow .18s ease; }
 .lg-card:hover{ transform:translateY(-3px); filter:brightness(1.07); border-color:var(--la); }
 .lg-card.focused, .lg-card:focus-visible{ outline:none; border-color:var(--la); box-shadow:0 0 0 4px var(--la), 0 0 30px var(--la), 0 12px 30px rgba(0,0,0,.4); }
-.lg-wm{ position:absolute; right:-6%; bottom:-20%; width:62%; height:auto; opacity:.13; filter:grayscale(1) brightness(2.6); pointer-events:none; z-index:0; }
+.lg-wm{ position:absolute; right:-9%; top:10%; height:84%; width:auto; opacity:.14; pointer-events:none; z-index:0; }
+.lg-card[data-lg="epl"] .lg-wm{ right:-4%; top:22%; height:74%; }
+.lg-card[data-lg="ucl"] .lg-wm{ right:-14%; top:18%; height:70%; }
+.lg-card[data-lg="liga"] .lg-wm{ right:-8%; top:8%; height:64%; opacity:.16; }
+.lg-card[data-lg="seriea"] .lg-wm{ right:-2%; top:18%; height:80%; opacity:.14; }
+.lg-card[data-lg="buli"] .lg-wm{ right:-4%; top:8%; height:52%; opacity:.16; }
 .lg-card > *:not(.lg-wm){ position:relative; z-index:1; }
 .lg-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .lg-logo{ width:clamp(64px,5.2vw,100px); height:clamp(64px,5.2vw,100px); border-radius:clamp(14px,1vw,18px); background:#FFFFFF; display:flex; align-items:center; justify-content:center; color:#0b1020; font-weight:900; font-size:clamp(14px,1.1vw,20px); box-sizing:border-box; padding:clamp(8px,.7vw,12px); }
 .lg-logo img{ width:100%; height:100%; object-fit:contain; }
 .lg-season{ border-radius:999px; padding:6px 14px; border:1px solid color-mix(in srgb, var(--la) 55%, transparent); background:rgba(255,255,255,.07); color:#fff; font-weight:700; font-size:clamp(13px,.95vw,18px); white-space:nowrap; }
-.lg-title{ margin-top:clamp(16px,1.4vw,26px); font-size:clamp(22px,1.6vw,30px); font-weight:800; line-height:1.12; color:#FFFFFF; }
+.lg-title{ margin-top:clamp(16px,1.4vw,26px); font-size:clamp(22px,1.75vw,34px); font-weight:800; line-height:1.1; color:#FFFFFF; max-width:80%; }
 .lg-tag{ margin-top:8px; color:#E0E6F0; font-size:clamp(14px,.95vw,18px); font-weight:400; line-height:1.4; }
 .lg-foot{ margin-top:auto; padding-top:clamp(12px,1vw,18px); border-top:1px solid rgba(255,255,255,.18); display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .lg-left{ display:flex; align-items:center; gap:12px; min-width:0; }

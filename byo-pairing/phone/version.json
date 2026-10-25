@@ -1,6 +1,6 @@
 {
-  "versionCode": 180,
-  "versionName": "3.36.68",
+  "versionCode": 181,
+  "versionName": "3.36.69",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Sports: deep teal background, and the other competitions in season sit under the five league cards as compact chips instead of a second row of cards."
+  "notes": "Sports league cards now carry the real marks as watermarks: the Premier League lion, the Champions League star-ball, the LaLiga mark, the Serie A symbol and the Bundesliga player."
 }
