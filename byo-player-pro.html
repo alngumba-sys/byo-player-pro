@@ -7864,10 +7864,19 @@ var Pin=(function(){
         return { x:r.left/vw, y:r.top/vh, w:r.width/vw, h:videoH/vh, frac:true }; }
     // Native preview feedback. 'playing' = a real frame is on screen. On 'error', or no frame within
     // 12s, mark this title bad and swap Featured to another movie (max 3 tries per Home visit); if all
-    // fail, fall back to the normal still hero. The last state is kept for Settings > About.
+    // fail, fall back to the normal still hero. A running LOG (not just the latest value) is kept for
+    // Settings > About -- a single "last state" string kept getting raced/overwritten by whichever event
+    // fired next (our own cleanup included), hiding the actual sequence of what happened.
+    function heroLog(entry){ try{
+        S._heroPrevState=entry;
+        S._heroLog=S._heroLog||[];
+        var t=new Date(); function p2(n){ return (n<10?'0':'')+n; }
+        S._heroLog.push(p2(t.getHours())+':'+p2(t.getMinutes())+':'+p2(t.getSeconds())+' '+entry);
+        if(S._heroLog.length>10) S._heroLog.shift();
+    }catch(e){} }
     function heroPreviewFailed(reason){
         if(S._heroFailT){ clearTimeout(S._heroFailT); S._heroFailT=null; }
-        S._heroPrevState='failed: '+reason+' ('+(S._lastHeroId||'?')+')';
+        heroLog('failed: '+reason+' ('+(S._lastHeroId||'?')+')');
         S._heroBad=S._heroBad||{}; if(S._lastHeroId) S._heroBad[S._lastHeroId]=1;
         try{ var A=androidPreview(); if(A) A.previewStop(); }catch(e){}
         S._heroActiveUrl=null;
@@ -7876,23 +7885,22 @@ var Pin=(function(){
         // this title; S._heroBad keeps the next Home open from picking it again.
     }
     try{ window.__byoPreview=function(state,detail){
-        S._heroPrevState=state+(detail?(' '+detail):'');
+        heroLog(state+(detail?(' '+detail):''));
         if(state==='playing'){ if(S._heroFailT){ clearTimeout(S._heroFailT); S._heroFailT=null; } S._heroTries=0;
             var h=document.querySelector('#home-body .hero'); if(h) h.classList.add('preview-live'); }
         else if(state==='error'){ heroPreviewFailed(detail||'error'); }
     }; }catch(e){}
-    function heroDiag(msg){ try{ if(true) return; /* diagnostic disabled (preview confirmed working) */ var hero=document.querySelector('#home-body .hero'); if(!hero) return; var d=hero.querySelector('.hero-diag'); if(!d){ d=document.createElement('div'); d.className='hero-diag'; d.style.cssText='position:absolute;left:10px;top:10px;z-index:9;background:rgba(0,0,0,.7);color:#6f6;font:12px monospace;padding:4px 8px;border-radius:6px;max-width:70%;'; hero.appendChild(d); } d.textContent='HERO: '+msg; }catch(e){} }
     function startHeroPreviewNative(url){ var A=androidPreview(); if(!A){ return false; }
-        if(!$('view-home').classList.contains('active-view')){ heroDiag('not home view'); return true; }
-        if(!$('profile-picker').classList.contains('hidden')){ heroDiag('picker open'); return true; }
-        var sp=$('splash'); if(sp && sp.style.display!=='none'){ heroDiag('splash up'); return true; }
-        var rc=heroRectCss(); if(!rc){ heroDiag('no hero rect'); return true; }
-        heroDiag('start frac '+rc.x.toFixed(2)+','+rc.y.toFixed(2)+' '+rc.w.toFixed(2)+'x'+rc.h.toFixed(2));
+        if(!$('view-home').classList.contains('active-view')){ heroLog('skip: not home view'); return true; }
+        if(!$('profile-picker').classList.contains('hidden')){ heroLog('skip: picker open'); return true; }
+        var sp=$('splash'); if(sp && sp.style.display!=='none'){ heroLog('skip: splash up'); return true; }
+        var rc=heroRectCss(); if(!rc){ heroLog('skip: no hero rect'); return true; }
+        if(rc.hidden){ heroLog('skip: rect blocked ('+(rc.frac?'frac':'')+')'); }
         try{ A.previewViewport && A.previewViewport(window.innerWidth||1920); }catch(e){}
         var fresh=(S._heroActiveUrl!==url);
-        try{ A.previewStart(url, rc.x, rc.y, rc.w, rc.h, (S.heroMuted!==false)); }catch(e){ heroDiag('start ERR '+e.message); }
+        try{ A.previewStart(url, rc.x, rc.y, rc.w, rc.h, (S.heroMuted!==false)); }catch(e){ heroLog('start ERR '+e.message); }
         S._heroActiveUrl=url;
-        if(fresh){ S._heroPrevState='starting';
+        if(fresh){ heroLog('starting');
             // No real frame within 12s = treat as failed and move Featured on to another title.
             if(S._heroFailT) clearTimeout(S._heroFailT);
             S._heroFailT=setTimeout(function(){ S._heroFailT=null; if(S._heroActiveUrl===url && S._heroPrevState!=='playing') heroPreviewFailed('no frame in 12s'); },12000); }
@@ -10904,7 +10912,9 @@ var Pin=(function(){
                 try{ var li=window.ByoAndroid&&ByoAndroid.lastIssue?ByoAndroid.lastIssue():''; var slot=$('ab-issue-slot'); if(li&&slot) slot.innerHTML='<div class="sxa-issue">Last issue: '+esc(li)+'</div>'; }catch(e){}
                 // Featured-hero live preview state, so a "no video on Home" report can be diagnosed from
                 // here (what it last reported trying) instead of needing a dev console on the TV.
-                try{ var hp=S._heroPrevState; var slot2=$('ab-issue-slot'); if(hp&&slot2) slot2.innerHTML+='<div class="sxa-issue">Featured preview: '+esc(hp)+'</div>'; }catch(e){}
+                // Full event sequence, not just the latest value -- a single "last state" kept getting
+                // raced/overwritten by whichever event fired next, hiding what actually happened.
+                try{ var hl=(S._heroLog&&S._heroLog.length)?S._heroLog.join('  →  '):S._heroPrevState; var slot2=$('ab-issue-slot'); if(hl&&slot2) slot2.innerHTML+='<div class="sxa-issue">Featured preview: '+esc(hl)+'</div>'; }catch(e){}
                 var btn=$('ab-upd-btn'), msg=$('ab-upd-msg');
                 btn.addEventListener('click',function(){ msg.textContent='Checking…'; Updater.check(function(info){
                     if(!info){ msg.textContent='Could not check right now.'; return; }

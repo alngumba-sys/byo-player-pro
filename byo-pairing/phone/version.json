@@ -1,6 +1,6 @@
 {
-  "versionCode": 160,
-  "versionName": "3.36.48",
+  "versionCode": 161,
+  "versionName": "3.36.49",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "The 'idle' status was coming from our own cleanup: the preview tries to start, doesn't reach playing within 12 seconds, the page gives up and stops it - and that stop call itself was overwriting the meaningful 'failed: no frame in 12s' diagnostic with a blank 'idle' right after. Now an intentional stop no longer clobbers the real reason, so Settings > About should finally show what's actually happening."
+  "notes": "The diagnostic kept showing only the LAST state, which turned out to keep getting raced or overwritten by whatever happened next - a dead end across several builds. It now keeps a timestamped log of every preview event instead of one value, shown in full on Settings > About. This should finally reveal the real sequence of what's happening when Featured tries to play."
 }
