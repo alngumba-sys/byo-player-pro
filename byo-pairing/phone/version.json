@@ -1,6 +1,6 @@
 {
-  "versionCode": 152,
-  "versionName": "3.36.40",
+  "versionCode": 153,
+  "versionName": "3.36.41",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Home page: the featured area and What's on now panel are now one full-width Netflix-style hero banner with a live video preview, bottom-anchored title and details, a white Play button and glass More Info button, and a brand badge in the top-left corner."
+  "notes": "Fix: the new Netflix-style featured hero on Home now also shows on phone-width screens — it was only wired up for the wide TV layout, so phones still showed the old card. Phone gets the same live video preview, brand badge, title/metadata, Play and More info buttons, with the backdrop tap opening More info and swipe still switching between picks."
 }

@@ -8093,32 +8093,46 @@ var Pin=(function(){
     // Phones: a picture card like the one on "Who's watching?" (wide image, title and details over it).
     // No buttons: tapping the card plays the film. Swipe or tap the dots to see the other picks.
     function h2FeaturedPhone(picks){
-        var el=document.createElement('section'); el.className='h2-feat h2-feat-m'; el.setAttribute('data-focusable','true'); el.tabIndex=0; el.setAttribute('role','button');
-        el.innerHTML='<div class="h2m-art"></div><div class="h2m-shade"></div>'+
-            '<div class="h2m-text"><div class="h2m-kicker">'+icon('i-flame')+'Featured today</div><h2 class="h2m-title"></h2><div class="h2m-meta"></div></div>'+
-            '<div class="h2m-dots"></div>';
-        var idx=0, art=el.querySelector('.h2m-art'), dots=el.querySelector('.h2m-dots');
-        picks.forEach(function(m,i){ var d=document.createElement('button'); d.className='h2m-dot'; d.tabIndex=-1; d.setAttribute('aria-label','Featured '+(i+1));
+        // Same Netflix-style hero as the TV/desktop layout (live video preview, bottom-anchored title +
+        // Play/More info, brand badge) reusing the shared .h2-feat/.hero markup and preview plumbing, just
+        // laid out compactly for a phone-width card via the .h2-feat-m CSS overrides. Swipe still moves
+        // between picks; tapping the backdrop (outside the buttons) opens More info rather than playing
+        // immediately, matching how Netflix's own mobile cards behave.
+        var el=document.createElement('section'); el.className='h2-feat hero h2-feat-m';
+        el.innerHTML='<video class="hero-video" id="hero-video" muted loop playsinline></video>'+
+            '<div class="h2-feat-poster"></div>'+
+            '<div class="h2-feat-shade"></div>'+
+            '<span class="hero-livedot hidden" id="hero-livedot"><i></i>PREVIEW</span>'+
+            '<button class="hero-sound hidden" id="hero-sound" data-focusable="true" tabindex="0">'+icon('i-mute')+'</button>'+
+            '<div class="h2-feat-bottom"><div class="h2-feat-left">'+
+            '<div class="h2-feat-top"><span class="h2-pill">'+icon('i-flame')+'Featured today</span></div>'+
+            '<h2 class="h2-feat-title"></h2><div class="h2-feat-meta"></div>'+
+            '<div class="h2-feat-actions"><button class="h2-btn h2-btn-play" data-focusable="true" tabindex="0">'+icon('i-play')+'Play</button><button class="h2-btn h2-btn-info" data-focusable="true" tabindex="0">'+icon('i-info')+'More info</button><div class="h2-dots"></div></div></div></div>';
+        try{ var bsrc=document.querySelector('.topbar .brand'); if(bsrc){ var bw=document.createElement('div'); bw.className='h2-feat-brand'; bw.appendChild(bsrc.cloneNode(true)); el.appendChild(bw); } }catch(_e){}
+        var idx=0, dots=el.querySelector('.h2-dots');
+        picks.forEach(function(m,i){ var d=document.createElement('button'); d.className='h2-dot'; d.tabIndex=-1; d.setAttribute('aria-label','Featured '+(i+1));
             d.addEventListener('click',function(e){ e.stopPropagation(); show(i); }); dots.appendChild(d); });
         if(picks.length<2) dots.style.display='none';
-        function paint(m, src, wide){ if(picks[idx]!==m) return;
-            art.innerHTML='<div class="h2m-ph" style="background:'+g(m.gi)+'"></div>'+(src?'<img class="h2m-img'+(wide?' wide':'')+'" src="'+esc(src)+'" alt="" onload="this.classList.add(\'ok\')" onerror="this.remove()"/>':''); }
+        function paintBackdrop(m){ var box=el.querySelector('.h2-feat-poster'); if(!box) return;
+            var src=m._bd||m.logo, wide=!!m._bd;
+            box.innerHTML='<div class="h2-feat-ph" style="background:'+g(m.gi)+'"></div>'+
+                (src?'<img class="h2-feat-img'+(wide?' wide':'')+'" src="'+esc(src)+'" alt="" loading="lazy" onload="this.classList.add(\'ok\')" onerror="this.remove()"/>':''); }
         function show(i){ idx=i; var m=picks[i]; S._h2FeatIdx=i;
-            el.querySelector('.h2m-title').textContent=m.title;
-            var meta=[m.seasons!==undefined?'Series':'Movie']; if(m.year) meta.push(esc(m.year)); var gc=h2Clean(m.genre); if(gc) meta.push(esc(gc)); var rt=h2Rating(m); if(rt) meta.push('★ '+rt);
-            el.querySelector('.h2m-meta').innerHTML=meta.join(' · ');
-            el.setAttribute('aria-label','Play '+m.title);
+            paintBackdrop(m);
+            if(!m._bd && !m._bdTried && __byoTmdbOn()){ m._bdTried=true; try{ TMDB.lookupItem(m,'movie',function(r){ if(r&&r.backdrop){ m._bd=r.backdrop; if(picks[idx]===m){ var pre=new Image(); pre.onload=function(){ if(picks[idx]===m) paintBackdrop(m); }; pre.src=m._bd; } } }); }catch(e){} }
+            el.querySelector('.h2-feat-title').textContent=m.title;
+            var meta=[]; meta.push(m.seasons!==undefined?'Series':'Movie'); var gc=h2Clean(m.genre); if(gc) meta.push(esc(gc)); if(m.year) meta.push(esc(m.year)); var rt=h2Rating(m); if(rt) meta.push('<span class="h2-star">★</span> '+rt);
+            el.querySelector('.h2-feat-meta').innerHTML=meta.join('<span class="h2-sep">•</span>');
             [].forEach.call(dots.children,function(x,k){ x.classList.toggle('on',k===i); });
-            // Wide backdrop when one is known (TMDB), otherwise the poster, cropped to fit.
-            if(m._bd){ paint(m, m._bd, true); return; }
-            paint(m, m.logo, false);
-            if(!m._bdTried&&__byoTmdbOn()){ m._bdTried=true; try{ TMDB.lookupItem(m,'movie',function(r){ if(r&&r.backdrop){ m._bd=r.backdrop; var pre=new Image(); pre.onload=function(){ paint(m, m._bd, true); }; pre.src=m._bd; } }); }catch(e){} } }
-        function play(){ var m=picks[idx]; playContent(m.url,m.title,(m.genre||'')+(m.year?' · '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); }
+            S._heroUrl=m.url;
+            if(heroPreviewAllowed()){ requestAnimationFrame(function(){ startHeroPreview(m.url); setTimeout(function(){ startHeroPreview(m.url); },120); }); } else stopHeroPreview(); }
+        el.querySelector('.h2-btn-play').addEventListener('click',function(e){ e.stopPropagation(); var m=picks[idx]; stopHeroPreview(); playContent(m.url,m.title,(m.genre||'')+(m.year?' · '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); });
+        el.querySelector('.h2-btn-info').addEventListener('click',function(e){ e.stopPropagation(); stopHeroPreview(); h2Open(picks[idx]); });
         var sx=null, sy=null, swipedAt=0;
         el.addEventListener('touchstart',function(e){ var t=e.touches[0]; sx=t.clientX; sy=t.clientY; },{passive:true});
         el.addEventListener('touchend',function(e){ if(sx==null) return; var t=e.changedTouches[0], dx=t.clientX-sx, dy=t.clientY-sy; sx=null;
             if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.3&&picks.length>1){ swipedAt=Date.now(); show((idx+(dx<0?1:picks.length-1))%picks.length); } },{passive:true});
-        el.addEventListener('click',function(){ if(Date.now()-swipedAt<450) return; play(); });
+        el.addEventListener('click',function(e){ if(Date.now()-swipedAt<450) return; if(e.target.closest('.h2-btn,.h2-dot,.hero-sound')) return; stopHeroPreview(); h2Open(picks[idx]); });
         show(0);
         if(S._h2Rot) clearInterval(S._h2Rot);
         if(picks.length>1) S._h2Rot=setInterval(function(){ if(!document.body.contains(el)){ clearInterval(S._h2Rot); S._h2Rot=null; return; }
