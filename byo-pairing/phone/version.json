@@ -1,6 +1,6 @@
 {
-  "versionCode": 153,
-  "versionName": "3.36.41",
+  "versionCode": 154,
+  "versionName": "3.36.42",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Fix: the new Netflix-style featured hero on Home now also shows on phone-width screens — it was only wired up for the wide TV layout, so phones still showed the old card. Phone gets the same live video preview, brand badge, title/metadata, Play and More info buttons, with the backdrop tap opening More info and swipe still switching between picks."
+  "notes": "Featured hero fixes: removed the duplicate BYO Player badge inside the banner (the app's own top bar already shows it), it now features a single title instead of rotating through several, its live preview keeps playing for as long as Home is open, and the banner is now much larger - sized closer to the Netflix reference instead of the small box it was shrinking to. Also fixed the featured title being nearly invisible in light theme."
 }

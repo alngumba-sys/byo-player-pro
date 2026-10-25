@@ -118,7 +118,10 @@ body, html.tv-native body{
 .scroll-body{ padding:0 !important; }
 
 /* ---------- 4. hero ---------- */
-.hero{
+/* :not(.h2-feat) -- fluid-type sizing for the old single-hero markup. The new full-bleed video hero
+   reuses the plain .hero/.hero-sound/.hero-livedot classes, so without the exclusion these !importants
+   (height:auto, a 170-480px min-height clamp, etc) were silently shrinking the new hero on every screen. */
+.hero:not(.h2-feat){
   height:auto !important; min-height:clamp(170px, 26vw, 480px) !important;
   padding:clamp(16px, 2.6vw, 56px) !important; margin:0 0 var(--rp-gap) !important;
   border-radius:var(--rp-radius) !important;
@@ -130,9 +133,9 @@ body, html.tv-native body{
 .hero-meta { font-size:var(--rp-fs-meta) !important; gap:var(--rp-gap-sm) !important; margin-bottom:var(--rp-gap-sm) !important; }
 .hero-plot { font-size:var(--rp-fs-body) !important; margin-bottom:var(--rp-gap) !important; }
 .hero-actions{ display:flex !important; flex-wrap:wrap !important; gap:var(--rp-gap-sm) !important; }
-.hero-livedot{ font-size:var(--rp-fs-micro) !important; padding:4px 10px !important;
+.hero:not(.h2-feat) .hero-livedot{ font-size:var(--rp-fs-micro) !important; padding:4px 10px !important;
                top:var(--rp-gap-sm) !important; right:var(--rp-gap-sm) !important; }
-.hero-sound{ width:clamp(40px,4vw,66px) !important; height:clamp(40px,4vw,66px) !important;
+.hero:not(.h2-feat) .hero-sound{ width:clamp(40px,4vw,66px) !important; height:clamp(40px,4vw,66px) !important;
              font-size:var(--rp-icon) !important; right:var(--rp-gap-sm) !important; bottom:var(--rp-gap-sm) !important; }
 .hero-dots{ right:var(--rp-gap-sm) !important; }
 
@@ -530,22 +533,25 @@ html.rp-no-ar .pp-hero{ height:clamp(160px, 30vw, 420px) !important; aspect-rati
 }
 
 /* ---------- 24. hero ---------- */
-.hero{ padding:var(--rp-hero-pad) !important; }
+/* :not(.h2-feat) throughout this section: these responsive-padding rules size the old single-hero
+   markup. The new full-bleed video hero reuses the .hero-sound/.hero-livedot classes and the plain
+   .hero class, so without the exclusion these !importants were overriding its own box model/position. */
+.hero:not(.h2-feat){ padding:var(--rp-hero-pad) !important; }
 .hero-inner{ width:100% !important; max-width:min(100%, 880px) !important; }
 .hero-tag{ padding-right:clamp(84px, 11vw, 170px) !important; }       /* clear the PREVIEW pill */
 .hero-title{ padding-right:0 !important; display:-webkit-box !important; -webkit-line-clamp:2 !important;
              -webkit-box-orient:vertical !important; overflow:hidden !important; }
 .hero-meta{ margin-bottom:clamp(12px, 1.4vw, 28px) !important; }
 .hero-actions{ gap:clamp(8px, .8vw, 16px) !important; }
-.hero-livedot{ top:var(--rp-hero-pad) !important; right:var(--rp-hero-pad) !important;
+.hero:not(.h2-feat) .hero-livedot{ top:var(--rp-hero-pad) !important; right:var(--rp-hero-pad) !important;
                font-size:clamp(10px, .95vw, 18px) !important; padding:clamp(4px,.35vw,7px) clamp(9px,.75vw,14px) !important; }
 /* sound and dots shared one spot in the original (right:30 bottom:30) */
-.hero-sound{
+.hero:not(.h2-feat) .hero-sound{
   width:var(--rp-sound) !important; height:var(--rp-sound) !important;
   right:var(--rp-hero-pad) !important; bottom:var(--rp-hero-pad) !important;
   font-size:calc(var(--rp-sound) * .42) !important;
 }
-.hero-sound svg, .hero-sound .ic{ width:calc(var(--rp-sound) * .42) !important; height:calc(var(--rp-sound) * .42) !important; }
+.hero:not(.h2-feat) .hero-sound svg, .hero:not(.h2-feat) .hero-sound .ic{ width:calc(var(--rp-sound) * .42) !important; height:calc(var(--rp-sound) * .42) !important; }
 .hero-dots{
   right:calc(var(--rp-hero-pad) + var(--rp-sound) + var(--rp-gap)) !important;
   bottom:calc(var(--rp-hero-pad) + (var(--rp-sound) - clamp(8px, .6vw, 12px)) / 2) !important;
@@ -555,7 +561,7 @@ html.rp-no-ar .pp-hero{ height:clamp(160px, 30vw, 420px) !important; aspect-rati
 .hero-dots i.on{ width:clamp(20px, 1.6vw, 30px) !important; }
 @media (max-width: 899px){
   /* phones/tablets: give dots + sound their own bottom bar under the buttons */
-  .hero{ padding-bottom:calc(var(--rp-hero-pad) + var(--rp-sound) + 10px) !important; }
+  .hero:not(.h2-feat){ padding-bottom:calc(var(--rp-hero-pad) + var(--rp-sound) + 10px) !important; }
   .hero-dots{ left:var(--rp-hero-pad) !important; right:auto !important; }
 }
 
@@ -990,7 +996,7 @@ html.rp-no-ar .pp-hero{ height:clamp(160px, 30vw, 420px) !important; aspect-rati
 /* ---- Home: a little more room at the top; cleaner featured buttons ---- */
 @media (max-width: 899px){
   .topbar{ padding-top:calc(env(safe-area-inset-top, 0px) + 16px) !important; }
-  .hero{ margin-top:6px !important; }
+  .hero:not(.h2-feat){ margin-top:6px !important; }
   /* Play + More info: equal-width pair spanning the hero */
   .hero-actions{ display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
                  width:100% !important; max-width:360px !important; gap:10px !important; }
@@ -999,9 +1005,9 @@ html.rp-no-ar .pp-hero{ height:clamp(160px, 30vw, 420px) !important; aspect-rati
                  border-radius:12px !important; white-space:nowrap !important; }
   .hero-actions .ic, .hero-actions svg{ width:18px !important; height:18px !important; flex:none; }
   /* PREVIEW pill sits on the tag line, never over the title */
-  .hero-livedot{ top:var(--rp-hero-pad) !important; right:var(--rp-hero-pad) !important;
+  .hero:not(.h2-feat) .hero-livedot{ top:var(--rp-hero-pad) !important; right:var(--rp-hero-pad) !important;
                  font-size:11px !important; padding:5px 10px !important; gap:6px !important; height:24px; box-sizing:border-box; }
-  .hero-livedot i{ width:8px !important; height:8px !important; }
+  .hero:not(.h2-feat) .hero-livedot i{ width:8px !important; height:8px !important; }
   .hero-tag{ min-height:24px !important; display:flex !important; align-items:center !important; }
 }
 
@@ -1476,7 +1482,7 @@ html.rp-no-ar .pp-hero{ height:clamp(160px, 30vw, 420px) !important; aspect-rati
                  font-size:14px !important; border-radius:999px !important; gap:6px !important; flex:0 0 auto !important; }
   .hero-actions > .ghost-btn{ background:rgba(255,255,255,.12) !important; border:1px solid rgba(255,255,255,.18) !important; }
   .hero-actions .ic, .hero-actions svg{ width:16px !important; height:16px !important; }
-  .hero{ padding-bottom:calc(var(--rp-hero-pad) + 26px) !important; }
+  .hero:not(.h2-feat){ padding-bottom:calc(var(--rp-hero-pad) + 26px) !important; }
 
   /* (b) bottom bar: lighter panel, accent separator line and a lift shadow so it reads as the menu */
   .topbar .nav{ background:linear-gradient(180deg, #131c30 0%, #0c1222 100%) !important;
@@ -2364,10 +2370,13 @@ input.focused, textarea.focused, select.focused{ transform:none !important; box-
 
 /* ===== 59. Home on big screens: compact "Featured today" so the picture / preview shows, one-line trial banner ===== */
 @media (min-width:1200px){
-  #home-body .hero{ min-height:clamp(300px, 34vh, 420px) !important; display:flex !important; flex-direction:column !important; justify-content:flex-end !important; padding:28px 36px !important; }
-  #home-body .hero.has-art::before{ background:linear-gradient(0deg, rgba(6,10,20,.9) 0%, rgba(6,10,20,.55) 28%, rgba(6,10,20,0) 58%) !important; }
-  #home-body .hero.has-art.art-poster{ background-size:auto 100% !important; background-position:right 6% center !important; }
-  #home-body .hero.has-art.art-poster::before{ background:linear-gradient(90deg, rgba(6,10,20,.95) 0%, rgba(6,10,20,.75) 40%, rgba(6,10,20,0) 70%), linear-gradient(0deg, rgba(6,10,20,.6) 0%, rgba(6,10,20,0) 40%) !important; }
+  /* :not(.h2-feat) -- these rules target the old single-hero markup (.hero-inner/.hero-title/etc,
+     now unused); without the exclusion their !importants clobber the new full-bleed video hero
+     (which also carries the plain .hero class) and were silently shrinking it on wide screens. */
+  #home-body .hero:not(.h2-feat){ min-height:clamp(300px, 34vh, 420px) !important; display:flex !important; flex-direction:column !important; justify-content:flex-end !important; padding:28px 36px !important; }
+  #home-body .hero.has-art:not(.h2-feat)::before{ background:linear-gradient(0deg, rgba(6,10,20,.9) 0%, rgba(6,10,20,.55) 28%, rgba(6,10,20,0) 58%) !important; }
+  #home-body .hero.has-art:not(.h2-feat).art-poster{ background-size:auto 100% !important; background-position:right 6% center !important; }
+  #home-body .hero.has-art:not(.h2-feat).art-poster::before{ background:linear-gradient(90deg, rgba(6,10,20,.95) 0%, rgba(6,10,20,.75) 40%, rgba(6,10,20,0) 70%), linear-gradient(0deg, rgba(6,10,20,.6) 0%, rgba(6,10,20,0) 40%) !important; }
   #home-body .hero-inner{ max-width:100% !important; width:100% !important; display:flex !important; flex-wrap:wrap !important; align-items:center !important; column-gap:18px !important; row-gap:12px !important; position:relative; z-index:2; }
   #home-body .hero-tag{ order:0; margin:0 !important; padding:6px 12px !important; border-radius:999px; background:rgba(34,221,226,.16); font-size:15px !important; flex:0 0 auto; }
   #home-body .hero-title{ order:1; margin:0 !important; font-size:clamp(30px, 2.3vw, 46px) !important; line-height:1.15 !important; -webkit-line-clamp:1 !important; max-width:62% !important; flex:0 1 auto; text-shadow:0 2px 14px rgba(0,0,0,.6); }
@@ -2384,7 +2393,7 @@ input.focused, textarea.focused, select.focused{ transform:none !important; box-
   .pay-banner.bl-banner .pb-title{ font-size:20px !important; flex:0 0 auto; }
   .pay-banner.bl-banner .pb-sub{ font-size:16px !important; margin:0 !important; overflow:hidden; text-overflow:ellipsis; }
 }
-@media (min-width:1200px){ #home-body .hero::after{ background:none !important; } }
+@media (min-width:1200px){ #home-body .hero:not(.h2-feat)::after{ background:none !important; } }
 /* ===== 60. Menu bar always on screen (hidden only while a video plays) ===== */
 @media (min-width:1100px){
   .topbar{ position:fixed !important; top:0 !important; left:0 !important; right:0 !important; width:auto !important; z-index:800 !important; background:linear-gradient(180deg, var(--bg,#070b14) 0%, var(--bg,#070b14) 86%, rgba(7,11,20,0)) !important; }
@@ -2518,10 +2527,10 @@ input.focused, textarea.focused, select.focused{ transform:none !important; box-
 }
 #view-sports .ls-match.focused{ transform:none !important; box-shadow:inset 0 0 0 3px var(--focus-ring) !important; }
 /* Featured today: while the preview video plays, show it clearly (no poster, only a soft shade behind the text) */
-#home-body .hero:has(.hero-video.showing){ background:#000 !important; }
-#home-body .hero:has(.hero-video.showing)::before{ background:linear-gradient(0deg, rgba(5,8,16,.88) 0%, rgba(5,8,16,.35) 30%, rgba(5,8,16,0) 55%) !important; }
-#home-body .hero:has(.hero-video.showing)::after{ background:none !important; }
-#home-body .hero-video{ z-index:0 !important; }
+#home-body .hero:not(.h2-feat):has(.hero-video.showing){ background:#000 !important; }
+#home-body .hero:not(.h2-feat):has(.hero-video.showing)::before{ background:linear-gradient(0deg, rgba(5,8,16,.88) 0%, rgba(5,8,16,.35) 30%, rgba(5,8,16,0) 55%) !important; }
+#home-body .hero:not(.h2-feat):has(.hero-video.showing)::after{ background:none !important; }
+#home-body .hero:not(.h2-feat) .hero-video{ z-index:0 !important; }
 /* Setup / sign-in / profile screens are full screen: no menu bar on top of them */
 html.no-topbar .topbar{ display:none !important; }
 html.no-topbar #app{ padding-top:0 !important; }
@@ -2630,7 +2639,7 @@ html.no-topbar #app{ padding-top:0 !important; }
 #home-body .h2 button{ font-family:inherit; }
 /* 1. hero row */
 .h2-hero{ display:grid; grid-template-columns:minmax(0,1fr); }
-.h2-feat.hero{ display:block; margin:0; padding:0; align-items:unset; height:clamp(420px,54vh,620px); border-radius:20px; box-sizing:border-box; overflow:hidden; position:relative; background:#05080d; }
+.h2-feat.hero{ display:block; margin:0; padding:0; align-items:unset; height:clamp(560px,76vh,900px); border-radius:20px; box-sizing:border-box; overflow:hidden; position:relative; background:#05080d; }
 .h2-feat.hero::before, .h2-feat.hero::after{ content:none; }
 .h2-feat-poster{ position:absolute; inset:0; z-index:0; overflow:hidden; }
 .h2-feat-ph{ position:absolute; inset:0; display:flex; align-items:flex-end; padding:24px; font-weight:800; font-size:26px; line-height:1.2; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.6); }
@@ -2641,9 +2650,6 @@ html.no-topbar #app{ padding-top:0 !important; }
 /* Bottom-to-top dark slate/navy gradient — the only overlay on the video, so the frame stays clean. */
 .h2-feat-shade{ position:absolute; inset:0; z-index:2; pointer-events:none;
     background:linear-gradient(0deg, rgba(8,13,20,.97) 0%, rgba(8,13,20,.86) 20%, rgba(8,13,20,.45) 45%, rgba(8,13,20,.08) 68%, transparent 85%); }
-.h2-feat-brand{ position:absolute; left:28px; top:24px; z-index:3; display:flex; align-items:center; background:rgba(5,8,12,.4); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:8px 16px 8px 10px; border-radius:999px; }
-.h2-feat-brand .brand{ font-size:20px !important; gap:9px !important; margin:0 !important; }
-.h2-feat-brand .brand .ic, .h2-feat-brand .brand .ic svg, .h2-feat-brand .brand .brand-mark{ width:28px !important; height:28px !important; }
 .h2-feat .hero-sound{ top:24px; bottom:auto; right:28px; left:auto; width:44px; height:44px; background:rgba(5,8,12,.4); backdrop-filter:blur(10px); border-color:rgba(242,245,248,.3); }
 .h2-feat .hero-livedot{ top:24px; bottom:auto; right:84px; background:rgba(5,8,12,.4); backdrop-filter:blur(10px); font-size:13px; padding:6px 12px; }
 .h2-feat-bottom{ position:absolute; left:0; right:0; bottom:0; z-index:3; padding:0 44px 38px; display:flex; align-items:flex-end; justify-content:space-between; gap:40px; }
@@ -2651,8 +2657,7 @@ html.no-topbar #app{ padding-top:0 !important; }
 .h2-feat-top{ display:flex; align-items:center; gap:14px; }
 .h2-pill{ display:inline-flex; align-items:center; gap:8px; background:rgba(242,245,248,.14); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(242,245,248,.25); color:#fff; font-weight:800; font-size:13px; letter-spacing:.1em; text-transform:uppercase; padding:6px 14px; border-radius:999px; }
 .h2-pill svg{ width:14px; height:14px; color:#f5b942; }
-.h2-count{ color:var(--h2-muted); font-size:15px; font-weight:600; }
-.h2-feat-title{ margin:0; font-size:clamp(32px,4.4vw,62px); line-height:1.04; font-weight:800; color:#fff; letter-spacing:-.01em; text-shadow:0 4px 24px rgba(0,0,0,.5); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.h2-feat-title{ margin:0; font-size:clamp(36px,5vw,72px); line-height:1.04; font-weight:800; color:#fff; letter-spacing:-.01em; text-shadow:0 4px 24px rgba(0,0,0,.5); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .h2-feat-meta{ color:#e7ebf0; font-size:17px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; display:flex; flex-wrap:wrap; align-items:center; gap:0 10px; text-shadow:0 2px 10px rgba(0,0,0,.5); }
 .h2-sep{ opacity:.6; } .h2-star{ color:#ffc94d; }
 .h2-feat-actions{ display:flex; align-items:center; gap:14px; margin-top:4px; flex-wrap:wrap; }
@@ -2662,23 +2667,11 @@ html.no-topbar #app{ padding-top:0 !important; }
 .h2-btn-info{ background:rgba(242,245,248,.14); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); color:#fff; border:1px solid rgba(242,245,248,.4); }
 .h2-btn.focused, .h2-btn:focus-visible{ transform:scale(1.05); box-shadow:0 0 0 3px #fff, 0 10px 28px rgba(0,0,0,.4); }
 .h2-btn-info.focused{ background:rgba(242,245,248,.26); }
-.h2-dots{ display:flex; gap:10px; align-items:center; margin-left:4px; }
-.h2-dot{ width:10px; height:10px; padding:0; border-radius:999px; border:0; background:rgba(242,245,248,.35); cursor:pointer; outline:none; transition:width .2s, background .2s; }
-.h2-dot.on{ width:28px; background:#fff; }
-.h2-dot.focused{ box-shadow:0 0 0 3px #fff; }
 .h2-feat-tagline{ margin:0; flex:0 1 320px; align-self:flex-end; text-align:right; color:#e7ebf0; font-size:17px; font-style:italic; font-weight:600; line-height:1.4;
     background:rgba(5,8,12,.32); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(242,245,248,.16); border-radius:14px; padding:14px 18px; text-shadow:0 2px 8px rgba(0,0,0,.4); }
-.h2-feat-nav{ position:absolute; top:40%; transform:translateY(-50%); height:96px; width:56px; border:none; background:none; padding:0; margin:0; cursor:pointer; outline:none;
-    display:flex; align-items:center; z-index:4; color:#fff; }
-.h2-feat-prev{ left:0; justify-content:flex-start; padding-left:8px; }
-.h2-feat-next{ right:0; justify-content:flex-end; padding-right:8px; }
-.h2-feat-nav .ic{ width:42px; height:42px; border-radius:50%; background:rgba(10,13,19,.6); backdrop-filter:blur(8px); box-shadow:0 4px 16px rgba(0,0,0,.45);
-    display:flex; align-items:center; justify-content:center; flex:0 0 auto; transition:background .15s, transform .15s; }
-.h2-feat-nav:hover .ic{ background:rgba(255,255,255,.9); color:#0a0e14; }
-.h2-feat-nav.focused .ic, .h2-feat-nav:focus-visible .ic{ background:#fff; color:#0a0e14; box-shadow:0 0 0 3px #fff, 0 4px 16px rgba(0,0,0,.45); transform:scale(1.08); }
 /* Native Android preview draws the real video ABOVE the webview over the hero's top band — keep the
    text panel compact and clear of it, and hide what it would otherwise cover. */
-.hero.native-preview .h2-feat-brand, .hero.native-preview .h2-feat-tagline{ display:none; }
+.hero.native-preview .h2-feat-tagline{ display:none; }
 .hero.native-preview .h2-feat-bottom{ padding-bottom:26px; }
 .hero.native-preview .h2-feat-title{ font-size:clamp(26px,3.2vw,42px); -webkit-line-clamp:1; }
 /* what's on now */
@@ -2719,9 +2712,9 @@ html.no-topbar #app{ padding-top:0 !important; }
 .h2-card-title{ margin-top:10px; font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--h2-text); }
 .h2-card-sub{ margin-top:3px; font-size:13px; color:var(--h2-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* narrower screens: stack the hero row, smaller type */
-@media (max-width:1300px){ .h2-feat.hero{ height:clamp(360px,50vh,520px); } .h2-feat-bottom{ padding:0 32px 28px; } .h2-feat-title{ font-size:clamp(26px,5vw,42px); } }
+@media (max-width:1300px){ .h2-feat.hero{ height:clamp(460px,70vh,700px); } .h2-feat-bottom{ padding:0 32px 28px; } .h2-feat-title{ font-size:clamp(28px,5.6vw,52px); } }
 @media (max-width:1099px){
-  .h2-feat.hero{ height:clamp(320px,48vh,440px); }
+  .h2-feat.hero{ height:clamp(400px,66vh,560px); }
   .h2-feat-bottom{ padding:0 24px 22px; gap:20px; }
   .h2-feat-tagline{ display:none; }
   .h2-feat-title{ font-size:clamp(22px,5vw,32px); }
@@ -3136,9 +3129,6 @@ html.light .ls-row.focused{ color:#0b1220 !important; }
 .h2-feat-m .h2-feat-poster, .h2-feat-m .h2-feat-ph{ position:absolute; inset:0; }
 .h2-feat-m .h2-feat-img{ object-position:center 22%; }
 .h2-feat-m .h2-feat-img.wide{ object-position:center 30%; }
-.h2-feat-m .h2-feat-brand{ left:12px; top:10px; padding:5px 11px 5px 7px; }
-.h2-feat-m .h2-feat-brand .brand{ font-size:13px !important; gap:6px !important; }
-.h2-feat-m .h2-feat-brand .brand .ic, .h2-feat-m .h2-feat-brand .brand .ic svg, .h2-feat-m .h2-feat-brand .brand .brand-mark{ width:18px !important; height:18px !important; }
 .h2-feat-m .hero-sound{ top:10px; right:12px; width:32px; height:32px; }
 .h2-feat-m .hero-sound svg{ width:16px; height:16px; }
 .h2-feat-m .hero-livedot{ top:10px; right:52px; font-size:10px; padding:4px 9px; }
@@ -3151,9 +3141,6 @@ html.light .ls-row.focused{ color:#0b1220 !important; }
 .h2-feat-m .h2-feat-actions{ margin-top:2px; gap:8px; }
 .h2-feat-m .h2-btn{ height:36px; padding:0 14px; font-size:13px; gap:6px; }
 .h2-feat-m .h2-btn svg{ width:15px; height:15px; }
-.h2-feat-m .h2-dots{ margin-left:0; gap:6px; }
-.h2-feat-m .h2-dot{ width:6px; height:6px; }
-.h2-feat-m .h2-dot.on{ width:16px; }
 .h2-feat-m.hero.native-preview .h2-feat-title{ font-size:clamp(19px,5.6vw,24px) !important; -webkit-line-clamp:2 !important; }
 .h2-feat-m.focused{ outline:3px solid var(--accent); outline-offset:2px; }
 
@@ -3184,7 +3171,10 @@ html.light .h2-now-row{ background:#f3f6fa !important; }
 html.light .h2-now-row.focused{ background:#e8f8fa !important; }
 html.light .h2-tag{ border-color:rgba(11,18,32,.3) !important; color:#0b1220 !important; }
 /* TV-size featured hero: always a video/photo banner with white overlay text, same as dark theme —
-   it sits on a picture, not the app's own chrome, so it doesn't follow the light/dark toggle. */
+   it sits on a picture, not the app's own chrome, so it doesn't follow the light/dark toggle. The
+   generic "html.light h2{color:var(--fg)!important}" rule above matches this <h2> by tag and was
+   silently turning the title near-black/illegible over the hero's photo; override it back to white. */
+html.light .h2-feat-title{ color:#fff !important; }
 /* Channel logo tiles (Live, Guide, What's on now, Sports): light tile; a hairline shadow keeps white logos visible */
 html.light .lc-logo, html.light .wc-logo, html.light .ct-logo img, html.light .guide-chan .g-logo, html.light .h2-now-thumb, html.light .h2-now-logo,
 html.light .live-card .lc-logo{ background:#e7ecf3 !important; }
