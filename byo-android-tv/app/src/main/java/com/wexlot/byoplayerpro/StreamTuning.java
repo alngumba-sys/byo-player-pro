@@ -139,6 +139,9 @@ public final class StreamTuning {
         return b.build();
     }
 
+    /** The bandwidth measured in earlier sessions (bits/s), 0 when unknown. */
+    static long savedBandwidth(Context ctx) {
+        try { return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_BW, 0); } catch (Exception e) { return 0; } }
     /** Remember what this session measured, for the next start. */
     static void saveBandwidth(Context ctx, DefaultBandwidthMeter meter) {
         try {

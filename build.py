@@ -318,6 +318,20 @@ s=s.replace(_pc, """    function playContent(url,title,sub,opts){ opts=opts||{};
                         if(__cur>=0&&__all.length>1){ var __a=Math.max(0,Math.min(__cur-300,__all.length-600)), __b=Math.min(__all.length,__a+600);
                             __m.allEps=__all.slice(__a,__b); __m.curEp=__cur-__a; __m.seasonCount=__s.seasons.length; window.__byoEpPick={ sid:__s.id, s:__s, map:__map.slice(__a,__b) }; } else window.__byoEpPick=null; } else window.__byoEpPick=null; }catch(_ap){ window.__byoEpPick=null; }
                     if(__m.type) P.meta=__m; }catch(_e){}
+                // Lighter copies of the same film from the provider's own list (the 4K / 1080p / HD / SD
+                // duplicates that were folded into one card) become quality levels for the TV player:
+                // it opens on one the line can carry and drops to the next when the connection can't
+                // keep up, instead of pausing to buffer. Bitrates are estimates from the name tags.
+                try{ if(opts.type==='movie'&&__mv&&!S.emby&&!P.qualities){
+                    function __est(nm){ var t=String(nm||''); var b=4.5e6;
+                        if(/\b(2160p?|4k|uhd)\b/i.test(t)) b=16e6; else if(/\b(1080p?|fhd|full\s?hd)\b/i.test(t)) b=6.5e6; else if(/\b(720p?|hd)\b/i.test(t)) b=3.5e6; else if(/\b(480p?|sd|cam|ts)\b/i.test(t)) b=1.5e6;
+                        if(/\b(hevc|x265|h\.?265)\b/i.test(t)) b=Math.round(b*0.6); return b; }
+                    function __lab(nm){ var t=String(nm||''); if(/\b(2160p?|4k|uhd)\b/i.test(t)) return '4K'; if(/\b(1080p?|fhd|full\s?hd)\b/i.test(t)) return '1080p'; if(/\b(720p?|hd)\b/i.test(t)) return 'HD'; if(/\b(480p?|sd)\b/i.test(t)) return 'SD'; return 'Lighter copy'; }
+                    var __ob=__est(__mv.title); P.origBitrate=__ob;
+                    var __alts=(__mv.sources||[]).filter(function(sx){ return sx&&sx.url&&sx.url!==url; }).map(function(sx){ return { label:__lab(sx.name), url:sx.url, bitrate:__est(sx.name) }; })
+                        .filter(function(q){ return q.bitrate<__ob; }).sort(function(a,b){ return b.bitrate-a.bitrate; });
+                    var __seen={}; __alts=__alts.filter(function(q){ if(__seen[q.label]) return false; __seen[q.label]=1; return true; });
+                    if(__alts.length) P.qualities=__alts; } }catch(_q){}
                 S._inNative=true;
                 window.__byoNativeCtx={url:url,title:title,sub:sub,opts:opts,chIds:chIds,eps:eps,fav:__favCtx};
                 try{ localStorage.setItem('byo_native_ctx', JSON.stringify(window.__byoNativeCtx)); }catch(e){}

@@ -435,6 +435,7 @@ public class MainActivity extends Activity {
                         i.putExtra(PlayerActivity.EXTRA_LIVE, o.optBoolean("live", false));
                         playingLive = o.optBoolean("live", false);
                         if (o.has("qualities")) i.putExtra(PlayerActivity.EXTRA_QUALITIES, o.getJSONArray("qualities").toString());
+                        if (o.has("origBitrate")) i.putExtra(PlayerActivity.EXTRA_ORIG_BITRATE, o.optLong("origBitrate", 0));
                         if (o.has("channels")) i.putExtra(PlayerActivity.EXTRA_CHANNELS, o.getJSONArray("channels").toString());
                         i.putExtra(PlayerActivity.EXTRA_CH_INDEX, o.optInt("chIndex", 0));
                         if (o.has("headers")) i.putExtra(PlayerActivity.EXTRA_HEADERS, o.getJSONObject("headers").toString());

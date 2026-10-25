@@ -72,7 +72,7 @@ import java.util.List;
 public class PlayerActivity extends Activity {
 
     public static final String EXTRA_URL = "url", EXTRA_TITLE = "title", EXTRA_SUB = "sub", EXTRA_START = "startMs",
-            EXTRA_QUALITIES = "qualities", EXTRA_LIVE = "live", EXTRA_CHANNELS = "channels", EXTRA_CH_INDEX = "chIndex", EXTRA_HEADERS = "headers", EXTRA_DRM = "drm", EXTRA_EPISODES = "episodes", EXTRA_META = "meta", EXTRA_GUARD = "guard";
+            EXTRA_QUALITIES = "qualities", EXTRA_LIVE = "live", EXTRA_CHANNELS = "channels", EXTRA_CH_INDEX = "chIndex", EXTRA_HEADERS = "headers", EXTRA_DRM = "drm", EXTRA_EPISODES = "episodes", EXTRA_META = "meta", EXTRA_GUARD = "guard", EXTRA_ORIG_BITRATE = "origBitrate";
 
     private static class Q { String label; String url; long bitrate; Q(String l, String u, long b){ label=l; url=u; bitrate=b; } }
     private static class Ch { String title, sub, url; JSONObject headers, drm; Ch(String t, String s, String u, JSONObject h, JSONObject d){ title=t; sub=s; url=u; headers=h; drm=d; } }
@@ -133,6 +133,16 @@ public class PlayerActivity extends Activity {
             if (qj != null) { JSONArray a = new JSONArray(qj);
                 for (int i = 0; i < a.length(); i++) { JSONObject o = a.getJSONObject(i);
                     qualities.add(new Q(o.optString("label"), o.optString("url"), o.optLong("bitrate"))); } }
+        } catch (Exception ignored) {}
+        // The page may know roughly how heavy the chosen file is (from its 4K/1080p/HD tag). If the
+        // line measured last time can't carry it, open on the lightest copy that fits instead of
+        // stalling first and dropping later; a faster line steps back up through upgradeCheck.
+        try { long orig = in.getLongExtra(EXTRA_ORIG_BITRATE, 0);
+            if (orig > 0) qualities.get(0).bitrate = orig;
+            long bw = StreamTuning.savedBandwidth(this);
+            if (orig > 0 && bw > 0 && qualities.size() > 1 && orig > bw * 0.8) {
+                for (int i = 1; i < qualities.size(); i++) if (qualities.get(i).bitrate <= bw * 0.65) { qIndex = i; url = qualities.get(i).url; break; }
+                if (qIndex == 0) { qIndex = qualities.size() - 1; url = qualities.get(qIndex).url; } }
         } catch (Exception ignored) {}
         try { String cj = in.getStringExtra(EXTRA_CHANNELS);
             if (cj != null) { JSONArray a = new JSONArray(cj);
@@ -687,9 +697,9 @@ public class PlayerActivity extends Activity {
                 // Icon only, same square size as the other player buttons (language/display/subtitle/settings/fullscreen)
                 // so the row reads as one consistent set of controls instead of a wide text pill breaking the rhythm.
                 TextView pick = ctrlPill("\u2630", v -> { if (isEpisode) { if (allEps != null) showEpisodes(); else finishWith("browse"); } else finishWith("browse"); });
-                pick.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22); pick.setPadding(0, 0, 0, 0);
+                pick.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17); pick.setPadding(0, 0, 0, 0);
                 pick.setContentDescription(isEpisode ? "Episodes" : "More movies");
-                LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(dp(52), dp(52)); plp.setMargins(dp(4), 0, dp(4), 0); plp.gravity = Gravity.CENTER_VERTICAL;
+                LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(ICON_DP(), ICON_DP()); plp.setMargins(dp(3), 0, dp(3), 0); plp.gravity = Gravity.CENTER_VERTICAL;
                 basic.addView(pick, 0, plp);
             }
             // Audio language: globe icon; lists the languages this stream carries.
@@ -697,14 +707,24 @@ public class PlayerActivity extends Activity {
             langBtn.setImageResource(R.drawable.ic_language); langBtn.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
             langBtn.setBackgroundColor(0); langBtn.setFocusable(true); langBtn.setContentDescription("Audio language");
             langBtn.setOnClickListener(v -> showAudioLanguages());
-            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(dp(52), dp(52)); llp.setMargins(dp(4), 0, dp(4), 0); llp.gravity = Gravity.CENTER_VERTICAL;
+            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(ICON_DP(), ICON_DP()); llp.setMargins(dp(3), 0, dp(3), 0); llp.gravity = Gravity.CENTER_VERTICAL;
             basic.addView(langBtn, (!live && ("episode".equals(type) || "movie".equals(type))) ? 1 : 0, llp);
             // Icon only (no "Fit" text), same round size as the other player buttons; the mode name shows when pressed.
             displayBtn = ctrlPill("\u26F6", v -> cycleResize());
-            displayBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22); displayBtn.setPadding(0, 0, 0, 0);
+            displayBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17); displayBtn.setPadding(0, 0, 0, 0);
             displayBtn.setContentDescription("Display: " + RESIZE_LABEL[resizeIdx]);
-            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(52), dp(52)); dlp.setMargins(dp(4), 0, dp(4), 0); dlp.gravity = Gravity.CENTER_VERTICAL;
+            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(ICON_DP(), ICON_DP()); dlp.setMargins(dp(3), 0, dp(3), 0); dlp.gravity = Gravity.CENTER_VERTICAL;
             basic.addView(displayBtn, dlp);
+            // Media3's own icon buttons (subtitles / settings / fullscreen) to the same compact size,
+            // and plain-English names for the focus label.
+            int[] ids = { androidx.media3.ui.R.id.exo_subtitle, androidx.media3.ui.R.id.exo_settings, androidx.media3.ui.R.id.exo_fullscreen };
+            String[] names = { "Subtitles", "Quality & speed", "Full screen" };
+            for (int i = 0; i < ids.length; i++) { View b = view.findViewById(ids[i]); if (b == null) continue;
+                android.view.ViewGroup.LayoutParams lp = b.getLayoutParams();
+                if (lp != null) { lp.width = ICON_DP(); lp.height = ICON_DP(); b.setLayoutParams(lp); }
+                if (b instanceof android.widget.ImageView) ((android.widget.ImageView) b).setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+                if (b.getContentDescription() == null || b.getContentDescription().length() == 0) b.setContentDescription(names[i]);
+                focusNames.put(b, names[i]); }
         }
         // Declutter the center of the screen while paused: no full-screen dim scrim behind the
         // controls (the video frame itself should stay visible), no prev/next (not used for a
@@ -745,12 +765,42 @@ public class PlayerActivity extends Activity {
         sl.addState(new int[]{ android.R.attr.state_focused }, new android.graphics.drawable.InsetDrawable(on, ins)); sl.addState(new int[]{}, new android.graphics.drawable.InsetDrawable(off, ins));
         v.setBackground(sl); v.setClipToOutline(false); v.setOutlineProvider(null); v.setScaleX(1f); v.setScaleY(1f);
         // round icon buttons: keep them square so the ring is a clean circle
-        if (v instanceof android.widget.ImageButton) { int pd = dp(10); v.setPadding(pd, pd, pd, pd); }
+        if (v instanceof android.widget.ImageButton) { int pd = dp(8); v.setPadding(pd, pd, pd, pd); }
         final View.OnFocusChangeListener prev = v.getOnFocusChangeListener();
         // No zoom: a zoomed button spills past the control bar and gets cut off top and bottom.
         // The ring is drawn inside the button's own bounds, and parents are told not to clip.
         for (android.view.ViewParent pp = v.getParent(); pp instanceof android.view.ViewGroup; pp = pp.getParent()) { ((android.view.ViewGroup) pp).setClipChildren(false); ((android.view.ViewGroup) pp).setClipToPadding(false); }
-        v.setOnFocusChangeListener((vv, has) -> { if (prev != null) prev.onFocusChange(vv, has); if (has) armAutoHide(); });
+        v.setOnFocusChangeListener((vv, has) -> { if (prev != null) prev.onFocusChange(vv, has); if (has) armAutoHide(); showFocusHint(vv, has); });
+    }
+    // ---- Focus label: the control's name appears just above the bar while the remote is on it ----
+    private int ICON_DP() { return dp(40); }
+    private final java.util.Map<View, String> focusNames = new java.util.HashMap<>();
+    private TextView focusHint;
+    private final Runnable hideHint = () -> { if (focusHint != null) focusHint.animate().alpha(0f).setDuration(150).start(); };
+    private void showFocusHint(View v, boolean has) {
+        try {
+            if (!has) { h.removeCallbacks(hideHint); h.postDelayed(hideHint, 120); return; }
+            String name = focusNames.get(v);
+            if (name == null && v.getContentDescription() != null) name = v.getContentDescription().toString();
+            if (name == null && v instanceof TextView) { CharSequence t = ((TextView) v).getText(); if (t != null && t.length() > 0 && t.length() < 24 && Character.isLetter(t.charAt(0))) name = t.toString(); }
+            if (name == null || name.isEmpty() || rootLayout == null) return;
+            if (focusHint == null) {
+                focusHint = new TextView(this); focusHint.setTextColor(Color.WHITE); focusHint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14); focusHint.setTypeface(Typeface.DEFAULT_BOLD);
+                focusHint.setPadding(dp(14), dp(7), dp(14), dp(7)); focusHint.setAlpha(0f);
+                GradientDrawable bg = new GradientDrawable(); bg.setColor(0xE60B1220); bg.setStroke(dp(1), 0x33FFFFFF); bg.setCornerRadius(dp(999)); focusHint.setBackground(bg);
+                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.START); lp.bottomMargin = dp(96); lp.leftMargin = dp(24);
+                rootLayout.addView(focusHint, lp);
+            }
+            focusHint.setText(name);
+            // sit the label right above the focused control
+            int[] loc = new int[2]; v.getLocationInWindow(loc); int[] rl = new int[2]; rootLayout.getLocationInWindow(rl);
+            focusHint.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            int x = loc[0] - rl[0] + v.getWidth() / 2 - focusHint.getMeasuredWidth() / 2;
+            x = Math.max(dp(12), Math.min(x, rootLayout.getWidth() - focusHint.getMeasuredWidth() - dp(12)));
+            FrameLayout.LayoutParams lp2 = (FrameLayout.LayoutParams) focusHint.getLayoutParams();
+            lp2.leftMargin = x; lp2.bottomMargin = rootLayout.getHeight() - (loc[1] - rl[1]) + dp(8); focusHint.setLayoutParams(lp2);
+            h.removeCallbacks(hideHint); focusHint.animate().alpha(1f).setDuration(120).start();
+        } catch (Exception ignored) {}
     }
     // ---- Score alerts from the app (followed matches): a card in the top-right corner.
     //      OK on the remote switches to the match channel; BACK or a few seconds hides it.
