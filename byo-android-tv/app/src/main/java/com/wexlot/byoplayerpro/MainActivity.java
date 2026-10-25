@@ -504,6 +504,16 @@ public class MainActivity extends Activity {
                 previewPlayer.setRepeatMode(androidx.media3.common.Player.REPEAT_MODE_ALL);
                 previewPlayer.addListener(new androidx.media3.common.Player.Listener() {
                     @Override public void onPlaybackStateChanged(int st) {
+                        // STATE_IDLE after prepare() almost always means the player just failed (a bad
+                        // URL, a source it can't open, an immediate network error) -- ExoPlayer drops
+                        // back to idle WITH the error attached, but our generic "idle" report was
+                        // blindly overwriting whatever onPlayerError had just reported, so the real
+                        // reason never reached Settings > About -- it just said "idle" with nothing to
+                        // go on, even though something concrete had actually gone wrong.
+                        if (st==androidx.media3.common.Player.STATE_IDLE) {
+                            androidx.media3.common.PlaybackException err = previewPlayer.getPlayerError();
+                            if (err != null) { reportPreview("idle", "err=" + err.getErrorCodeName()); return; }
+                        }
                         String s = st==androidx.media3.common.Player.STATE_READY?"ready":st==androidx.media3.common.Player.STATE_BUFFERING?"buffering":st==androidx.media3.common.Player.STATE_ENDED?"ended":"idle";
                         reportPreview(s, "");
                         // Jump a VOD movie ~90s in once we actually know it's long enough and seekable,

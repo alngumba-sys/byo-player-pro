@@ -1,6 +1,6 @@
 {
-  "versionCode": 158,
-  "versionName": "3.36.46",
+  "versionCode": 159,
+  "versionName": "3.36.47",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Featured hero now shows only the Play button - removed More info and the mute icon, so Play is the one and only action and gets focus by default."
+  "notes": "Found another bug in the diagnostic itself: when the preview player failed and dropped back to idle, the generic 'idle' status report was silently overwriting the real error reason, so Settings > About just said 'idle' instead of what actually went wrong. Now it reports the real cause when that happens, so the next check should show the actual problem instead of a blank idle."
 }
