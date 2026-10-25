@@ -7887,13 +7887,23 @@ var Pin=(function(){
     try{ window.__byoPreview=function(state,detail){
         heroLog(state+(detail?(' '+detail):''));
         if(state==='playing'){ if(S._heroFailT){ clearTimeout(S._heroFailT); S._heroFailT=null; } S._heroTries=0;
-            var h=document.querySelector('#home-body .hero'); if(h) h.classList.add('preview-live'); }
+            var h=document.querySelector('#home-body .hero'); if(h) h.classList.add('preview-live');
+            // PREVIEW badge only once real video is on screen, never over a still image.
+            var ld=$('hero-livedot'); if(ld) ld.classList.remove('hidden'); }
         else if(state==='error'){ heroPreviewFailed(detail||'error'); }
     }; }catch(e){}
+    // Splash screen / profile picker still covering Home: try again shortly instead of waiting for the
+    // next Home re-render (the log showed a ~50s gap between "splash up" and the first real start).
+    function heroRetrySoon(url, why){
+        if(S._heroLastSkip!==why){ S._heroLastSkip=why; heroLog('skip: '+why); }
+        if(S._heroRetryT) return;
+        S._heroRetryT=setTimeout(function(){ S._heroRetryT=null; if(S._heroUrl===url) startHeroPreview(url); },700);
+    }
     function startHeroPreviewNative(url){ var A=androidPreview(); if(!A){ return false; }
         if(!$('view-home').classList.contains('active-view')){ heroLog('skip: not home view'); return true; }
-        if(!$('profile-picker').classList.contains('hidden')){ heroLog('skip: picker open'); return true; }
-        var sp=$('splash'); if(sp && sp.style.display!=='none'){ heroLog('skip: splash up'); return true; }
+        if(!$('profile-picker').classList.contains('hidden')){ heroRetrySoon(url,'picker open'); return true; }
+        var sp=$('splash'); if(sp && sp.style.display!=='none'){ heroRetrySoon(url,'splash up'); return true; }
+        S._heroLastSkip=null;
         var rc=heroRectCss(); if(!rc){ heroLog('skip: no hero rect'); return true; }
         if(rc.hidden){ heroLog('skip: rect blocked ('+(rc.frac?'frac':'')+')'); }
         try{ A.previewViewport && A.previewViewport(window.innerWidth||1920); }catch(e){}
@@ -7901,16 +7911,16 @@ var Pin=(function(){
         try{ A.previewStart(url, rc.x, rc.y, rc.w, rc.h, (S.heroMuted!==false)); }catch(e){ heroLog('start ERR '+e.message); }
         S._heroActiveUrl=url;
         if(fresh){ heroLog('starting');
-            // No real frame within 12s = treat as failed and move Featured on to another title.
+            // No real frame within 30s = give up on this title. (12s was too short: these VOD files
+            // over IPTV regularly take longer than that just to buffer the first segment.)
             if(S._heroFailT) clearTimeout(S._heroFailT);
-            S._heroFailT=setTimeout(function(){ S._heroFailT=null; if(S._heroActiveUrl===url && S._heroPrevState!=='playing') heroPreviewFailed('no frame in 12s'); },12000); }
+            S._heroFailT=setTimeout(function(){ S._heroFailT=null; if(S._heroActiveUrl===url && S._heroPrevState!=='playing') heroPreviewFailed('no frame in 30s'); },30000); }
         // Keep the native rect aligned as Home scrolls/relayouts while the hero is on screen. Reads the
         // CURRENT url each tick (not a captured one), so a swapped title keeps being positioned.
         if(!S._heroRectTimer){ S._heroRectTimer=setInterval(function(){ var a=androidPreview(); if(!a||!S._heroActiveUrl){ return; }
             var rr=heroRectCss(); if(rr){ try{ a.previewRect(rr.x,rr.y,rr.w,rr.h); }catch(e){} } },200); }
         // Mark the hole in the hero so the still background doesn't peek through behind the native video.
         var hero=document.querySelector('#home-body .hero'); if(hero) hero.classList.add('native-preview');
-        var ld=$('hero-livedot'); if(ld) ld.classList.remove('hidden');
         var hs=$('hero-sound'); if(hs){ hs.classList.remove('hidden');
             if(!hs._wiredN){ hs._wiredN=true; hs.addEventListener('click',function(){ S.heroMuted=!(S.heroMuted===false); var a=androidPreview(); if(a){ try{ a.previewMute(S.heroMuted); }catch(e){} } var u=hs.querySelector('use'); if(u) u.setAttribute('href', S.heroMuted?'#i-mute':'#i-vol'); }); }
             var u=hs.querySelector('use'); if(u) u.setAttribute('href', (S.heroMuted!==false)?'#i-mute':'#i-vol'); }
@@ -7942,7 +7952,7 @@ var Pin=(function(){
         // Wire the sound toggle once.
         var hs=$('hero-sound'); if(hs && !hs._wired){ hs._wired=true; hs.addEventListener('click',function(){ v.muted=!v.muted; S.heroMuted=v.muted; hs.querySelector('use').setAttribute('href', v.muted?'#i-mute':'#i-vol'); }); }
     }
-    function stopHeroPreview(){ S._heroActiveUrl=null;
+    function stopHeroPreview(){ S._heroActiveUrl=null; if(S._heroRetryT){ clearTimeout(S._heroRetryT); S._heroRetryT=null; }
         if(S._heroRectTimer){ clearInterval(S._heroRectTimer); S._heroRectTimer=null; }
         var A=androidPreview(); if(A){ try{ A.previewStop(); }catch(e){} }
         var hn=document.querySelector('#home-body .hero.native-preview'); if(hn) hn.classList.remove('native-preview');

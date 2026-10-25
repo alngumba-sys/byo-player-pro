@@ -469,17 +469,15 @@ public class MainActivity extends Activity {
                 previewView = new android.view.TextureView(MainActivity.this);
                 previewView.setOpaque(false);
                 previewView.setFocusable(false);
-                // Added ON TOP of the WebView; kept INVISIBLE (not GONE) until the first real frame is
-                // decoded, so the user never sees a black box while it buffers. It must be INVISIBLE,
-                // never GONE: a GONE view is skipped during layout entirely, so its TextureView never
-                // gets measured/attached and never creates a real SurfaceTexture for the decoder to
-                // render into -- the player can still reach STATE_READY (buffering doesn't need a
-                // surface) but onRenderedFirstFrame then never fires, because there is nowhere to draw
-                // the frame. INVISIBLE stays in the layout (so the surface exists) while still not being
-                // drawn, which is what actually keeps the black box from showing.
+                // Added ON TOP of the WebView, VISIBLE but at alpha 0 until the first real frame is
+                // decoded. It must stay VISIBLE: a TextureView only creates its SurfaceTexture when it
+                // is actually drawn, and neither GONE nor INVISIBLE views are drawn, so in either
+                // state the decoder has no surface and onRenderedFirstFrame never fires (the player
+                // still reaches STATE_READY, since buffering needs no surface). Alpha 0 keeps it
+                // drawn (surface exists) while showing nothing, so the backdrop stays visible below.
                 root.addView(previewView, new android.widget.FrameLayout.LayoutParams(1, 1));
                 previewView.setAlpha(0f);
-                previewView.setVisibility(View.INVISIBLE);
+                previewView.setVisibility(View.VISIBLE);
             }
             if (previewPlayer == null) {
                 androidx.media3.datasource.DefaultHttpDataSource.Factory http =
@@ -527,21 +525,7 @@ public class MainActivity extends Activity {
                         }
                         String s = st==androidx.media3.common.Player.STATE_READY?"ready":st==androidx.media3.common.Player.STATE_BUFFERING?"buffering":st==androidx.media3.common.Player.STATE_ENDED?"ended":"idle";
                         reportPreview(s, "");
-                        // Jump a VOD movie ~90s in once we actually know it's long enough and seekable,
-                        // instead of requesting that seek blind at prepare() time. A blind seek on a live
-                        // channel or a short clip (no known/seekable duration) could silently stall the
-                        // player before it ever renders a frame -- which looked exactly like "no preview,
-                        // just the still backdrop" even though the stream itself was perfectly playable.
-                        if (st==androidx.media3.common.Player.STATE_READY && !previewSkippedIntro) {
-                            previewSkippedIntro = true;
-                            try {
-                                long dur = previewPlayer.getDuration();
-                                if (dur != androidx.media3.common.C.TIME_UNSET && dur > 180000L
-                                        && previewPlayer.isCurrentMediaItemSeekable()) {
-                                    previewPlayer.seekTo(90000L);
-                                }
-                            } catch (Exception ignored) {}
-                        }
+                        // (The ~90s intro skip now happens in onRenderedFirstFrame, after a picture is up.)
                     }
                     @Override public void onVideoSizeChanged(androidx.media3.common.VideoSize vs) {
                         previewVidW = (int) Math.round(vs.width * (vs.pixelWidthHeightRatio > 0 ? vs.pixelWidthHeightRatio : 1f));
@@ -549,16 +533,26 @@ public class MainActivity extends Activity {
                         applyPreviewCrop();
                     }
                     @Override public void onRenderedFirstFrame() {
-                        // Real picture is on screen for the first time on this title: ONLY now make the
-                        // view VISIBLE (it was INVISIBLE, not GONE, so it already had a real surface to
-                        // decode into) and fade it in.
+                        // Real picture is on screen for the first time on this title: fade it in.
+                        boolean first = !previewHasFrame;
                         previewHasFrame = true;
-                        try { previewView.setVisibility(View.VISIBLE); previewView.animate().alpha(1f).setDuration(350).start(); } catch (Exception ignored) {}
-                        reportPreview("playing", "");
+                        try { previewView.animate().alpha(1f).setDuration(350).start(); } catch (Exception ignored) {}
+                        if (first) reportPreview("playing", "");
+                        // Only now jump a long VOD movie ~90s in (past studio logos / title card). Doing
+                        // it at the first STATE_READY threw the buffer away and re-buffered before any
+                        // frame had shown, adding seconds to every start.
+                        if (first && !previewSkippedIntro) {
+                            previewSkippedIntro = true;
+                            try {
+                                long dur = previewPlayer.getDuration();
+                                if (dur != androidx.media3.common.C.TIME_UNSET && dur > 180000L
+                                        && previewPlayer.isCurrentMediaItemSeekable()) previewPlayer.seekTo(90000L);
+                            } catch (Exception ignored) {}
+                        }
                     }
                     @Override public void onPlayerError(androidx.media3.common.PlaybackException e) {
                         previewHasFrame = false;
-                        try { previewView.setAlpha(0f); previewView.setVisibility(View.INVISIBLE); } catch (Exception ignored) {}
+                        try { previewView.setAlpha(0f); } catch (Exception ignored) {}
                         reportPreview("error", e.getErrorCodeName());
                     }
                 });
@@ -570,8 +564,7 @@ public class MainActivity extends Activity {
                 previewVidW = 0; previewVidH = 0;
                 previewSkippedIntro = false;
                 previewHasFrame = false;
-                previewView.setAlpha(0f);
-                previewView.setVisibility(View.INVISIBLE);   // stays in the layout (real surface) but undrawn until a real frame renders
+                previewView.setAlpha(0f);   // drawn (so the decoder has a surface) but transparent until a real frame renders
                 // Always start at 0 here -- the ~90s-in jump (so a VOD movie opens on real footage
                 // instead of its static title card) happens later, once STATE_READY confirms the
                 // content actually has a known, seekable duration long enough for that to be safe.
@@ -579,9 +572,9 @@ public class MainActivity extends Activity {
                 previewPlayer.prepare();
                 previewPlayer.setPlayWhenReady(true);
             }
-            // Only reveal it here if THIS title already has a frame on screen (e.g. the rect/url is
-            // being re-sent while already playing) -- never before onRenderedFirstFrame has fired.
-            if (previewHasFrame) previewView.setVisibility(View.VISIBLE);
+            // Always VISIBLE (alpha governs whether anything shows); doPreviewRect may still switch
+            // it to INVISIBLE while the page says the hero is covered.
+            previewView.setVisibility(View.VISIBLE);
             doPreviewRect(xCss, yCss, wCss, hCss);   // may set INVISIBLE if the page says it's covered
         } catch (Exception e) { reportPreview("error", "START_" + e.getClass().getSimpleName()); }
     }
@@ -691,9 +684,14 @@ public class MainActivity extends Activity {
     private void doPreviewStop() {
         try {
             previewHasFrame = false;
+            // previewUrl MUST be cleared BEFORE calling player.stop(): onPlaybackStateChanged's IDLE
+            // branch treats previewUrl==null as "this is our own intentional stop, don't report it" --
+            // but stop() can dispatch that callback inline, in which case clearing previewUrl AFTER stop()
+            // (the previous order) meant the callback still saw the old url and logged a bare "idle"
+            // anyway, exactly the noise this check was meant to suppress.
+            previewUrl = null;
             if (previewView != null) { previewView.animate().cancel(); previewView.setAlpha(0f); previewView.setVisibility(View.GONE); }
             if (previewPlayer != null) { previewPlayer.setPlayWhenReady(false); previewPlayer.stop(); }
-            previewUrl = null;
         } catch (Exception ignored) {}
     }
 

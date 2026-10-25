@@ -1,6 +1,6 @@
 {
-  "versionCode": 162,
-  "versionName": "3.36.50",
+  "versionCode": 163,
+  "versionName": "3.36.51",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Found the actual cause, from the new event log: the preview player was reaching 'ready' twice but never rendering a frame. The hidden video surface was being set to GONE instead of INVISIBLE - a GONE view is skipped by Android's layout system entirely, so it never got a real surface for the decoder to draw into, even though the player itself was ready to play. It now stays INVISIBLE (still properly laid out, just not drawn) until the first real frame arrives, which should let actual video finally render."
+  "notes": "Featured preview fixes from the event log: the hidden video surface is now kept drawn (just transparent) so the decoder has somewhere to render, the 90-second intro skip now happens after the first frame instead of forcing a re-buffer before it, the preview gets 30 seconds to start instead of 12, it starts as soon as the splash screen clears instead of up to a minute later, and the PREVIEW badge only shows once real video is playing."
 }
