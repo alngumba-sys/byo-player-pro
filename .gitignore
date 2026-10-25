@@ -17,3 +17,9 @@ byo-pairing/phone/.netlify/
 
 # OS / editor cruft
 .DS_Store
+
+# Payments sources: never commit build outputs or local SDK paths
+byo-payments/**/build/
+byo-payments/**/.gradle/
+byo-payments/**/local.properties
+byo-payments/**/node_modules/

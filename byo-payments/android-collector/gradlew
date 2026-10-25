@@ -1,0 +1,18 @@
+#!/bin/sh
+# Gradle start up script for POSIX. If gradle-wrapper.jar is missing (this repo is
+# distributed text-only), bootstrap it once with a system Gradle, then continue.
+set -e
+DIR=$(cd "$(dirname "$0")" && pwd)
+WRAPPER_JAR="$DIR/gradle/wrapper/gradle-wrapper.jar"
+if [ ! -f "$WRAPPER_JAR" ]; then
+  if command -v gradle >/dev/null 2>&1; then
+    echo "gradle-wrapper.jar missing — generating it..."
+    (cd "$DIR" && gradle wrapper --gradle-version 8.7 --no-daemon)
+  else
+    echo "ERROR: gradle-wrapper.jar is missing and no system 'gradle' found."
+    echo "Open the project once in Android Studio (it regenerates the wrapper),"
+    echo "or install Gradle and run: gradle wrapper --gradle-version 8.7"
+    exit 1
+  fi
+fi
+exec java -classpath "$WRAPPER_JAR" org.gradle.wrapper.GradleWrapperMain "$@"

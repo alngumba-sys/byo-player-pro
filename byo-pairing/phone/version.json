@@ -1,6 +1,6 @@
 {
-  "versionCode": 171,
-  "versionName": "3.36.59",
+  "versionCode": 172,
+  "versionName": "3.36.60",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "No more dead event channels: channels named with a date and time (one-off matches and events) only send video while the event is on. Finished ones are now hidden from Live and Sports, upcoming ones show their start time and set a reminder instead of opening a blank player, and only an event that is actually on plays."
+  "notes": "Tanzania added: pick Tanzania when signing up and pay in TZS by mobile money (M-Pesa, Tigo Pesa or Airtel Money) to the number shown on screen. Tanzania plans and prices are set in the support console."
 }

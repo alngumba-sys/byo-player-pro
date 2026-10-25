@@ -3013,7 +3013,7 @@ var TimeService=(function(){
 
     /* Region → a sensible default IANA zone (used only as a fallback in the
        priority chain, never to override the device or a user choice). */
-    var REGION_TZ={ ET:'Africa/Addis_Ababa', KE:'Africa/Nairobi', GB:'Europe/London', US:'America/New_York',
+    var REGION_TZ={ ET:'Africa/Addis_Ababa', KE:'Africa/Nairobi', TZ:'Africa/Dar_es_Salaam', GB:'Europe/London', US:'America/New_York',
         CA:'America/Toronto', ZA:'Africa/Johannesburg', AE:'Asia/Dubai', FR:'Europe/Paris', DE:'Europe/Berlin',
         ES:'Europe/Madrid', IN:'Asia/Kolkata', BR:'America/Sao_Paulo', NL:'Europe/Amsterdam', IT:'Europe/Rome',
         TR:'Europe/Istanbul', CN:'Asia/Shanghai' };
@@ -5250,7 +5250,7 @@ var Pin=(function(){
     }
     function guessRegionFromTz(){ var tz=TimeService.deviceTz()||''; var map=TimeService.regionMap||{}; for(var k in map){ if(map[k]===tz) return k; }
         // coarse fallback by continent
-        if(tz.indexOf('Africa/Nairobi')>-1) return 'KE'; if(tz.indexOf('Africa/Addis')>-1) return 'ET'; if(tz.indexOf('Europe/London')>-1) return 'GB'; return ''; }
+        if(tz.indexOf('Africa/Nairobi')>-1) return 'KE'; if(tz.indexOf('Africa/Dar_es_Salaam')>-1) return 'TZ'; if(tz.indexOf('Africa/Addis')>-1) return 'ET'; if(tz.indexOf('Europe/London')>-1) return 'GB'; return ''; }
     function welcomeNext(){ if(_welcomeStep==='lang'){ _welcomeStep='region'; renderWelcome(); } else if(_welcomeStep==='region'){ _welcomeStep='method'; renderWelcome(); } else { finishWelcome(); } }
     function welcomeBack(){ if(_welcomeStep==='region'){ _welcomeStep='lang'; renderWelcome(); } else if(_welcomeStep==='method'){ _welcomeStep='region'; renderWelcome(); } }
     function finishWelcome(){ Store.settings.firstRun=false; Store.save(); closeWelcome(); openProfilePicker(true); }
@@ -10892,7 +10892,7 @@ var Pin=(function(){
         {id:'pt',label:'Português',flag:'🇵🇹',sub:'Portuguese'},{id:'de',label:'Deutsch',flag:'🇩🇪',sub:'German'},{id:'it',label:'Italiano',flag:'🇮🇹',sub:'Italian'},
         {id:'nl',label:'Nederlands',flag:'🇳🇱',sub:'Dutch'},{id:'tr',label:'Türkçe',flag:'🇹🇷',sub:'Turkish'},{id:'zh',label:'中文',flag:'🇨🇳',sub:'Chinese'} ];
     // Regions (flag + IANA-backed via TimeService.regionMap). Independent of language.
-    var REGIONS=[ {id:'ET',label:'Ethiopia',flag:'🇪🇹'},{id:'KE',label:'Kenya',flag:'🇰🇪'},{id:'GB',label:'United Kingdom',flag:'🇬🇧'},
+    var REGIONS=[ {id:'ET',label:'Ethiopia',flag:'🇪🇹'},{id:'KE',label:'Kenya',flag:'🇰🇪'},{id:'TZ',label:'Tanzania',flag:'🇹🇿'},{id:'GB',label:'United Kingdom',flag:'🇬🇧'},
         {id:'US',label:'United States',flag:'🇺🇸'},{id:'CA',label:'Canada',flag:'🇨🇦'},{id:'ZA',label:'South Africa',flag:'🇿🇦'},
         {id:'AE',label:'UAE',flag:'🇦🇪'},{id:'FR',label:'France',flag:'🇫🇷'},{id:'DE',label:'Germany',flag:'🇩🇪'},
         {id:'ES',label:'Spain',flag:'🇪🇸'},{id:'IN',label:'India',flag:'🇮🇳'},{id:'BR',label:'Brazil',flag:'🇧🇷'},

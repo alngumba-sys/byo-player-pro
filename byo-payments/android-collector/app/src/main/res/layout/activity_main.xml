@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0B1020">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- Header row: title + settings gear -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="18dp">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_name"
+                        android:textColor="#FFFFFF"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Payment checker"
+                        android:textColor="#9AA6BD"
+                        android:textSize="14sp" />
+                </LinearLayout>
+                <Button
+                    android:id="@+id/btnSettings"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚙ Settings"
+                    android:textColor="#9AA6BD" />
+            </LinearLayout>
+
+            <!-- Big status card -->
+            <LinearLayout
+                android:id="@+id/statusCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/card_bg"
+                android:padding="26dp"
+                android:layout_marginBottom="14dp">
+                <TextView
+                    android:id="@+id/statusIcon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="✓"
+                    android:textSize="54sp"
+                    android:textColor="#2BD4A7" />
+                <TextView
+                    android:id="@+id/statusTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Working"
+                    android:textColor="#FFFFFF"
+                    android:textSize="26sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp" />
+                <TextView
+                    android:id="@+id/statusSub"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Watching for payments. Keep this phone on and connected."
+                    android:textColor="#9AA6BD"
+                    android:textSize="16sp"
+                    android:gravity="center"
+                    android:layout_marginTop="6dp" />
+                <Button
+                    android:id="@+id/btnFix"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fix now"
+                    android:visibility="gone"
+                    android:layout_marginTop="14dp" />
+            </LinearLayout>
+
+            <!-- Receiving numbers + last SMS seen -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/card_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="RECEIVING ON"
+                    android:textColor="#6B7794"
+                    android:textSize="12sp"
+                    android:letterSpacing="0.08" />
+                <TextView
+                    android:id="@+id/numbersLine"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFF"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="4dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="LAST MESSAGE SEEN"
+                    android:textColor="#6B7794"
+                    android:textSize="12sp"
+                    android:letterSpacing="0.08"
+                    android:layout_marginTop="12dp" />
+                <TextView
+                    android:id="@+id/lastSeenLine"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#CFD8E4"
+                    android:textSize="15sp"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <!-- Today counter -->
+            <TextView
+                android:id="@+id/todayLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No payments yet today"
+                android:textColor="#CFD8E4"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Recent payments"
+                android:textColor="#9AA6BD"
+                android:textSize="14sp"
+                android:letterSpacing="0.08"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Payments list (cards added programmatically) -->
+            <LinearLayout
+                android:id="@+id/paymentsList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/emptyLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No payments caught yet.\nWhen someone pays, it will appear here."
+                android:textColor="#6B7794"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:paddingTop="30dp"
+                android:paddingBottom="30dp" />
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

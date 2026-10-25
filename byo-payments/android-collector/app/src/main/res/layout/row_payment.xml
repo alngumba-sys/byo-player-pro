@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/card_bg"
+    android:padding="16dp"
+    android:layout_marginBottom="10dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <TextView
+        android:id="@+id/rowIcon"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:gravity="center"
+        android:text="✓"
+        android:textSize="22sp"
+        android:textColor="#2BD4A7"
+        android:background="@drawable/pill_bg" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="14dp">
+        <TextView
+            android:id="@+id/rowAmount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ETB 5"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/rowMeta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="from •••• 8610 · 5:22 PM"
+            android:textColor="#9AA6BD"
+            android:textSize="14sp"
+            android:layout_marginTop="2dp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/rowStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Sent to TV"
+        android:textColor="#2BD4A7"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+</LinearLayout>

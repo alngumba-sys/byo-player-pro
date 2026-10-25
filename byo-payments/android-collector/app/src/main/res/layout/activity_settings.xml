@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0B1020"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="18dp" />
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="#CFD8E4"
+            android:textSize="13sp"
+            android:background="@drawable/card_bg"
+            android:padding="14dp"
+            android:layout_marginBottom="14dp" />
+
+        <Button
+            android:id="@+id/btnPerms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Grant SMS permission" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Receiving numbers"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="The numbers customers pay into. Fill in one or both. This phone must have the SIM for each number it watches."
+            android:textColor="#9AA6BD"
+            android:textSize="13sp"
+            android:layout_marginBottom="6dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="telebirr number (Ethiopia)"
+            android:textColor="#CFD8E4"
+            android:textSize="13sp"
+            android:layout_marginTop="6dp" />
+        <EditText
+            android:id="@+id/inputTelebirr"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="09XX XXX XXX"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#6B7794"
+            android:inputType="phone"
+            android:autofillHints="" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="M-Pesa number (Kenya)"
+            android:textColor="#CFD8E4"
+            android:textSize="13sp"
+            android:layout_marginTop="10dp" />
+        <EditText
+            android:id="@+id/inputMpesa"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="07XX XXX XXX"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#6B7794"
+            android:inputType="phone"
+            android:autofillHints="" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mobile money number (Tanzania: M-Pesa / Tigo Pesa / Airtel Money)"
+            android:textColor="#CFD8E4"
+            android:textSize="13sp"
+            android:layout_marginTop="10dp" />
+        <EditText
+            android:id="@+id/inputTzmm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="07XX XXX XXX"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#6B7794"
+            android:inputType="phone"
+            android:autofillHints="" />
+        <Button
+            android:id="@+id/btnSaveNumbers"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save numbers" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connection key"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="The secret that links this phone to your TV system."
+            android:textColor="#9AA6BD"
+            android:textSize="13sp"
+            android:layout_marginBottom="6dp" />
+        <EditText
+            android:id="@+id/inputKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="paste the connection key"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#6B7794"
+            android:inputType="textNoSuggestions"
+            android:autofillHints="" />
+        <Button
+            android:id="@+id/btnSaveKey"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save key" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Test a payment SMS"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp" />
+        <EditText
+            android:id="@+id/inputTest"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minLines="3"
+            android:gravity="top"
+            android:hint="paste a telebirr or M-Pesa SMS to test"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#6B7794"
+            android:inputType="textMultiLine"
+            android:autofillHints="" />
+        <Button
+            android:id="@+id/btnTest"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Test" />
+        <TextView
+            android:id="@+id/testResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="#CFD8E4"
+            android:textSize="13sp"
+            android:layout_marginTop="6dp" />
+
+        <Button
+            android:id="@+id/btnFlush"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Retry unsent payments"
+            android:layout_marginTop="20dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Technical log"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp" />
+        <TextView
+            android:id="@+id/events"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="#9AA6BD"
+            android:textSize="12sp"
+            android:background="@drawable/card_bg"
+            android:padding="12dp"
+            android:layout_marginTop="6dp" />
+    </LinearLayout>
+</ScrollView>

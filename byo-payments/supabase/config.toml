@@ -1,0 +1,29 @@
+# Supabase project config for BYO Player Pro payments (Hulet / Ethiopia).
+project_id = "byo-payments"
+
+[functions.ingest-sms]
+verify_jwt = false      # authenticated by COLLECTOR_API_KEY header instead
+
+[functions.start-activation]
+verify_jwt = false      # public endpoint; the RPC is the gatekeeper
+
+[functions.activation-status]
+verify_jwt = false      # read-only device status; grants nothing
+
+[functions.admin]
+verify_jwt = false      # authenticated by ADMIN_API_KEY header instead
+
+[functions.device-start]
+verify_jwt = false      # public: registers a device + starts its trial; grants nothing paid
+
+[functions.billing-status]
+verify_jwt = false      # read-only device status
+
+[functions.mpesa-stk-push]
+verify_jwt = false      # starts an M-Pesa prompt on the user's own phone
+
+[functions.card-checkout]
+verify_jwt = false      # creates a hosted checkout link
+
+[functions.payment-webhook]
+verify_jwt = false      # provider callbacks; each branch must verify the provider before granting

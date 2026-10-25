@@ -373,7 +373,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
       <div class="pcol">
         <div class="card fix">
           <div class="ch"><h2>Plans &amp; prices</h2><span class="note ell" id="p-upd"></span></div>
-          <div class="seg" id="p-ctry"><button data-c="KE" class="on">Kenya · M-Pesa</button><button data-c="ET">Ethiopia · telebirr</button></div>
+          <div class="seg" id="p-ctry"><button data-c="KE" class="on">Kenya · M-Pesa</button><button data-c="ET">Ethiopia · telebirr</button><button data-c="TZ">Tanzania · mobile money</button></div>
           <div class="g2">
             <div><label class="lbl" for="p-num" id="p-num-l">M-Pesa number customers pay to</label><input class="inp" id="p-num" inputmode="tel" placeholder="07XX XXX XXX"></div>
             <div><label class="lbl" for="p-name">Name they will see (optional)</label><input class="inp" id="p-name" placeholder="e.g. Albert N" maxlength="40"></div>
@@ -697,7 +697,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
       var libt=nc==null?'Library not reported':(nc?nc+' connection'+(nc===1?'':'s'):'No connections');
       var cnt=num(lib.live)+' ch · '+num(lib.movies)+' movies · '+num(lib.series)+' series';
       var blocked=t.status==='blocked';
-      var paidTxt=(pay.count?[pay.KES?amt('KES',pay.KES):'', pay.ETB?amt('ETB',pay.ETB):''].filter(Boolean).join(' + '):'');
+      var paidTxt=(pay.count?[pay.KES?amt('KES',pay.KES):'', pay.ETB?amt('ETB',pay.ETB):'', pay.TZS?amt('TZS',pay.TZS):''].filter(Boolean).join(' + '):'');
       var lastTxt=pay.last?('Last '+amt(pay.last.currency,pay.last.amount)+' · '+ago(pay.last.at)):'No payments yet';
       return '<div class="tv" data-k="'+k+'">'+
         '<div class="c who"><div class="l1"><span class="dot'+(t.online?' on':'')+'" title="'+(t.online?'Online':'Offline')+'"></span><span class="ell">'+esc(name)+'</span><span class="id">'+esc(t.tv_id)+'</span>'+(t.help_code?'<button class="help" data-code="'+esc(t.help_code)+'" title="This TV is asking for help. Open the session.">HELP '+esc(t.help_code)+'</button>':'')+'</div>'+
@@ -735,13 +735,14 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   function amt(cur,n){ n=Number(n||0); return (cur||'')+' '+(n%1?n.toFixed(2):n.toLocaleString()); }
   function loadPayCfg(){ api('fleet.pay_config',{}).then(function(j){ if(!j.ok){ say($('p-err'), /unknown action/.test(j.error||'')?'Run 0012_payments.sql on the backend first.':(j.error||'Could not load')); return; }
     pcfg=j.cfg||{}; pDirty=false; paintCfg(j); }); }
-  function paintCfg(j){ var c=(pcfg||{})[pCtry]||{ plans:[] }, mp=pCtry==='KE';
+  var CTRY={ KE:{ wallet:'M-Pesa', cur:'KES', ph:'07XX XXX XXX' }, ET:{ wallet:'telebirr', cur:'ETB', ph:'09XX XXX XXX' }, TZ:{ wallet:'M-Pesa / Tigo Pesa / Airtel Money', cur:'TZS', ph:'07XX XXX XXX' } };
+  function paintCfg(j){ var c=(pcfg||{})[pCtry]||{ plans:[] }, mp=pCtry==='KE', CT=CTRY[pCtry]||CTRY.KE;
     [].forEach.call(document.querySelectorAll('#p-ctry button'),function(b){ b.classList.toggle('on', b.getAttribute('data-c')===pCtry); });
-    $('p-num-l').textContent=(mp?'M-Pesa':'telebirr')+' number customers pay to'; $('p-num').placeholder=mp?'07XX XXX XXX':'09XX XXX XXX';
+    $('p-num-l').textContent=CT.wallet+' number customers pay to'; $('p-num').placeholder=CT.ph;
     $('p-num').value=c.number||''; $('p-name').value=c.name||'';
     if(j){ $('p-upd').textContent=j.updated_by?('Last saved by '+j.updated_by+' · '+when(j.updated_at)):'';
       $('p-keyst').innerHTML=j.collector_key_set?'<span class="bdg ok">key set</span>':'<span class="bdg warn">no key yet</span>'; }
-    var cur=c.currency||(mp?'KES':'ETB');
+    var cur=c.currency||CT.cur;
     $('p-plans').innerHTML='<div class="prow h"><span>On</span><span>Plan name</span><span>Days</span><span>Price</span><span></span></div>'+(c.plans||[]).map(function(p,i){
       return '<div class="prow" data-i="'+i+'"><label class="chk"><input type="checkbox" data-f="on"'+(p.on!==false?' checked':'')+'><span class="box"></span></label>'+
         '<input class="inp" data-f="name" maxlength="24" value="'+esc(p.name)+'"><input class="inp" data-f="days" type="number" min="1" max="3650" value="'+esc(p.days)+'">'+
@@ -749,14 +750,14 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
         '<button class="x" data-del="'+i+'" title="Remove this plan">\u00d7</button></div>'; }).join('');
     [].forEach.call($('p-plans').querySelectorAll('input'),function(i){ i.oninput=i.onchange=function(){ pDirty=true; }; });
     [].forEach.call($('p-plans').querySelectorAll('[data-del]'),function(b){ b.onclick=function(){ readPlans(); c.plans.splice(+b.getAttribute('data-del'),1); pDirty=true; paintCfg(); }; }); }
-  function readPlans(){ var c=pcfg[pCtry]; if(!c) return; c.number=$('p-num').value.trim(); c.name=$('p-name').value.trim();
+  function readPlans(){ var c=pcfg[pCtry]||(pcfg[pCtry]={ plans:[] }); c.number=$('p-num').value.trim(); c.name=$('p-name').value.trim();
     c.plans=[].map.call($('p-plans').querySelectorAll('.prow[data-i]'),function(r){ var old=c.plans[+r.getAttribute('data-i')]||{}; var g=function(f){ return r.querySelector('[data-f="'+f+'"]'); };
       return { code:old.code||('p'+Date.now().toString(36).slice(-6)), name:g('name').value.trim(), days:parseInt(g('days').value,10)||0, amount:parseFloat(g('amount').value)||0, on:g('on').checked }; }); }
   [].forEach.call(document.querySelectorAll('#p-ctry button'),function(b){ b.onclick=function(){ if(pcfg) readPlans(); pCtry=b.getAttribute('data-c'); paintCfg(); }; });
   $('p-num').oninput=$('p-name').oninput=function(){ pDirty=true; };
-  $('p-add').onclick=function(){ if(!pcfg) return; readPlans(); var c=pcfg[pCtry]; if((c.plans||[]).length>=8){ say($('p-err'),'Up to 8 plans.'); return; }
+  $('p-add').onclick=function(){ if(!pcfg) return; readPlans(); var c=pcfg[pCtry]||(pcfg[pCtry]={ plans:[] }); if((c.plans||[]).length>=8){ say($('p-err'),'Up to 8 plans.'); return; }
     c.plans.push({ code:'p'+Date.now().toString(36).slice(-6), name:'', days:30, amount:'', on:true }); pDirty=true; paintCfg(); var ins=$('p-plans').querySelectorAll('[data-f="name"]'); if(ins.length) ins[ins.length-1].focus(); };
-  $('p-save').onclick=function(){ if(!pcfg) return; readPlans(); var c=pcfg[pCtry];
+  $('p-save').onclick=function(){ if(!pcfg) return; readPlans(); var c=pcfg[pCtry]||(pcfg[pCtry]={ plans:[] });
     for(var i=0;i<c.plans.length;i++){ var p=c.plans[i]; if(!p.name){ say($('p-err'),'Give every plan a name.'); return; } if(!(p.days>=1)){ say($('p-err'),'Days must be 1 or more.'); return; } if(!(p.amount>0)){ say($('p-err'),'Every price must be more than 0.'); return; } }
     var send={}; send[pCtry]=c; say($('p-err'),'Saving…','busy');
     api('fleet.pay_config_set',{ cfg:send }).then(function(j){ if(!j.ok){ say($('p-err'),j.error||'Could not save'); return; } pcfg=j.cfg; pDirty=false; paintCfg(j); say($('p-err'),'Saved. TVs show the new plans the next time the payment screen opens.','good'); setTimeout(function(){ say($('p-err'),''); },6000); }); };
@@ -766,7 +767,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
       $('p-copy').onclick=function(){ try{ navigator.clipboard.writeText(j.key); $('p-copy').textContent='Copied'; }catch(e){} };
       $('p-keyst').innerHTML='<span class="bdg ok">key set</span>'; }); };
   function loadPays(){ api('fleet.payments',{ limit:60 }).then(function(j){ if(!j.ok){ $('p-recv').innerHTML='<div class="empty">'+esc(/unknown action/.test(j.error||'')?'Run 0012_payments.sql on the backend first.':(j.error||'Could not load'))+'</div>'; return; }
-    var t=j.today||{}; $('p-today').innerHTML='<span class="meta">Today <b>'+(t.count||0)+'</b></span>'+(t.KES?'<span class="meta"><b>'+esc(amt('KES',t.KES))+'</b></span>':'')+(t.ETB?'<span class="meta"><b>'+esc(amt('ETB',t.ETB))+'</b></span>':'');
+    var t=j.today||{}; $('p-today').innerHTML='<span class="meta">Today <b>'+(t.count||0)+'</b></span>'+(t.KES?'<span class="meta"><b>'+esc(amt('KES',t.KES))+'</b></span>':'')+(t.ETB?'<span class="meta"><b>'+esc(amt('ETB',t.ETB))+'</b></span>':'')+(t.TZS?'<span class="meta"><b>'+esc(amt('TZS',t.TZS))+'</b></span>':'');
     $('p-recv').innerHTML=(j.received||[]).length?j.received.map(function(r){ var b=PST[r.status]||['',r.status];
       return '<div class="pi"><span class="amt">'+esc(amt(r.currency,r.amount))+'</span><div class="who"><div class="l1">'+esc(r.payer_name||'Unknown')+' <span style="color:var(--muted);font-weight:600">'+esc(r.payer||'')+'</span></div>'+
         '<div class="l2" title="'+esc(r.note||'')+'">'+esc((r.method==='mpesa'?'M-Pesa ':'telebirr ')+r.txn)+(r.note?' · '+esc(r.note):'')+'</div></div>'+

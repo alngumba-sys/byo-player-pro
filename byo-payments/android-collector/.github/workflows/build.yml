@@ -1,0 +1,63 @@
+name: Build APK
+
+# Builds the collector APK and uploads it as a downloadable artifact.
+# Runs on every push, and can be triggered manually from the Actions tab.
+#
+# The repo ships text-only (no binary gradle-wrapper.jar): this workflow installs
+# Gradle, generates the wrapper, then builds. The APK is uploaded as an artifact.
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      collector_api_key:
+        description: "COLLECTOR_API_KEY to bake in (optional — can also set in the app)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: "11076708"
+          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
+
+      - name: Generate Gradle wrapper
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            gradle wrapper --gradle-version 8.7
+          fi
+          chmod +x ./gradlew
+
+      - name: Build debug APK
+        run: >
+          ./gradlew :app:assembleDebug
+          -PCOLLECTOR_API_KEY="${{ github.event.inputs.collector_api_key || secrets.COLLECTOR_API_KEY }}"
+          --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: byo-collector-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
