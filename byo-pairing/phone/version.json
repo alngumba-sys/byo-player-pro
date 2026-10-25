@@ -1,6 +1,6 @@
 {
-  "versionCode": 174,
-  "versionName": "3.36.62",
+  "versionCode": 175,
+  "versionName": "3.36.63",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Match channels in Live TV now show the full team names (never cut short) with the competition underneath; the provider's channel numbers are gone. Competitions written in front of the teams (Premier League Liverpool v Everton) and American-style fixtures (Packers @ Giants) are read correctly."
+  "notes": "The update prompt now waits until your library is loaded and you are on a normal screen, never over the profile picker or while the library is still loading, and choosing Later keeps it away for a day. Match channels show full team names with the competition underneath."
 }

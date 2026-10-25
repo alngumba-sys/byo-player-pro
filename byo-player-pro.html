@@ -11573,7 +11573,7 @@ var Pin=(function(){
 
         Nav.onEnter=function(elm){ if(elm&&elm.click) elm.click(); };
         Nav.onBack=function(){ if(Pin.isOpen()){ Pin.cancel(); return; }
-            var um=document.getElementById('upd-modal'); if(um){ try{ um.parentNode.removeChild(um); Nav.focusFirst(); }catch(e){} return; }
+            var um=document.getElementById('upd-modal'); if(um){ try{ var _nb=um.querySelector('#upd-no'); if(_nb) _nb.click(); else { um.parentNode.removeChild(um); Nav.focusFirst(); } }catch(e){} return; }
             if(guideActionOpen()){ closeGuideAction(); return; }
             if(reminderShowing()){ hideReminderPopup(); return; }
             if(catPickerOpen()){ var k=_catPicker.kind; closeCatPicker(); if(k){ var sid=(k==='movies')?'movies-genres':'series-genres'; var cb=$(sid)&&$(sid).querySelector('.cat-current'); if(cb) Nav.setFocus(cb); } return; }
@@ -11738,13 +11738,25 @@ var Pin=(function(){
         function install(){ var info=_latest; if(!info||!info.apk){ return; } if(!canInstall()){ return; }
             try{ ByoAndroid.downloadAndInstall(info.apk); }catch(e){} }
         // Auto-check on launch: if a newer build exists, prompt the user to install it.
+        // "Later" is remembered for a day so the prompt does not come back on every launch; Settings > About still offers it.
+        function laterOk(info){ try{ var l=JSON.parse(localStorage.getItem('byo_upd_later')||'null'); return !(l&&l.code===+info.versionCode&&Date.now()-l.at<86400000); }catch(e){ return true; } }
+        function noteLater(info){ try{ localStorage.setItem('byo_upd_later', JSON.stringify({ code:+info.versionCode, at:Date.now() })); }catch(e){} }
+        // Only ask once the library is in and the user is on a normal screen: never over the profile picker,
+        // a loading library, a player or another dialog, so saying no can never interrupt the start-up.
+        function quietMoment(){ try{
+            if(S._libLoading||S._libFromSnapWait) return false;
+            if(!$('profile-picker').classList.contains('hidden')) return false;
+            if(document.querySelector('.modal-back:not(.hidden), #support-ov:not(.hidden), #pairing:not(.hidden), #welcome:not(.hidden)')) return false;
+            if($('view-player').classList.contains('active-view')||$('view-mvplay').classList.contains('active-view')) return false;
+            return true; }catch(e){ return true; } }
         function autoCheck(){ if(!canInstall()) return; // Android only
-            check(function(info){ if(isNewer(info)) promptUpdate(info); }); }
+            check(function(info){ if(!isNewer(info)||!laterOk(info)) return;
+                var tries=0; (function wait(){ if(quietMoment()){ promptUpdate(info); return; } if(++tries<150) setTimeout(wait, 2000); })(); }); }
         function promptUpdate(info){
             var notes=(info&&info.notes)?String(info.notes):'';
             updateModal('Update available',
                 'A new version of BYO Player ('+esc(info.versionName||('build '+info.versionCode))+') is ready to install.'+(notes?(' '+esc(notes)):''),
-                'Update now','Later', function(yes){ if(yes){ try{ window.__byoUpdate('downloading',0,0,0); }catch(_e){} install(); } });
+                'Update now','Later', function(yes){ if(yes){ try{ window.__byoUpdate('downloading',0,0,0); }catch(_e){} install(); } else noteLater(info); });
         }
         function updateModal(title, body, okLbl, cancelLbl, cb){
             var old=document.getElementById('upd-modal'); if(old) old.parentNode.removeChild(old);
