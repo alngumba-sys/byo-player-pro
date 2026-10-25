@@ -8698,7 +8698,9 @@ var Pin=(function(){
         // Quality tags (4K / UHD / HD …) sit on the right of the card, as in the design.
         var qualHtml=info.tags.length?'<div class="lc-qual">'+info.tags.map(function(t){return '<span class="lc-tag">'+esc(t)+'</span>';}).join('')+'</div>':'';
         var countryChip=info.country?'<span class="lc-country">'+esc(info.country)+'</span>':'';
-        var _ev=chanEventInfo(c); if(_ev){ countryChip+=(_ev.status==='live')?'<span class="lc-country lc-ev live">● LIVE NOW</span>':(_ev.status==='upcoming'?'<span class="lc-country lc-ev">Starts '+esc(fmtEvTime(_ev.start))+'</span>':'<span class="lc-country lc-ev ended">Ended</span>'); }
+        var _ev=chanEventInfo(c), _evT=_ev?chanEventTitle(c):null;
+        if(_evT){ card.classList.add('ev'); info.name=_evT.match; countryChip=(_evT.comp?'<span class="lc-country lc-comp">'+esc(_evT.comp)+'</span>':'')+(_evT.label?'<span class="lc-country lc-chan">'+esc(_evT.label)+'</span>':''); }
+        if(_ev){ countryChip+=(_ev.status==='live')?'<span class="lc-country lc-ev live">● LIVE NOW</span>':(_ev.status==='upcoming'?'<span class="lc-country lc-ev">Starts '+esc(fmtEvTime(_ev.start))+'</span>':'<span class="lc-country lc-ev ended">Ended</span>'); }
         // Now-playing is optional — only when real EPG data exists for this channel.
         var pr=currentProgramme(c); var metaRow='', bar='';
         if(pr.cur && pr.cur.start && pr.cur.end && (new Date()>=pr.cur.start) && (new Date()<pr.cur.end)){
@@ -8787,12 +8789,13 @@ var Pin=(function(){
         if(!q){ base=base.filter(function(c){ return wantRadio ? isRadioChannel(c) : !isRadioChannel(c); }); }
         if(!q){ base=base.filter(function(c){ return !chanEventDead(c); }); }   // finished event channels send no video
         var f=base.filter(function(c){ return (q ? true : (wantRadio||S.liveGenre==='All'||c.genre===S.liveGenre)) && (!q||c.name.toLowerCase().indexOf(q)>-1); });
-        var sorted=sortList(f,S.liveSort,S.liveDir);
+        var sorted=sortList(f,S.liveSort,S.liveDir); S._liveSmart=false;
+        if(!q&&S.liveSort==='added'&&!wantRadio){ var sm=null; try{ sm=smartEventOrder(sorted, S.liveGenre==='All'); }catch(e){} if(sm){ sorted=sm; S._liveSmart=true; } }
         // (g) On the default ordering, float channels in the app's language to the top (stable), so an
         // English user sees English channels first without disturbing an explicit A–Z / other sort.
         if(S.liveSort==='added' && Store.settings.langPrefer!==false){
             var lang=appLangCode();
-            if(LANG_HINTS[lang]){ sorted=sorted.map(function(c,i){ return {c:c,i:i,r:langRank(c,lang)}; })
+            if(LANG_HINTS[lang]&&!S._liveSmart){ sorted=sorted.map(function(c,i){ return {c:c,i:i,r:langRank(c,lang)}; })
                 .sort(function(a,b){ return a.r-b.r || a.i-b.i; }).map(function(o){ return o.c; }); }
         }
         S.liveView=sorted; return S.liveView; }
@@ -8866,7 +8869,7 @@ var Pin=(function(){
         updateLiveSearchLabel();
         $('live-count').textContent=total+' channels'; $('live-empty').classList.toggle('hidden',total>0);
         var sl=$('live-section-label'); if(sl){ var lbl=(S.liveQ)?('Results for “'+S.liveQ+'”'):((S.liveGenre&&S.liveGenre!=='All')?S.liveGenre:'All channels');
-            var sortLbl=labelOf(LIVE_SORTS,S.liveSort,S.liveDir); sl.textContent=lbl+((!S.liveQ&&sortLbl)?(' · '+sortLbl):''); }
+            var sortLbl=S._liveSmart?'Biggest matches first':labelOf(LIVE_SORTS,S.liveSort,S.liveDir); sl.textContent=lbl+((!S.liveQ&&sortLbl)?(' · '+sortLbl):''); }
         liveRenderMore();
         var mvb=$('live-multiview'); if(mvb) mvb.classList.toggle('hidden', !mvAvailable()); }
     // Auto-load the next batch when the user scrolls near the bottom of the Live grid.
@@ -9981,6 +9984,43 @@ var Pin=(function(){
         var st=(now<t-EV_LEAD)?'upcoming':(now>end?'ended':'live');
         c._evInfo={ start:t, end:end, status:st }; return c._evInfo; }
     function chanEventDead(c){ var ev=chanEventInfo(c); return !!(ev&&ev.status==='ended'); }
+    /* ---- Event channels, read as matches. "Sky Sports + 05: Premier League: Arsenal v Chelsea @ 25 Oct 5:30 PM London"
+       becomes match "Arsenal v Chelsea", competition "Premier League", channel label "Sky Sports + 05". ---- */
+    function chanEventTitle(c){ if(!c||!c.name) return null; if(c._evT!==undefined&&c._evTName===c.name) return c._evT; c._evTName=c.name;
+        var title='', tm=null; try{ title=ChanEvents._clean(c.name); tm=ChanEvents._teams(title); }catch(e){}
+        if(!title){ c._evT=null; return null; }
+        var lab=(String(c.name).match(/^([^:@]{1,40}?\d{1,3})\s*:/)||[])[1]||''; lab=lab.replace(/\s{2,}/g,' ').trim();
+        var match=(tm&&tm.home&&tm.away)?(tm.home+' v '+tm.away):title.replace(/^([^:]{3,40}):\s*/,''); var comp=(tm&&tm.comp)||((title.match(/^([^:]{3,40}):/)||[])[1]||'');
+        if(!match) match=title;
+        c._evT={ match:match, comp:comp.trim(), label:lab, home:tm?tm.home:'', away:tm?tm.away:'' }; return c._evT; }
+    // How much people watch this: live now first, then the teams you follow and have watched, then the size of the match.
+    var EV_COMP_W=[[/champions league|ucl/i,40],[/premier league|epl/i,38],[/world cup|euro 20|copa america|afcon|africa cup/i,40],[/el cl[aá]sico/i,45],[/la liga|laliga/i,28],[/serie a/i,24],[/bundesliga/i,24],[/ligue 1/i,18],[/fa cup|carabao|efl cup|league cup/i,22],[/europa league|conference league/i,22],[/caf champions|caf confed/i,20],
+        [/\bnba\b/i,25],[/\bnfl\b|super bowl/i,25],[/formula 1|\bf1\b|grand prix/i,28],[/\bufc\b|\bmma\b/i,25],[/boxing|heavyweight|title fight/i,20],[/wimbledon|us open|roland garros|french open|australian open/i,26],[/\batp\b|\bwta\b/i,10],[/\bipl\b|t20 world cup|the ashes|test match/i,18],[/cricket|odi/i,12],[/women'?s super league|wsl|barclays women/i,8],[/championship|league one|league two/i,10],[/rugby|six nations|premiership rugby/i,14],[/darts|snooker/i,10]];
+    var EV_TEAM_W=[[/man(chester)? united|man utd/i,30],[/liverpool/i,30],[/arsenal/i,30],[/man(chester)? city/i,28],[/chelsea/i,28],[/tottenham|spurs/i,22],[/real madrid/i,30],[/barcelona|barca/i,30],[/bayern/i,25],[/\bpsg\b|paris s/i,22],[/juventus/i,20],[/\binter\b/i,20],[/\bac milan|\bmilan\b/i,20],[/dortmund/i,15],[/atl[eé]tico/i,15],[/newcastle/i,12],[/aston villa/i,10],[/napoli/i,12],[/\bajax\b/i,8],[/celtic|rangers/i,8],[/benfica|porto/i,8],
+        [/harambee stars|gor mahia|afc leopards|\bkenya\b/i,18],[/\bsimba\b|\byanga\b|young africans|\btanzania\b/i,18],[/\bethiopia\b|st\.? george|\bbunna\b/i,18],[/\bnigeria\b|\bsenegal\b|\bghana\b|\begypt\b|\bmorocco\b|\bcameroon\b|\bsouth africa\b/i,10],[/england|brazil|argentina|france|germany|spain|portugal|italy/i,12],
+        [/lakers|warriors|celtics|knicks|bulls/i,12],[/chiefs|cowboys|eagles|49ers|packers/i,12],[/djokovic|alcaraz|sinner|swiatek|sabalenka|gauff/i,15],[/\bindia\b|\bpakistan\b|\baustralia\b/i,10]];
+    var _evHist=null, _evHistAt=0;
+    function evWatchedNames(){ var now=Date.now(); if(_evHist&&now-_evHistAt<60000) return _evHist; var m={};
+        (Store.history||[]).slice(0,120).forEach(function(h){ if(h.type!=='live'||!h.title) return; var ch={ name:h.title }; var t=null; try{ t=chanEventTitle(ch); }catch(e){} if(!t) return; var days=Math.max(0,(now-(h.ts||now))/86400000), w=Math.max(0.3,1-days/60);
+            [t.home,t.away,t.comp].forEach(function(n){ n=norm(n).trim(); if(n.length>2) m[n]=(m[n]||0)+w; }); });
+        _evHist=m; _evHistAt=now; return m; }
+    function eventPopularity(c){ var ev=chanEventInfo(c); if(!ev) return -1; var t=chanEventTitle(c)||{}; var text=(t.comp||'')+' '+(t.home||'')+' '+(t.away||'')+' '+(t.match||''); var sc=0;
+        if(ev.status==='live') sc+=70; else if(ev.status==='upcoming') sc-=Math.min(90,(ev.start-Date.now())/60000/30);
+        try{ var mt=myTeams(); if(mt.some(function(tm){ tm=norm(tm); return tm&&(norm(t.home).indexOf(tm)>-1||norm(t.away).indexOf(tm)>-1||norm(t.match).indexOf(tm)>-1); })) sc+=60; }catch(e){}
+        try{ var w=evWatchedNames(); [t.home,t.away,t.comp].forEach(function(n){ n=norm(n).trim(); if(n&&w[n]) sc+=Math.min(30,10*w[n]); }); }catch(e){}
+        var best=0; EV_COMP_W.forEach(function(x){ if(x[0].test(text)) best=Math.max(best,x[1]); }); sc+=best;
+        EV_TEAM_W.forEach(function(x){ if(x[0].test(text)) sc+=x[1]; });
+        if(!t.home) sc-=10;   // a programme rather than a match ("Day 5 highlights")
+        return sc; }
+    // Default order for a list that holds match channels: what most people would watch first, then by kick-off.
+    function smartEventOrder(list, all){ var evs=[], rest=[], n=0; for(var i=0;i<list.length;i++){ var c=list[i]; var ev=chanEventInfo(c); if(ev){ n++; evs.push({ c:c, s:eventPopularity(c), t:ev.start, i:i }); } else rest.push(c); }
+        if(!n) return null;
+        evs.sort(function(a,b){ return (b.s-a.s)||(a.t-b.t)||(a.i-b.i); });
+        if(all){ // "All channels": only the live matches people watch most float up (at most 6); everything else keeps its order
+            var top=evs.filter(function(x){ return x.s>=120; }).slice(0,6), ids={}; top.forEach(function(x){ ids[x.c.id]=1; });
+            if(!top.length) return null; return top.map(function(x){ return x.c; }).concat(list.filter(function(c){ return !ids[c.id]; })); }
+        if(n<list.length*0.5) return null;
+        return evs.map(function(x){ return x.c; }).concat(rest); }
     // Called instead of playing when the event channel is not on air right now.
     function eventNotLive(c, ev){
         if(ev.status==='ended'){ setToast('This event has finished (it ended '+fmtEvTime(ev.end)+'). The channel is no longer sending video.'); return; }
@@ -9989,7 +10029,7 @@ var Pin=(function(){
         if(!has){ try{ Store.addReminder({channelId:c.id,channelName:c.name,title:title,start:ev.start,end:ev.end,url:c.url,order:c.order||0,fired:false}); }catch(e){} }
         setToast('Starts '+fmtEvTime(ev.start)+'. '+(has?'You have a reminder set':'Reminder set: you will be told when it starts')+'.'); }
     // Test hook (only when localStorage.byo_debug is '1'): lets an automated check reach module-scoped functions.
-    try{ if(localStorage.getItem('byo_debug')==='1'){ window.__byoDbg={ S:S, Store:Store, chanEventInfo:chanEventInfo, playLiveByChannel:function(c){ return playLiveByChannel(c); }, computeLiveView:function(){ return computeLiveView(); }, toasts:[] };
+    try{ if(localStorage.getItem('byo_debug')==='1'){ window.__byoDbg={ S:S, Store:Store, chanEventInfo:chanEventInfo, chanEventTitle:chanEventTitle, eventPopularity:eventPopularity, liveCard:liveCard, playLiveByChannel:function(c){ return playLiveByChannel(c); }, computeLiveView:function(){ return computeLiveView(); }, toasts:[] };
         var _st0=setToast; setToast=function(m,x){ try{ window.__byoDbg.toasts.push(String(m)); }catch(e){} return _st0(m,x); }; } }catch(e){}
     function playLiveByChannel(c){ var _ev=chanEventInfo(c); if(_ev&&_ev.status!=='live'){ eventNotLive(c,_ev); return; }
         var idx=computeLiveView().indexOf(c); if(idx<0){ S.liveView=[c]; idx=0; } S.currentLiveIndex=idx; S.playerFrom='live';

@@ -3366,3 +3366,11 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 .lc-country.lc-ev{ color:var(--gold); border-color:rgba(245,185,66,.45); }
 .lc-country.lc-ev.live{ color:#fff; background:var(--danger); border-color:var(--danger); }
 .lc-country.lc-ev.ended{ color:var(--fg-dim); opacity:.8; }
+
+/* Match channels in Live: the teams are the title, the competition and the provider's channel number are chips */
+.live-card.ev .lc-name{ font-weight:700; }
+.lc-country.lc-comp{ color:var(--accent,#22d3ee); border-color:rgba(34,211,238,.4); text-transform:none; letter-spacing:0; max-width:46%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lc-country.lc-chan{ opacity:.75; text-transform:none; letter-spacing:0; }
+.live-card.ev .lc-meta{ flex-wrap:wrap; row-gap:4px; }
+.live-card.ev .lc-live-plain{ display:none; }
+.live-card.ev .lc-country.lc-comp{ max-width:100%; }

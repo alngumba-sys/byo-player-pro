@@ -73,5 +73,5 @@
         // skip anything already shown by the live-score feed on the same channel
         function events(existing){ var taken={}; (existing||[]).forEach(function(e){ (e.channels||[]).forEach(function(c){ if(!c._guess) taken[c.id]=1; }); });
             return build().filter(function(e){ return !e.channels.every(function(c){ return taken[c.id]; }); }); }
-        return { events:events, _when:when, _clean:clean, reset:function(){ cache=null; } };
+        return { events:events, _when:when, _clean:clean, _teams:teams, reset:function(){ cache=null; } };
     })();

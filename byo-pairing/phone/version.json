@@ -1,6 +1,6 @@
 {
-  "versionCode": 172,
-  "versionName": "3.36.60",
+  "versionCode": 173,
+  "versionName": "3.36.61",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Tanzania added: pick Tanzania when signing up and pay in TZS by mobile money (M-Pesa, Tigo Pesa or Airtel Money) to the number shown on screen. Tanzania plans and prices are set in the support console."
+  "notes": "Live TV now reads match channels for you: the card shows the two teams, the competition and the channel number instead of a cut-off name, and lists in a sports category put the biggest matches first (live games, the teams you follow and watch, the big competitions), then by kick-off."
 }
