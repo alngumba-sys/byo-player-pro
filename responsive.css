@@ -3426,3 +3426,8 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 .ssn-chip-logo{ width:clamp(30px,2vw,40px); height:clamp(30px,2vw,40px); border-radius:50%; background:#fff; display:inline-flex; align-items:center; justify-content:center; padding:4px; box-sizing:border-box; color:#0b1020; font-size:11px; font-weight:900; }
 .ssn-chip-logo img{ width:100%; height:100%; object-fit:contain; }
 .ssn-chip-live{ width:9px; height:9px; border-radius:50%; background:var(--danger,#ff4d5e); box-shadow:0 0 8px var(--danger,#ff4d5e); }
+
+/* Sports channel cards: full names (no clamp), competition line, letter tile when the logo fails */
+.spchan-card .spc-name{ display:block !important; -webkit-line-clamp:unset !important; overflow:visible !important; text-overflow:clip !important; white-space:normal !important; word-break:normal; }
+.spchan-card .spc-comp{ margin-top:4px; display:inline-block; font-size:var(--rp-fs-micro, 13px); color:var(--accent,#22d3ee); border:1px solid rgba(34,211,238,.4); border-radius:999px; padding:2px 9px; }
+.spchan-card .spc-logo.spc-logo-ph{ display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#1e2a44,#0f1627); color:#dfe7f5; font-weight:800; font-size:22px; }

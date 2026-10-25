@@ -1,6 +1,6 @@
 {
-  "versionCode": 181,
-  "versionName": "3.36.69",
+  "versionCode": 182,
+  "versionName": "3.36.70",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Sports league cards now carry the real marks as watermarks: the Premier League lion, the Champions League star-ball, the LaLiga mark, the Serie A symbol and the Bundesliga player."
+  "notes": "Sports channel cards cleaned up: full names, the match and competition for event channels, a letter tile when a logo cannot load, no LIVE badge or filler text, and finished events are no longer listed anywhere in Sports."
 }

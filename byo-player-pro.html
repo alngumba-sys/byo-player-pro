@@ -5766,14 +5766,14 @@ var Pin=(function(){
     function upcomingSportEvents(){ return collegeOrder(allSportEvents().filter(function(e){ return evStatus(e)==='upcoming'; }).sort(function(a,b){ return a.start-b.start; })); }
     // Cached + capped: scanning 28k channels on every Sports render froze the TV.
     var _sportsChans=null, _sportsChansSig='';
-    function sportsChansSig(){ return (S.live?S.live.length:0)+'|'+Store.activeId+'|'+(_sportsIndex?_sportsIndex.built:0); }
+    function sportsChansSig(){ return (S.live?S.live.length:0)+'|'+Store.activeId+'|'+(_sportsIndex?_sportsIndex.built:0)+'|'+Math.floor(Date.now()/600000); }
     function sportsChannelsList(){ var sig=sportsChansSig();
         if(_sportsChans && _sportsChansSig===sig) return _sportsChans;
         // Scan the whole list (classification is memoised per channel via _spStatic, so this O(n)
         // name+genre check runs once and is cached), collecting up to CAP sports channels. Scanning
         // all of them matters: on a big playlist the sports channels can sit anywhere in the list.
         var out=[], list=profFilter(S.live), CAP=1500;
-        for(var i=0;i<list.length && out.length<CAP;i++){ if(isSportsChannel(list[i])) out.push(list[i]); }
+        for(var i=0;i<list.length && out.length<CAP;i++){ if(isSportsChannel(list[i])&&!chanEventDead(list[i])) out.push(list[i]); }
         _sportsChans=out; _sportsChansSig=sig; return out; }
     function sportsPresent(){ return (S.live&&S.live.length>0) || allSportEvents().length>0; }
     // The full channel list for the Sports hub's "All" view: EVERY channel, with detected sports
@@ -5781,7 +5781,7 @@ var Pin=(function(){
     var _sportsAllChans=null, _sportsAllSig='';
     function allChannelsSportsFirst(){ var sig=sportsChansSig(); if(_sportsAllChans && _sportsAllSig===sig) return _sportsAllChans;
         var list=profFilter(S.live), sporty=[], rest=[];
-        for(var i=0;i<list.length;i++){ if(isSportsChannel(list[i])) sporty.push(list[i]); else rest.push(list[i]); }
+        for(var i=0;i<list.length;i++){ if(chanEventDead(list[i])) continue; if(isSportsChannel(list[i])) sporty.push(list[i]); else rest.push(list[i]); }
         _sportsAllChans=sporty.concat(rest); _sportsAllSig=sig; return _sportsAllChans; }
     // Sports channels narrowed to a specific sport (by channel name classification + bound live events).
     // Used so the Sports filters (Tennis / Basketball / …) also surface matching CHANNELS, not only events.
@@ -7263,10 +7263,14 @@ var Pin=(function(){
     function spChanCard(c){
         var card=document.createElement('div'); card.className='spchan-card'; card.setAttribute('data-focusable','true'); card.tabIndex=0;
         var e=c.epgGenre?epgFor(c.epgGenre):null;
-        var logo=c.logo?'<img src="'+esc(c.logo)+'"/>':esc(c.name.charAt(0));
-        var _ev=chanEventInfo(c); var liveTag=(_ev&&_ev.status==='upcoming')?'<div class="spc-live" style="color:var(--gold)">'+icon('i-clock')+' Starts '+esc(fmtEvTime(_ev.start))+'</div>':'<div class="spc-live"><span style="color:var(--danger)">●</span> LIVE</div>';
-        card.innerHTML='<div class="spc-top"><div class="spc-logo">'+logo+'</div><div><div class="spc-name">'+esc(c.name)+'</div>'+liveTag+'</div></div>'+
-            (e?'<div class="spc-now">'+esc(e.now)+'</div><div class="spc-next">Next: '+esc(e.next)+' · '+esc(e.nextTime)+'</div>':(_ev&&_ev.status==='upcoming'?'<div class="spc-now">Not on air yet: tap to set a reminder</div>':'<div class="spc-now">Live sport</div>'));
+        var _ev=chanEventInfo(c), _t=_ev?chanEventTitle(c):null; var info=parseLiveName(c.name); var nm=_t?_t.match:info.name;
+        var ini=esc((nm||'?').charAt(0).toUpperCase());
+        var logo=c.logo?'<img src="'+esc(c.logo)+'" loading="lazy" onerror="this.parentNode.classList.add(\'spc-logo-ph\');this.parentNode.textContent=\''+ini+'\'"/>':ini;
+        var liveTag=(_ev&&_ev.status==='upcoming')?'<div class="spc-live" style="color:var(--gold)">'+icon('i-clock')+' Starts '+esc(fmtEvTime(_ev.start))+'</div>':'';
+        var sub=_t&&_t.comp?'<div class="spc-comp">'+esc(_t.comp)+'</div>':'';
+        card.innerHTML='<div class="spc-top"><div class="spc-logo'+(c.logo?'':' spc-logo-ph')+'">'+logo+'</div><div><div class="spc-name">'+esc(nm)+'</div>'+sub+liveTag+'</div></div>'+
+            (e?'<div class="spc-now">'+esc(e.now)+'</div><div class="spc-next">Next: '+esc(e.next)+' · '+esc(e.nextTime)+'</div>':'');
+        card.title=c.name; if(_t) card.classList.add('ev');
         card.addEventListener('click',function(){ playSportChannel(c); }); return card;
     }
     function tlItem(e){ var st=evStatus(e); var it=document.createElement('div'); it.className='tl-item'+(st==='live'?' tl-live':''); it.setAttribute('data-focusable','true'); it.tabIndex=0;
@@ -7514,7 +7518,7 @@ var Pin=(function(){
             if(live.length) body.appendChild(LiveScores.leagueBlock('Live now',live,{sub:live.length+' match'+(live.length===1?'':'es')+' in play',max:10}));
             if(up.length) body.appendChild(LiveScores.leagueBlock('Fixtures',up,{sub:'Next '+up.length+' match'+(up.length===1?'':'es'),max:8}));
             if(fin.length) body.appendChild(LiveScores.leagueBlock('Results',fin,{sub:'Latest results',max:6}));
-        } else if(sn.slug){ var n=document.createElement('div'); n.className='sd-note'; n.textContent=hasLS?'No fixtures in the next few days, or live scores haven’t loaded yet.':'Fixtures and scores appear here once live scores load.'; body.appendChild(n); }
+        }
         var chans=seasonChannels(sn);
         if(chans.length){ var rch=rowEl(icon('i-live'),'Channels showing '+sn.n+' ('+chans.length+')'); var g=document.createElement('div'); g.className='spchan-grid'; chans.slice(0,120).forEach(function(c){ g.appendChild(spChanCard(c)); }); rch.appendChild(g); body.appendChild(rch); }
         else { var n2=document.createElement('div'); n2.className='sd-note'; n2.textContent='No channels in your playlist are named after this competition. Matches still link to a channel from the fixtures above when one carries them.'; body.appendChild(n2); }
@@ -8738,7 +8742,7 @@ var Pin=(function(){
         var tags=[];
         ['4K','UHD','HDR'].forEach(function(t){ var re=new RegExp('\\b'+t+'\\b','ig');
             if(re.test(n)){ tags.push(t); n=n.replace(re,' '); } });
-        n=n.replace(/\s{2,}/g,' ').replace(/[\s:\|\-–]+$/,'').trim();
+        n=n.replace(/(^|\s)\/(\s|$)/g,' ').replace(/\s{2,}/g,' ').replace(/[\s:\|\-–\/]+$/,'').trim();   // "UHD/4K" removed leaves a stray "/"
         return { country:country, name:n||(raw||'Channel'), tags:tags };
     }
     function liveCard(c){ var card=document.createElement('div'); card.className='live-card'; card.setAttribute('data-focusable','true'); card.tabIndex=0; if(c&&c.id) card.setAttribute('data-ch',c.id);
