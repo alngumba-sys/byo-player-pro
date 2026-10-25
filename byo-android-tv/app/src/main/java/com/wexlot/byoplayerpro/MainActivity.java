@@ -469,11 +469,17 @@ public class MainActivity extends Activity {
                 previewView = new android.view.TextureView(MainActivity.this);
                 previewView.setOpaque(false);
                 previewView.setFocusable(false);
-                // Added ON TOP of the WebView; kept invisible (alpha 0) until the first real frame is
-                // decoded, so the user never sees a black box while it buffers.
+                // Added ON TOP of the WebView; kept INVISIBLE (not GONE) until the first real frame is
+                // decoded, so the user never sees a black box while it buffers. It must be INVISIBLE,
+                // never GONE: a GONE view is skipped during layout entirely, so its TextureView never
+                // gets measured/attached and never creates a real SurfaceTexture for the decoder to
+                // render into -- the player can still reach STATE_READY (buffering doesn't need a
+                // surface) but onRenderedFirstFrame then never fires, because there is nowhere to draw
+                // the frame. INVISIBLE stays in the layout (so the surface exists) while still not being
+                // drawn, which is what actually keeps the black box from showing.
                 root.addView(previewView, new android.widget.FrameLayout.LayoutParams(1, 1));
                 previewView.setAlpha(0f);
-                previewView.setVisibility(View.GONE);
+                previewView.setVisibility(View.INVISIBLE);
             }
             if (previewPlayer == null) {
                 androidx.media3.datasource.DefaultHttpDataSource.Factory http =
@@ -544,17 +550,15 @@ public class MainActivity extends Activity {
                     }
                     @Override public void onRenderedFirstFrame() {
                         // Real picture is on screen for the first time on this title: ONLY now make the
-                        // view visible and fade it in. Before this, it must stay GONE -- a TextureView
-                        // with no frame attached yet paints solid black on plenty of TV hardware even at
-                        // alpha 0, so making it "visible but transparent" while buffering showed a stuck
-                        // black box over the backdrop instead of the still image the viewer should see.
+                        // view VISIBLE (it was INVISIBLE, not GONE, so it already had a real surface to
+                        // decode into) and fade it in.
                         previewHasFrame = true;
                         try { previewView.setVisibility(View.VISIBLE); previewView.animate().alpha(1f).setDuration(350).start(); } catch (Exception ignored) {}
                         reportPreview("playing", "");
                     }
                     @Override public void onPlayerError(androidx.media3.common.PlaybackException e) {
                         previewHasFrame = false;
-                        try { previewView.setAlpha(0f); previewView.setVisibility(View.GONE); } catch (Exception ignored) {}
+                        try { previewView.setAlpha(0f); previewView.setVisibility(View.INVISIBLE); } catch (Exception ignored) {}
                         reportPreview("error", e.getErrorCodeName());
                     }
                 });
@@ -567,7 +571,7 @@ public class MainActivity extends Activity {
                 previewSkippedIntro = false;
                 previewHasFrame = false;
                 previewView.setAlpha(0f);
-                previewView.setVisibility(View.GONE);   // stays gone (not just transparent) until a real frame renders
+                previewView.setVisibility(View.INVISIBLE);   // stays in the layout (real surface) but undrawn until a real frame renders
                 // Always start at 0 here -- the ~90s-in jump (so a VOD movie opens on real footage
                 // instead of its static title card) happens later, once STATE_READY confirms the
                 // content actually has a known, seekable duration long enough for that to be safe.

@@ -1,6 +1,6 @@
 {
-  "versionCode": 161,
-  "versionName": "3.36.49",
+  "versionCode": 162,
+  "versionName": "3.36.50",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "The diagnostic kept showing only the LAST state, which turned out to keep getting raced or overwritten by whatever happened next - a dead end across several builds. It now keeps a timestamped log of every preview event instead of one value, shown in full on Settings > About. This should finally reveal the real sequence of what's happening when Featured tries to play."
+  "notes": "Found the actual cause, from the new event log: the preview player was reaching 'ready' twice but never rendering a frame. The hidden video surface was being set to GONE instead of INVISIBLE - a GONE view is skipped by Android's layout system entirely, so it never got a real surface for the decoder to draw into, even though the player itself was ready to play. It now stays INVISIBLE (still properly laid out, just not drawn) until the first real frame arrives, which should let actual video finally render."
 }
