@@ -5345,8 +5345,8 @@ var Pin=(function(){
         setTimeout(function(){ var g=$('profile-grid'); Nav.setFocus(g.querySelector('.profile-tile:not(.profile-add)')||g.querySelector('.profile-tile')); },30); ppLibRender(); }
 
     /* ---- First-launch welcome: language → region → setup method (spec §2/§3/§48/§55) ---- */
-    var _welcomeStep='lang', _welcomeSupportCode=null;
-    function openWelcome(){ _welcomeStep='lang'; _welcomeSupportCode=null; $('welcome').classList.remove('hidden'); renderWelcome(); }
+    var _welcomeStep='lang';
+    function openWelcome(){ _welcomeStep='lang'; _welcomeSupportSession=null; $('welcome').classList.remove('hidden'); renderWelcome(); }
     function closeWelcome(){ stopActivationPoll(); $('welcome').classList.add('hidden'); }
     function welcomeOpen(){ return !$('welcome').classList.contains('hidden'); }
     function renderWelcome(){
@@ -5392,27 +5392,20 @@ var Pin=(function(){
             $('welcome-title').innerHTML=esc(tr('welcome.activateHeroL1','Activate'))+'<br>'+esc(tr('welcome.activateHeroL2','your device.'));
             $('welcome-sub').textContent=tr('welcome.activateSub','Share this code with support to activate your device.');
             grid.className='welcome-grid one-col';
-            // Generate a 4-digit activation code
-            var code=_welcomeSupportCode;
-            if(!code){ code=''; for(var ci=0;ci<4;ci++) code+=Math.floor(Math.random()*10); _welcomeSupportCode=code; }
-            // Activation code card
+            // Activation code card (code filled in once byo_support_open returns)
             var codeCard=document.createElement('div'); codeCard.className='activation-card';
             codeCard.innerHTML='<div class="act-code-label">'+esc(tr('welcome.activationCode','Your activation code'))+'</div>'+
-                '<div class="act-code" id="act-code-display">'+esc(code)+'</div>'+
+                '<div class="act-code" id="act-code-display">----</div>'+
                 '<div class="act-status" id="act-status"><span class="act-dot"></span> '+esc(tr('welcome.waitingActivation','Waiting for activation...'))+'</div>'+
                 '<div class="act-timer" id="act-timer"></div>';
             grid.appendChild(codeCard);
             // Generate new code button
             var regen=document.createElement('button'); regen.className='setup-card'; regen.setAttribute('data-focusable','true'); regen.tabIndex=0; regen.id='act-regen';
             regen.innerHTML='<span class="sc-ic">'+icon('i-reload')+'</span><span class="sc-text"><span class="sc-title-row"><span class="sc-title">'+esc(tr('welcome.newCode','Generate new code'))+'</span></span><span class="sc-desc">'+esc(tr('welcome.newCodeSub','Get a fresh activation code.'))+'</span></span>';
-            regen.addEventListener('click',function(){ _welcomeSupportCode=null; stopActivationPoll(); _welcomeStep='method'; renderWelcome(); });
+            regen.addEventListener('click',function(){ _welcomeSupportSession=null; stopActivationPoll(); _welcomeStep='method'; renderWelcome(); });
             grid.appendChild(regen);
-            // Register and start polling
-            startActivationCountdown();
-            if(Supa.configured()){
-                Supa.rpc('byo_support_register',{ p_code:code, p_tv_name:tvName(), p_platform:(isTV?'TV':'Web'), p_lang:L18N.current(), p_region:Store.settings.region||'' },function(){});
-                startActivationPoll(code);
-            }
+            // Open a support session to get the code
+            openActivationSession();
             foot.innerHTML='<span class="wz-foot-note" style="text-align:center;display:block">'+esc(tr('welcome.activateFootNote','Support will activate your device and add your connections.'))+'</span>';
         }
         // Left-column art: globe for lang/region, phone→TV illustration for the method step
@@ -5429,17 +5422,38 @@ var Pin=(function(){
     function welcomeBack(){ if(_welcomeStep==='region'){ _welcomeStep='lang'; renderWelcome(); } else if(_welcomeStep==='method'){ _welcomeStep='region'; renderWelcome(); } }
     function finishWelcome(){ Store.settings.firstRun=false; Store.save(); stopActivationPoll(); closeWelcome(); openProfilePicker(true); }
 
-    /* ---- Activation code countdown & polling ---- */
-    var _activationPoll=null, _activationCountdown=null;
+    /* ---- Activation support session, countdown & polling ---- */
+    var _activationPoll=null, _activationCountdown=null, _welcomeSupportSession=null;
     function stopActivationPoll(){ if(_activationPoll){ clearInterval(_activationPoll); _activationPoll=null; } stopActivationCountdown(); }
     function stopActivationCountdown(){ if(_activationCountdown){ clearInterval(_activationCountdown); _activationCountdown=null; } }
-    function startActivationCountdown(){
+    function _activationDeviceKey(){
+        try{ var k=localStorage.getItem('byo_activation_dk'); if(k) return k;
+            k='act-'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);
+            localStorage.setItem('byo_activation_dk',k); return k; }catch(e){ return 'act-unknown'; }
+    }
+    function openActivationSession(){
+        if(!Supa.configured()) return;
+        var dk=_activationDeviceKey();
+        var state={ tv_name:tvName(), platform:(isTV?'TV':'Phone'), lang:L18N.current(), region:Store.settings.region||'' };
+        Supa.rpc('byo_support_open',{ p_device_key:dk, p_state:state },function(err,res){
+            if(err||!res||res.error){ return; }
+            _welcomeSupportSession={ id:res.session_id, token:res.token, code:res.code };
+            var codeEl=$('act-code-display');
+            if(codeEl) codeEl.textContent=res.code;
+            // Start countdown based on server expiry
+            var expiresAt=res.expires_at?new Date(res.expires_at).getTime():0;
+            var secsLeft=expiresAt?Math.max(0,Math.floor((expiresAt-Date.now())/1000)):300;
+            startActivationCountdown(secsLeft);
+            startActivationPoll();
+        });
+    }
+    function startActivationCountdown(secs){
         stopActivationCountdown();
-        var secs=300; // 5 minutes
+        if(!secs) secs=300;
         var tick=function(){
             var el=$('act-timer');
             if(!el){ stopActivationCountdown(); return; }
-            if(secs<=0){ stopActivationCountdown(); _welcomeSupportCode=null; stopActivationPoll(); _welcomeStep='method'; renderWelcome(); return; }
+            if(secs<=0){ stopActivationCountdown(); _welcomeSupportSession=null; stopActivationPoll(); _welcomeStep='method'; renderWelcome(); return; }
             var m=Math.floor(secs/60), s=secs%60;
             el.textContent=tr('welcome.codeExpires','Code expires in')+' '+m+':'+(s<10?'0':'')+s;
             secs--;
@@ -5447,18 +5461,23 @@ var Pin=(function(){
         tick();
         _activationCountdown=setInterval(tick,1000);
     }
-    function startActivationPoll(code){
+    function startActivationPoll(){
         stopActivationPoll();
         _activationPoll=setInterval(function(){
-            if(!Supa.configured()) return;
-            Supa.rpc('byo_support_check',{ p_code:code },function(err,res){
+            if(!Supa.configured()||!_welcomeSupportSession) return;
+            Supa.rpc('byo_support_poll',{ p_session_id:_welcomeSupportSession.id, p_token:_welcomeSupportSession.token },function(err,res){
                 if(err||!res) return;
-                if(res.activated){
+                if(res.status==='connected'){
                     stopActivationPoll();
-                    // Apply activation payload from support
                     var st=$('act-status');
                     if(st){ st.innerHTML='<span class="act-dot act-dot-ok"></span> '+esc(tr('welcome.activated','Device activated!')); }
-                    if(res.payload){ try{ applyActivationPayload(res.payload); }catch(e){} }
+                    // Check for commands (activation payload)
+                    if(res.commands&&res.commands.length){
+                        for(var ci=0;ci<res.commands.length;ci++){
+                            var cmd=res.commands[ci];
+                            if(cmd.action==='activate'&&cmd.payload){ try{ applyActivationPayload(cmd.payload); }catch(e){} }
+                        }
+                    }
                     setTimeout(function(){ finishWelcome(); },1500);
                 }
             });
