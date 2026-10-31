@@ -2304,6 +2304,7 @@ html.light .lc-drm.no{ color:#c2183a; } html.light .lc-drm.ck{ color:#9a6411; }
 .wz-ver{ margin-left:12px; font-size:11px; letter-spacing:.04em; opacity:.55; font-weight:600; text-transform:none; }
 #welcome.tvfix .wz-actions::before{ display:none !important; }
 #welcome.tvfix .wz-actions{ position:static !important; }
+@media (max-width:820px){ .wz-top .wz-ver-static{ display:none !important; } }
 .wz-ver-static{ display:inline-block; margin-left:10px; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,.08); color:#9aa6b6 !important; font-size:12px !important; font-weight:700; letter-spacing:.03em; vertical-align:middle; -webkit-text-fill-color:#9aa6b6; }
 
 /* ===== 56. Setup wizard on wide landscape screens (TVs at 1920): intro on the left, choices on the right ===== */

@@ -456,6 +456,11 @@ def _rep(a,b,tag):
     global s
     assert s.count(a)==1, 'live-scores patch: '+tag
     s=s.replace(a,b)
+def _rep_opt(a,b,tag):
+    # Patch that only applies to older sources (e.g. the pre-v3.37 setup step).
+    global s
+    if s.count(a)==1: s=s.replace(a,b)
+    else: print('skipped optional patch:', tag)
 _rep("    function allSportEvents(){", _LS+"\n"+open('chanevents.js',encoding='utf-8').read()+"\n    function allSportEvents(){", 'module')
 _rep("        // index\n        var byChannel={};", "        try{ LiveScores.events().forEach(function(ev0){ events.push(ev0); }); }catch(e){}\n        try{ ChanEvents.events(events).forEach(function(ev0){ events.push(ev0); }); }catch(e){}\n        events=_mergeDupEvents(events);\n        events=events.filter(function(ev0){ return !eventIsLowPriority(ev0); });\n        // index\n        var byChannel={};", 'index')
 # De-duplicate the merged event list: the SAME match arrives both from the live-score feed (ESPN)
@@ -603,7 +608,7 @@ _rep("if(!Pay.allow(name)) return;", "if(!Billing.allow(name)) return;", 'billal
 _rep("var payBanner=Pay.homeBanner();", "var payBanner=Billing.homeBanner();", 'billbanner')
 _rep("        Pay.refresh();   // learn this device's subscription state so the ET paywall gates correctly", "        Billing.boot();   // trial clock, house playlist, payment wall (ET telebirr state is refreshed inside)", 'billboot')
 _rep("function playContent(url,title,sub,opts){ opts=opts||{};", "function playContent(url,title,sub,opts){ opts=opts||{}; if(!Billing.canPlay()) return;", 'billplay')
-_rep("        } else { // method: set up with phone / remote (spec §55)", "        } else if(!window.__wzOwn){ Billing.renderTrialStep(grid, contBtn, backBtn, stepBadge, eyebrow, rhead, foot); } else { // method: set up with phone / remote (spec §55)", 'billwelcome')
+_rep_opt("        } else { // method: set up with phone / remote (spec §55)", "        } else if(!window.__wzOwn){ Billing.renderTrialStep(grid, contBtn, backBtn, stepBadge, eyebrow, rhead, foot); } else { // method: set up with phone / remote (spec §55)", 'billwelcome')
 _rep("else if(_welcomeStep==='method'){ _welcomeStep='region'; renderWelcome(); } }", "else if(_welcomeStep==='method'){ if(window.__wzOwn){ window.__wzOwn=false; renderWelcome(); } else { _welcomeStep='region'; renderWelcome(); } } }", 'billwback')
 _rep("            if(Store.settings.firstRun){ openWelcome(); } else { openProfilePicker(true); }", "            if(Store.settings.firstRun){ openWelcome(); } else if(/resume/.test(location.hash||'')&&Store.profiles&&Store.profiles.some(function(p){ return p.id===Store.activeId; })){ applyProfileVisibility(); goTo('home'); } else if(Store.profiles&&Store.profiles.length>1){ openProfilePicker(true); } else { goTo('home'); }", 'billsplash')
 _rep("function trialDaysLeft(){ var lic=ensureLicense(); var days=30-Math.floor((Date.now()-lic.started)/86400000); return Math.max(0,days); }", "function trialDaysLeft(){ try{ return Billing.subActive()?0:Billing.daysLeft(); }catch(e){ var lic=ensureLicense(); return Math.max(0,8-Math.floor((Date.now()-lic.started)/86400000)); } }", 'billdays')

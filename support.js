@@ -111,6 +111,15 @@
             Supa.rpc('byo_support_open',{ p_device_key:k, p_state:snapshot() },function(err,res){
                 if(err||!res||res.error){ sess={ status:'ended', err:(res&&res.error)?('Could not start help: '+res.error):'Could not reach BYO support. Check the internet connection and try again.' }; save(); paint(); renderCard(); return; }
                 sess={ id:res.session_id, token:res.token, code:res.code, status:'waiting', exp:Date.parse(res.expires_at)||Date.now()+15*60000 }; save(); paint(); renderCard(); startPoll(); }); }
+        // Same as open(), but without the overlay: used by the welcome activation screen, which shows
+        // the code itself. cb(err, { code, exp }) once the code is ready.
+        function openQuiet(cb){ if(typeof Supa==='undefined'||!Supa.configured||!Supa.configured()) return cb('No internet connection');
+            var k=devKey(); if(!k) return cb('This device has no ID yet');
+            stopPoll(); sess={ status:'opening' }; log=[]; agent='';
+            Supa.rpc('byo_support_open',{ p_device_key:k, p_state:snapshot() },function(err,res){
+                if(err||!res||res.error){ sess=null; save(); renderCard(); return cb((res&&res.error)||err||'No reply from BYO support'); }
+                sess={ id:res.session_id, token:res.token, code:res.code, status:'waiting', exp:Date.parse(res.expires_at)||Date.now()+15*60000 }; save(); renderCard(); startPoll();
+                cb(null,{ code:res.code, exp:sess.exp }); }); }
         function end(byUser){ if(sess&&sess.id&&sess.token){ try{ Supa.rpc('byo_support_end',{ p_session_id:sess.id, p_token:sess.token },function(){}); }catch(e){} }
             stopPoll(); if(byUser) setToast('Remote help ended.'); sess=null; save(); var o=$('support-ov'); if(o) o.classList.add('hidden'); renderCard(); try{ var b=$('btn-support'); if(b&&byUser) Nav.setFocus(b); }catch(e){} }
         function startPoll(){ stopPoll(); pollT=setInterval(poll, 4000); setTimeout(poll, 600); }
@@ -122,7 +131,8 @@
                 if(res.error){ note('Help stopped', res.error, false); sess.status='ended'; finish(); return; }
                 if(res.claimed_by) agent=res.claimed_by;
                 if(res.status!==sess.status){ var was=sess.status; sess.status=res.status; save();
-                    if(res.status==='connected'&&was!=='connected'){ setToast('BYO support is connected.'); note('Support connected', agent); }
+                    if(res.status==='connected'&&was!=='connected'){ setToast('BYO support is connected.'); note('Support connected', agent);
+                        try{ if(typeof window.__onSupportConnected==='function'){ var f=window.__onSupportConnected; window.__onSupportConnected=null; f(agent); } }catch(e){} }
                     if(res.status==='ended'||res.status==='expired'){
                         if(res.status==='expired') setToast(res.status==='expired'&&was==='waiting'?'The help code expired.':'Remote help has ended.');
                         else if(res.ended_by==='timeout') { note('Help time is up',''); message('Remote help has ended','The time for this help session ran out. If you still need help, open Get remote help again for a new code.', true); }
@@ -256,6 +266,6 @@
         function boot(){ load(); bootFlags(); renderCard();
             if(sess&&sess.id&&(sess.status==='waiting'||sess.status==='connected')){ if(sess.status==='waiting'&&sess.exp&&sess.exp<Date.now()){ sess=null; save(); renderCard(); } else startPoll(); }
             else if(sess){ sess=null; save(); } }
-        return { boot:boot, checkin:checkin, activated:activated, tvId:function(){ return String(devKey()||'').slice(-6).toUpperCase(); }, open:open, end:end, show:show, back:back, scope:scope, renderCard:renderCard, flagAllows:flagAllows, applyFlags:applyFlags, active:active, _run:run };
+        return { boot:boot, checkin:checkin, activated:activated, tvId:function(){ return String(devKey()||'').slice(-6).toUpperCase(); }, open:open, openQuiet:openQuiet, end:end, show:show, paint:paint, back:back, scope:scope, renderCard:renderCard, flagAllows:flagAllows, applyFlags:applyFlags, active:active, _run:run };
     })();
     setTimeout(function(){ try{ Support.boot(); }catch(_e){} }, 2500);
