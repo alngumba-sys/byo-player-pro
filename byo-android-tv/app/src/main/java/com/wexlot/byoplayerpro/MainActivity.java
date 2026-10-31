@@ -204,10 +204,10 @@ public class MainActivity extends Activity {
                     || getPackageManager().hasSystemFeature("android.software.leanback");
         } catch (Exception ignored) {}
         final boolean tvMode0 = tvMode;
-        // Both TVs and phones: lay the app out on the 1920x1080 canvas and
-        // scale to fit. The HTML is a fixed TV layout, not responsive.
-        s.setLoadWithOverviewMode(true);
-        s.setUseWideViewPort(true);
+        // TVs: overview mode lays out the 1920x1080 canvas and scales to fit.
+        // Phones: native viewport so the responsive portrait layout applies.
+        s.setLoadWithOverviewMode(tvMode);
+        s.setUseWideViewPort(tvMode);
         s.setTextZoom(100);
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
