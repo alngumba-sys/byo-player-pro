@@ -204,9 +204,10 @@ public class MainActivity extends Activity {
                     || getPackageManager().hasSystemFeature("android.software.leanback");
         } catch (Exception ignored) {}
         final boolean tvMode0 = tvMode;
-        // Both TV and phone APK use the 1920x1080 layout scaled to fit the screen.
-        s.setLoadWithOverviewMode(true);
-        s.setUseWideViewPort(true);
+        // TVs: lay the app out on the 1920x1080 TV canvas and scale to fit.
+        // Phones: use the real screen width so the responsive portrait layout applies.
+        s.setLoadWithOverviewMode(tvMode);
+        s.setUseWideViewPort(tvMode);
         s.setTextZoom(100);
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
