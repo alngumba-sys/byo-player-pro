@@ -3779,18 +3779,37 @@ var BYO_BACKEND={
 };
 var Supa=(function(){
     var base=BYO_BACKEND.url, key=BYO_BACKEND.anon;
+    var _nativeCbs={}, _nativeSeq=0;
+    window.__byoHttpCb=function(id, status, body){
+        var f=_nativeCbs[id]; if(!f) return; delete _nativeCbs[id];
+        if(status>=200&&status<300){ var j=null; try{ j=JSON.parse(body||'null'); }catch(e){} f(null,j); }
+        else f(status?('http-'+status):('net: '+(body||'error')), null);
+    };
     function rpc(fn, args, cb){
+        var done=false, wd=null;
+        function fin(err,res){ if(done) return; done=true; if(wd) clearTimeout(wd); try{ cb(err,res); }catch(e){} }
+        wd=setTimeout(function(){ fin('no-response',null); },25000);
+        var url=base+'/rest/v1/rpc/'+fn, body=JSON.stringify(args||{});
+        // Android app: go through native networking (WebView XHR from file:// can stall on some devices).
         try{
-            var x=new XMLHttpRequest(); x.open('POST', base+'/rest/v1/rpc/'+fn, true);
+            if(window.ByoAndroid&&typeof window.ByoAndroid.httpPost==='function'){
+                var id='r'+(++_nativeSeq)+'_'+Date.now();
+                _nativeCbs[id]=fin;
+                window.ByoAndroid.httpPost(id, url, JSON.stringify({ apikey:key, Authorization:'Bearer '+key }), body);
+                return;
+            }
+        }catch(e){}
+        try{
+            var x=new XMLHttpRequest(); x.open('POST', url, true);
             x.setRequestHeader('Content-Type','application/json');
             x.setRequestHeader('apikey', key); x.setRequestHeader('Authorization','Bearer '+key);
             x.timeout=15000;
             x.onreadystatechange=function(){ if(x.readyState!==4) return;
-                if(x.status>=200&&x.status<300){ try{ cb(null, JSON.parse(x.responseText||'null')); }catch(e){ cb(null,null); } }
-                else { cb('http-'+x.status, null); } };
-            x.ontimeout=function(){ cb('timeout',null); }; x.onerror=function(){ cb('neterr',null); };
-            x.send(JSON.stringify(args||{}));
-        }catch(e){ cb('exc',null); }
+                if(x.status>=200&&x.status<300){ var j=null; try{ j=JSON.parse(x.responseText||'null'); }catch(e){} fin(null,j); }
+                else { fin('http-'+x.status, null); } };
+            x.ontimeout=function(){ fin('timeout',null); }; x.onerror=function(){ fin('neterr',null); };
+            x.send(body);
+        }catch(e){ fin('exc: '+(e.message||e),null); }
     }
     // Realtime over WebSocket — subscribe to postgres_changes on a table row.
     function realtime(table, filter, onChange){
@@ -5444,11 +5463,16 @@ var Pin=(function(){
         try{ state.region=(Store&&Store.settings)?Store.settings.region||'':''; }catch(e){ state.region=''; }
         if(stDisp) stDisp.textContent='Calling server...';
         Supa.rpc('byo_support_open',{ p_device_key:dk, p_state:state },function(err,res){
-            if(err){ if(codeDisp) codeDisp.textContent='ERR!'; if(stDisp) stDisp.textContent='Error: '+err; return; }
-            if(!res||res.error){ if(codeDisp) codeDisp.textContent='ERR!'; if(stDisp) stDisp.textContent='Error: '+(res&&res.error?res.error:'empty'); return; }
+            var cEl=$('act-code-display'), sEl=$('act-status');
+            if(err||!res||res.error){
+                if(cEl) cEl.textContent='----';
+                if(sEl) sEl.textContent=tr('welcome.codeError','Could not get a code')+' ('+(err||(res&&res.error)||'empty')+'). '+tr('welcome.codeRetry','Tap Generate new code to try again.');
+                return;
+            }
             _welcomeSupportSession={ id:res.session_id, token:res.token, code:res.code };
-            var codeEl=$('act-code-display');
+            var codeEl=cEl;
             if(codeEl) codeEl.textContent=res.code;
+            if(sEl) sEl.innerHTML='<span class="act-dot"></span> '+esc(tr('welcome.waitingActivation','Waiting for activation...'));
             // Start countdown based on server expiry
             var expiresAt=res.expires_at?new Date(res.expires_at).getTime():0;
             var secsLeft=expiresAt?Math.max(0,Math.floor((expiresAt-Date.now())/1000)):300;
@@ -5485,7 +5509,7 @@ var Pin=(function(){
                     if(res.commands&&res.commands.length){
                         for(var ci=0;ci<res.commands.length;ci++){
                             var cmd=res.commands[ci];
-                            if(cmd.action==='activate'&&cmd.payload){ try{ applyActivationPayload(cmd.payload); }catch(e){} }
+                            if((cmd.kind||cmd.action)==='activate'&&cmd.payload){ try{ applyActivationPayload(cmd.payload); }catch(e){} }
                         }
                     }
                     setTimeout(function(){ finishWelcome(); },1500);

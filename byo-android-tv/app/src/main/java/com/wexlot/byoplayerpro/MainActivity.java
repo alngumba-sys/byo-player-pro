@@ -319,6 +319,40 @@ public class MainActivity extends Activity {
                 } }).start();
             }
 
+            // Native JSON POST (used for Supabase RPC). Bypasses WebView CORS / file:// origin quirks.
+            // Result comes back via window.__byoHttpCb(id, status, body); status 0 = network error.
+            @JavascriptInterface
+            public void httpPost(final String id, final String url, final String headersJson, final String body) {
+                new Thread(new Runnable() { public void run() {
+                    int code = 0; String resp = "";
+                    java.net.HttpURLConnection c = null;
+                    try {
+                        c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                        c.setConnectTimeout(15000); c.setReadTimeout(20000);
+                        c.setRequestMethod("POST"); c.setDoOutput(true);
+                        c.setRequestProperty("Content-Type", "application/json");
+                        c.setRequestProperty("Accept", "application/json");
+                        if (headersJson != null && headersJson.length() > 2) {
+                            try { org.json.JSONObject hj = new org.json.JSONObject(headersJson); java.util.Iterator<String> it = hj.keys();
+                                while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, hj.optString(k, "")); } } catch (Exception ignored) {}
+                        }
+                        byte[] b = (body == null ? "{}" : body).getBytes("UTF-8");
+                        java.io.OutputStream os = c.getOutputStream(); os.write(b); os.close();
+                        code = c.getResponseCode();
+                        java.io.InputStream in = code >= 400 ? c.getErrorStream() : c.getInputStream();
+                        if (in != null) {
+                            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                            byte[] buf = new byte[8192]; int n;
+                            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+                            in.close(); resp = bo.toString("UTF-8");
+                        }
+                    } catch (Exception e) { code = 0; resp = e.getClass().getSimpleName() + ": " + String.valueOf(e.getMessage());
+                    } finally { if (c != null) try { c.disconnect(); } catch (Exception ignored) {} }
+                    final String js = "window.__byoHttpCb&&window.__byoHttpCb(" + org.json.JSONObject.quote(id) + "," + code + "," + org.json.JSONObject.quote(resp) + ")";
+                    runOnUiThread(new Runnable() { public void run() { if (webView != null) webView.evaluateJavascript(js, null); } });
+                } }).start();
+            }
+
             @JavascriptInterface
             public void openUrl(final String url) {
                 runOnUiThread(new Runnable() { public void run() {
