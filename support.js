@@ -156,21 +156,27 @@
 
         function unlockedNow(){ try{ if(Billing.isWallOpen()&&!Billing.locked()) Billing.closeWall(); }catch(e){}
             try{ if($('view-home').classList.contains('active-view')) renderHome(); }catch(e){} }
-        // Connections are added one at a time: starting a second load while the first is still running
-        // cancelled the first (it was never reported back). A second connection in the same help session
-        // joins the library instead of replacing the first one.
+        // Adding connections from remote help.
+        // Combined library (the usual case): connections that arrive together are handed over at once and
+        // share ONE load of the library (Multi groups them), instead of reloading everything per connection.
+        // Single-connection mode: one at a time, since a second load would cancel the first. A second
+        // connection in the same help session joins the library instead of replacing the first one.
         var addQ=[], adding=false, addsThisSession=0;
-        function pumpAdds(){ if(adding||!addQ.length) return; adding=true;
-            var it=addQ.shift(), cmd=it.cmd, p=it.p, settled=false;
-            var combine=(typeof p.combine==='boolean')?p.combine:null;
+        function pumpAdds(){ while(!adding&&addQ.length){
+            var it=addQ.shift(), cmd=it.cmd, p=it.p;
+            var combine=(typeof p.combine==='boolean')?p.combine:!!(Store.settings&&Store.settings.combineSources);
             if(addsThisSession>0&&(Store.savedPlaylists||[]).length) combine=true;
-            if(combine!==null){ Store.settings.combineSources=combine; Store.save(); }
+            if(addQ.length) combine=combine||addQ.some(function(x){ return x.p.combine!==false; });
+            Store.settings.combineSources=combine; Store.save();
+            addsThisSession++;
+            startAdd(cmd, p, !combine); } }
+        function startAdd(cmd, p, serial){ var settled=false; if(serial) adding=true;
             note('Adding '+(p.name||p.mode)+'…','',null);
-            var done=function(r){ if(settled) return; settled=true; clearTimeout(guard); addsThisSession++;
+            var done=function(r){ if(settled) return; settled=true; clearTimeout(guard);
                 if(r&&r.ok) ack(cmd,true,'Loaded'+(r.live!=null?': '+(r.live||0)+' channels, '+(r.movies||0)+' movies, '+(r.series||0)+' series':''));
                 else ack(cmd,false,(r&&r.err)||'Could not load this connection');
-                adding=false; setTimeout(pumpAdds,300); };
-            var guard=setTimeout(function(){ done({ ok:false, err:'No answer from this connection after 3 minutes' }); },180000);
+                if(serial){ adding=false; setTimeout(pumpAdds,300); } };
+            var guard=setTimeout(function(){ done({ ok:false, err:'Still loading after 10 minutes (very large library or slow server)' }); },600000);
             try{ Multi.addFromPhone({ mode:p.mode, name:p.name||'', url:p.url||'', epg:p.epg||'', server:p.server||'', user:p.user||'', pass:p.pass||'', via:'support' }, done); }
             catch(e){ done({ ok:false, err:'Error: '+String(e&&e.message||e).slice(0,120) }); } }
         // ---------- applying commands ----------

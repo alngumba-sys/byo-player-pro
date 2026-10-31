@@ -321,7 +321,7 @@
 
         // A connection sent from the phone (QR pairing page). In combined mode it is saved and joins the
         // library without replacing anything; several sends in a row are batched into one reload.
-        var phoneT=null, phoneRids=[], results={};
+        var phoneT=null, phoneRids=[], phoneGen=0, results={};
         function entryFrom(p){ var e={mode:p.mode}; if(p.mode==='m3u'){ e.url=p.text?(SmartPaste.savePasted(String(p.text).slice(0,600000), p.name||'Playlist from phone')||''):(window.__directLink?window.__directLink(p.url):p.url); e.epg=p.epg||''; if(p.text) e.name=p.name||'Playlist from phone'; } else { e.server=p.server; e.user=p.user||''; e.pass=p.pass||''; } e.name=(p.name&&!p.text?String(p.name).slice(0,60):"")||e.name||plName(e); if(p.via==='support') e.managed=true; return e; }
         function saveEntry(e){ var saved=Store.savedPlaylists||[]; var k=keyOf(e), found=null; saved.forEach(function(x){ if(keyOf(x)===k) found=x; });
             if(found){ found.off=false; if(e.managed) found.managed=true; if(e.pass) found.pass=e.pass; if(e.epg!=null&&e.mode==='m3u') found.epg=e.epg; Store.save(); return found; }
@@ -337,9 +337,13 @@
             var e=saveEntry(entryFrom(p)); var rid=p.rid||null; var via=(p.via==='support')?' (remote help)':' from your phone';
             if(on()){
                 setToast('Adding '+plName(e)+via+'…');
-                if(rid||cb) phoneRids.push({rid:rid, pl:e, cb:cb});
-                clearTimeout(phoneT); phoneT=setTimeout(function(){ var mine=phoneRids; phoneRids=[];
-                    reload({quiet:true, goHome:true, noPublish:true, done:function(){ mine.forEach(function(x){ var rr=resultFor(x.pl); if(x.rid) results[x.rid]=rr; try{ if(x.cb) x.cb(rr); }catch(_e){} }); publish(); }}); },1200);
+                if(rid||cb) phoneRids.push({rid:rid, pl:e, cb:cb, g:0});
+                // Connections that arrive close together share ONE load. If a newer load replaces one that is
+                // still running (the older one never finishes), the newer one reports for both.
+                clearTimeout(phoneT); phoneT=setTimeout(function(){ var g=++phoneGen; phoneRids.forEach(function(x){ if(!x.g) x.g=g; });
+                    reload({quiet:true, goHome:true, noPublish:true, early:true, done:function(){ var mine=phoneRids.filter(function(x){ return x.g&&x.g<=g; });
+                        phoneRids=phoneRids.filter(function(x){ return !(x.g&&x.g<=g); });
+                        mine.forEach(function(x){ var rr=resultFor(x.pl); if(x.rid) results[x.rid]=rr; try{ if(x.cb) x.cb(rr); }catch(_e){} }); publish(); }}); },1200);
                 return; }
             // One connection at a time: make it the active connection if it loads.
             setToast('Loading '+plName(e)+via+'…');
