@@ -5432,14 +5432,20 @@ var Pin=(function(){
             localStorage.setItem('byo_activation_dk',k); return k; }catch(e){ return 'act-unknown'; }
     }
     function openActivationSession(){
-        var codeDisp=$('act-code-display');
+        var codeDisp=$('act-code-display'), stDisp=$('act-status');
+        try{
         if(codeDisp) codeDisp.textContent='....';
-        if(!Supa.configured()){ if(codeDisp) codeDisp.textContent='NCFG'; var s1=$('act-status'); if(s1) s1.textContent='Backend not configured'; return; }
+        if(!Supa.configured()){ if(codeDisp) codeDisp.textContent='NCFG'; if(stDisp) stDisp.textContent='Backend not configured'; return; }
         var dk=_activationDeviceKey();
-        var state={ tv_name:tvName(), platform:(isTV?'TV':'Phone'), lang:L18N.current(), region:Store.settings.region||'' };
+        var state={};
+        try{ state.tv_name=tvName(); }catch(e){ state.tv_name='BYO Player'; }
+        try{ state.platform=(typeof isTV!=='undefined'&&isTV)?'TV':'Phone'; }catch(e){ state.platform='Unknown'; }
+        try{ state.lang=L18N.current(); }catch(e){ state.lang='en'; }
+        try{ state.region=(Store&&Store.settings)?Store.settings.region||'':''; }catch(e){ state.region=''; }
+        if(stDisp) stDisp.textContent='Calling server...';
         Supa.rpc('byo_support_open',{ p_device_key:dk, p_state:state },function(err,res){
-            if(err){ if(codeDisp) codeDisp.textContent='ERR!'; var s2=$('act-status'); if(s2) s2.textContent='Error: '+err; return; }
-            if(!res||res.error){ if(codeDisp) codeDisp.textContent='ERR!'; var s3=$('act-status'); if(s3) s3.textContent='Error: '+(res&&res.error?res.error:'empty response'); return; }
+            if(err){ if(codeDisp) codeDisp.textContent='ERR!'; if(stDisp) stDisp.textContent='Error: '+err; return; }
+            if(!res||res.error){ if(codeDisp) codeDisp.textContent='ERR!'; if(stDisp) stDisp.textContent='Error: '+(res&&res.error?res.error:'empty'); return; }
             _welcomeSupportSession={ id:res.session_id, token:res.token, code:res.code };
             var codeEl=$('act-code-display');
             if(codeEl) codeEl.textContent=res.code;
@@ -5449,6 +5455,7 @@ var Pin=(function(){
             startActivationCountdown(secsLeft);
             startActivationPoll();
         });
+        }catch(e){ if(codeDisp) codeDisp.textContent='EXC!'; if(stDisp) stDisp.textContent='Exception: '+(e.message||e); }
     }
     function startActivationCountdown(secs){
         stopActivationCountdown();
