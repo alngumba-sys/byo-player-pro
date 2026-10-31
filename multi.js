@@ -200,7 +200,7 @@
             S.live=nl; S.movies=nm; S.series=ns; S.replay=[];
             S.emby=fe; S.xtream=fx;
             if(!(opts&&opts.keepFilters)){ S.liveGenre='All'; S.liveQ=''; S.moviesGenre='All'; S.moviesQ=''; S.seriesGenre='All'; S.seriesQ=''; }
-            renderAll();
+            try{ renderAll(); }catch(_e){}
             return true; }
         function summary(){ var okN=report.filter(function(r){ return r.ok; }).length;
             var s='Combined '+okN+' connection'+(okN===1?'':'s')+': Live '+n(S.live.length)+' · Movies '+n(S.movies.length)+' · Series '+n(S.series.length)+'.';
@@ -212,7 +212,7 @@
         // Load every included source (combined mode), or just `only` (single-source relaunch).
         function reload(opts){ opts=opts||{};
             var list=opts.only?[opts.only]:included();
-            if(!list.length){ if(!opts.quiet) setStatus('Switch on at least one saved connection.','err'); return; }
+            if(!list.length){ if(!opts.quiet) setStatus('Switch on at least one saved connection.','err'); try{ if(opts.done) opts.done([], false); }catch(_e){} return; }
             var my=++tok; loading=true; var mtok=null;
             if(!opts.quiet){ setStatus('Loading '+list.length+' connection'+(list.length===1?'':'s')+'…','info'); mtok=showConnectModal(); }
             else if(!opts.only&&!opts.silent){ setToast('Loading your connections…'); }
@@ -232,16 +232,22 @@
                         setTimeout(function(){ if(my!==tok) return; loadOne(list[i], i, function(r){ if(r&&r.ok) results[i]=r; step(); }); }, 3000); })(); return; }
                 finish(); }); });
             function finish(){
-                loading=false; if(mtok!==null&&mtok!==_connectToken){ renderPlaylists(); return; }
-                var done=apply(results, opts);
-                if(done&&results.every(function(r){ return r&&r.ok; })) saveSnap(list);
-                if(!opts.only){ if(done) Store.cfg=cfgKeep({mode:'multi',name:'All connections'}); Store.save(); }
-                if(mtok!==null) hideConnectModal();
-                if(!opts.only){ if(done){ setStatus(summary(), report.some(function(r){ return !r.ok; })?'info':'ok'); if(opts.quiet&&!opts.silent) setToast(summary()); }
-                    else setStatus('None of your connections could be loaded. Check them and try again.','err');
-                    renderPlaylists(); if(done&&opts.goHome) goTo('home'); }
+                loading=false;
+                // Always run opts.done so bootLoad can clear "Loading your library" even when apply/paint throws
+                // or the connect modal was cancelled mid-load.
+                if(mtok!==null&&mtok!==_connectToken){ try{ renderPlaylists(); }catch(_e){} try{ if(opts.done) opts.done(results, false); }catch(_e){} return; }
+                var done=false;
+                try{ done=!!apply(results, opts); }catch(e){ libLog('apply failed: '+(e&&e.message||e)); }
+                try{
+                    if(done&&results.every(function(r){ return r&&r.ok; })) saveSnap(list);
+                    if(!opts.only){ if(done) Store.cfg=cfgKeep({mode:'multi',name:'All connections'}); Store.save(); }
+                    if(mtok!==null) hideConnectModal();
+                    if(!opts.only){ if(done){ setStatus(summary(), report.some(function(r){ return !r.ok; })?'info':'ok'); if(opts.quiet&&!opts.silent) setToast(summary()); }
+                        else setStatus('None of your connections could be loaded. Check them and try again.','err');
+                        renderPlaylists(); if(done&&opts.goHome) goTo('home'); }
+                }catch(_e){}
                 try{ if(opts.done) opts.done(results, done); }catch(_e){}
-                renderActive(); if(!opts.noPublish) publish();
+                try{ renderActive(); }catch(_e){} if(!opts.noPublish) publish();
             } }
 
         // ---------- per-item routing ----------
@@ -433,23 +439,56 @@
                 if(!v){ started=true; clearTimeout(giveUp); S._libFromSnapWait=false; libLog('no saved copy yet ('+tRead+'ms); downloading'); return bootLoad(); }
                 if(v.v!==1||!v.json){ started=true; clearTimeout(giveUp); S._libFromSnapWait=false; libLog('saved copy is from an older format; downloading'); return bootLoad(); }
                 if(v.sig!==libSig(list)){ started=true; clearTimeout(giveUp); S._libFromSnapWait=false; libLog('saved copy is for a different connection; downloading'); return bootLoad(); }
+                // Parsing a huge saved copy on a TV WebView can OOM the renderer. Android then reloads
+                // the page (recoverWebView), so the splash ("Your playlist. Your way.") loops forever.
+                // If the last launch died restoring this same copy, discard it and download instead.
+                var SNAP_MAX=14*1048576, boomKey='byo_snap_boom', sig=libSig(list);
+                try{ var boom=JSON.parse(localStorage.getItem(boomKey)||'null');
+                    if(boom && boom.sig===sig && Date.now()-boom.at<180000){
+                        localStorage.removeItem(boomKey);
+                        started=true; clearTimeout(giveUp); S._libFromSnapWait=false;
+                        libLog('saved copy crashed the app last launch; discarding and downloading');
+                        try{ Snap.put({v:1,sig:'',at:0,json:'{"live":[],"movies":[],"series":[]}'}, function(){}); }catch(_e){}
+                        return bootLoad();
+                    }
+                }catch(_e){}
+                if(typeof v.json==='string' && v.json.length>SNAP_MAX){
+                    started=true; clearTimeout(giveUp); S._libFromSnapWait=false;
+                    libLog('saved copy is too large ('+(v.json.length/1048576).toFixed(1)+' MB); downloading');
+                    try{ Snap.put({v:1,sig:'',at:0,json:'{"live":[],"movies":[],"series":[]}'}, function(){}); }catch(_e){}
+                    return bootLoad();
+                }
+                try{ localStorage.setItem(boomKey, JSON.stringify({sig:sig, at:Date.now()})); }catch(_e){}
                 try{ var t1=Date.now(); var d=JSON.parse(v.json); if(!d||!Array.isArray(d.live)) throw 0;
                     var fx=revive(d, list); if(started) return; started=true; clearTimeout(giveUp); S._libFromSnapWait=false;
                     S.live=d.live; S.movies=d.movies||[]; S.series=d.series||[]; S.replay=[]; S.emby=null; S.xtream=fx;
                     S._libLoading=false; S._libFailed=false; S._libFromSaved=true;
                     var ageMin=Math.round((Date.now()-(v.at||0))/60000);
                     libLog('opened saved copy: read '+tRead+'ms, parse '+(Date.now()-t1)+'ms, '+(v.json.length/1048576).toFixed(1)+' MB, '+ageMin+' min old');
-                    try{ renderAll(); }catch(_e){} try{ window.__byoLibTick&&window.__byoLibTick(); }catch(_e){}
+                    // Clear the Home loading card before painting every view, so a heavy renderAll cannot
+                    // leave the user stuck on "Loading your library" if the WebView struggles.
+                    try{ window.__byoLibTick&&window.__byoLibTick(); }catch(_e){}
+                    try{ if($('view-home')&&$('view-home').classList.contains('active-view')) renderHome(); }catch(_e){}
+                    setTimeout(function(){
+                        try{ renderAll(); }catch(_e){}
+                        try{ localStorage.removeItem(boomKey); }catch(_e){}
+                        try{ window.__byoLibTick&&window.__byoLibTick(); }catch(_e){}
+                    }, 0);
                     if(Date.now()-(v.at||0)<SNAP_MAX_AGE) return;           // recent enough: no download at all
                     libLog('copy older than 6h; refreshing quietly in the background');
                     setTimeout(function(){ reload({ quiet:true, silent:true, refresh:true, keepFilters:true, noRetry:false, only:on()?null:list[0], noPublish:true }); }, 8000);
-                }catch(e){ if(!started){ started=true; clearTimeout(giveUp); } S._libFromSnapWait=false; libLog('saved copy could not be read ('+(e&&e.message||'bad data')+'); downloading'); bootLoad(); } }); }
+                }catch(e){ try{ localStorage.removeItem(boomKey); }catch(_e){}
+                    if(!started){ started=true; clearTimeout(giveUp); } S._libFromSnapWait=false; libLog('saved copy could not be read ('+(e&&e.message||'bad data')+'); downloading'); bootLoad(); } }); }
         function bootLoad(){ try{ var tb=Date.now(); libLog('downloading library from provider');
-            if(on()){ if(included().length) reload({quiet:true, early:true, onEarly:function(){ S._libLoading=false; try{ window.__byoLibTick&&window.__byoLibTick(); }catch(_e){} try{ if($('view-home').classList.contains('active-view')) renderHome(); }catch(_e){} }, done:function(r,ok){ S._libLoading=false; if(!ok){ S._libFailed=true; try{ renderHome(); }catch(_e){} } try{ window.__byoLibTick&&window.__byoLibTick(); }catch(_e){} }}); else S._libLoading=false; return; }
-            var c=Store.cfg||{}; if(!c.mode||c.mode==='multi'){ S._libLoading=false; return; }
-            if((c.mode==='m3u'&&!c.url)||(c.mode!=='m3u'&&!c.server)){ S._libLoading=false; return; }
+            // If reload never calls done (cancelled modal, superseded load, paint throw), do not leave
+            // Home stuck on "Loading your library" forever.
+            var safety=setTimeout(function(){ if(!S._libLoading) return; S._libLoading=false; S._libFailed=true; libLog('download watchdog fired after 4.5 min'); try{ renderHome(); }catch(_e){} try{ window.__byoLibTick&&window.__byoLibTick(); }catch(_e){} }, 270000);
+            function clearLoad(ok){ try{ clearTimeout(safety); }catch(_e){} S._libLoading=false; if(ok===false){ S._libFailed=true; try{ renderHome(); }catch(_e){} } try{ window.__byoLibTick&&window.__byoLibTick(); }catch(_e){} }
+            if(on()){ if(included().length) reload({quiet:true, early:true, onEarly:function(){ clearLoad(); try{ if($('view-home').classList.contains('active-view')) renderHome(); }catch(_e){} }, done:function(r,ok){ clearLoad(ok?undefined:false); libLog(ok?('downloaded in '+Math.round((Date.now()-tb)/1000)+'s'):'download failed'); }}); else clearLoad(); return; }
+            var c=Store.cfg||{}; if(!c.mode||c.mode==='multi'){ clearLoad(); return; }
+            if((c.mode==='m3u'&&!c.url)||(c.mode!=='m3u'&&!c.server)){ clearLoad(); return; }
             reload({quiet:true, only:{mode:c.mode,url:c.url,epg:c.epg,server:c.server,user:c.user,pass:c.pass,name:c.name},
-                done:function(res, ok){ S._libLoading=false; libLog(ok?('downloaded in '+Math.round((Date.now()-tb)/1000)+'s'):'download failed'); if(!ok){ S._libFailed=true; try{ renderHome(); }catch(_e){} } try{ window.__byoLibTick&&window.__byoLibTick(); }catch(_e){} }});
+                done:function(res, ok){ clearLoad(ok?undefined:false); libLog(ok?('downloaded in '+Math.round((Date.now()-tb)/1000)+'s'):'download failed'); }});
         }catch(e){ S._libLoading=false; } }
         // Switch one saved connection on or off (from the phone page). Combined library: rebuild without it /
         // with it. One-at-a-time: switching off the one in use moves to the next one that is on.
