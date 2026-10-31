@@ -204,10 +204,12 @@ public class MainActivity extends Activity {
                     || getPackageManager().hasSystemFeature("android.software.leanback");
         } catch (Exception ignored) {}
         final boolean tvMode0 = tvMode;
-        s.setLoadWithOverviewMode(tvMode);
-        s.setUseWideViewPort(tvMode);
+        // Both TV and phone APK use the 1920x1080 layout scaled to fit the screen.
+        s.setLoadWithOverviewMode(true);
+        s.setUseWideViewPort(true);
         s.setTextZoom(100);
-        if (tvMode) { s.setSupportZoom(false); s.setBuiltInZoomControls(false); }
+        s.setSupportZoom(false);
+        s.setBuiltInZoomControls(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         // Allow the bundled https-style app to pull http streams (mixed content),
         // same relaxed posture as the TV build.
