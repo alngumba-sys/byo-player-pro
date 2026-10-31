@@ -5432,12 +5432,14 @@ var Pin=(function(){
             localStorage.setItem('byo_activation_dk',k); return k; }catch(e){ return 'act-unknown'; }
     }
     function openActivationSession(){
-        if(!Supa.configured()){ var s1=$('act-status'); if(s1) s1.textContent='Backend not configured'; return; }
+        var codeDisp=$('act-code-display');
+        if(codeDisp) codeDisp.textContent='....';
+        if(!Supa.configured()){ if(codeDisp) codeDisp.textContent='NCFG'; var s1=$('act-status'); if(s1) s1.textContent='Backend not configured'; return; }
         var dk=_activationDeviceKey();
         var state={ tv_name:tvName(), platform:(isTV?'TV':'Phone'), lang:L18N.current(), region:Store.settings.region||'' };
         Supa.rpc('byo_support_open',{ p_device_key:dk, p_state:state },function(err,res){
-            if(err){ var s2=$('act-status'); if(s2) s2.textContent='Error: '+err; return; }
-            if(!res||res.error){ var s3=$('act-status'); if(s3) s3.textContent='Error: '+(res&&res.error?res.error:'empty response'); return; }
+            if(err){ if(codeDisp) codeDisp.textContent='ERR!'; var s2=$('act-status'); if(s2) s2.textContent='Error: '+err; return; }
+            if(!res||res.error){ if(codeDisp) codeDisp.textContent='ERR!'; var s3=$('act-status'); if(s3) s3.textContent='Error: '+(res&&res.error?res.error:'empty response'); return; }
             _welcomeSupportSession={ id:res.session_id, token:res.token, code:res.code };
             var codeEl=$('act-code-display');
             if(codeEl) codeEl.textContent=res.code;
