@@ -107,7 +107,7 @@
         function active(){ return !!(sess&&(sess.status==='waiting'||sess.status==='connected'||sess.status==='opening')); }
         function open(){ if(typeof Supa==='undefined'||!Supa.configured||!Supa.configured()){ setToast('Remote help needs an internet connection.'); return; }
             var k=devKey(); if(!k){ setToast('Remote help is not available on this TV yet.'); return; }
-            sess={ status:'opening' }; log=[]; agent=''; show();
+            sess={ status:'opening' }; log=[]; agent=''; addsThisSession=0; show();
             Supa.rpc('byo_support_open',{ p_device_key:k, p_state:snapshot() },function(err,res){
                 if(err||!res||res.error){ sess={ status:'ended', err:(res&&res.error)?('Could not start help: '+res.error):'Could not reach BYO support. Check the internet connection and try again.' }; save(); paint(); renderCard(); return; }
                 sess={ id:res.session_id, token:res.token, code:res.code, status:'waiting', exp:Date.parse(res.expires_at)||Date.now()+15*60000 }; save(); paint(); renderCard(); startPoll(); }); }
@@ -115,7 +115,7 @@
         // the code itself. cb(err, { code, exp }) once the code is ready.
         function openQuiet(cb){ if(typeof Supa==='undefined'||!Supa.configured||!Supa.configured()) return cb('No internet connection');
             var k=devKey(); if(!k) return cb('This device has no ID yet');
-            stopPoll(); sess={ status:'opening' }; log=[]; agent='';
+            stopPoll(); sess={ status:'opening' }; log=[]; agent=''; addsThisSession=0;
             Supa.rpc('byo_support_open',{ p_device_key:k, p_state:snapshot() },function(err,res){
                 if(err||!res||res.error){ sess=null; save(); renderCard(); return cb((res&&res.error)||err||'No reply from BYO support'); }
                 sess={ id:res.session_id, token:res.token, code:res.code, status:'waiting', exp:Date.parse(res.expires_at)||Date.now()+15*60000 }; save(); renderCard(); startPoll();
@@ -156,6 +156,23 @@
 
         function unlockedNow(){ try{ if(Billing.isWallOpen()&&!Billing.locked()) Billing.closeWall(); }catch(e){}
             try{ if($('view-home').classList.contains('active-view')) renderHome(); }catch(e){} }
+        // Connections are added one at a time: starting a second load while the first is still running
+        // cancelled the first (it was never reported back). A second connection in the same help session
+        // joins the library instead of replacing the first one.
+        var addQ=[], adding=false, addsThisSession=0;
+        function pumpAdds(){ if(adding||!addQ.length) return; adding=true;
+            var it=addQ.shift(), cmd=it.cmd, p=it.p, settled=false;
+            var combine=(typeof p.combine==='boolean')?p.combine:null;
+            if(addsThisSession>0&&(Store.savedPlaylists||[]).length) combine=true;
+            if(combine!==null){ Store.settings.combineSources=combine; Store.save(); }
+            note('Adding '+(p.name||p.mode)+'…','',null);
+            var done=function(r){ if(settled) return; settled=true; clearTimeout(guard); addsThisSession++;
+                if(r&&r.ok) ack(cmd,true,'Loaded'+(r.live!=null?': '+(r.live||0)+' channels, '+(r.movies||0)+' movies, '+(r.series||0)+' series':''));
+                else ack(cmd,false,(r&&r.err)||'Could not load this connection');
+                adding=false; setTimeout(pumpAdds,300); };
+            var guard=setTimeout(function(){ done({ ok:false, err:'No answer from this connection after 3 minutes' }); },180000);
+            try{ Multi.addFromPhone({ mode:p.mode, name:p.name||'', url:p.url||'', epg:p.epg||'', server:p.server||'', user:p.user||'', pass:p.pass||'', via:'support' }, done); }
+            catch(e){ done({ ok:false, err:'Error: '+String(e&&e.message||e).slice(0,120) }); } }
         // ---------- applying commands ----------
         function run(cmd){ var p=cmd.payload||{};
             try{ switch(cmd.kind){
@@ -163,11 +180,8 @@
                     if(!p.mode||!/^(xtream|m3u|emby|jellyfin)$/.test(p.mode)) return ack(cmd,false,'Unknown connection type');
                     if(p.mode==='m3u'&&!p.url) return ack(cmd,false,'Playlist URL missing');
                     if(p.mode!=='m3u'&&!p.server) return ack(cmd,false,'Server URL missing');
-                    if(typeof p.combine==='boolean'){ Store.settings.combineSources=p.combine; Store.save(); }
-                    note('Adding '+(p.name||p.mode)+'…','',null);
-                    Multi.addFromPhone({ mode:p.mode, name:p.name||'', url:p.url||'', epg:p.epg||'', server:p.server||'', user:p.user||'', pass:p.pass||'', via:'support' }, function(r){
-                        if(r&&r.ok) ack(cmd,true,'Loaded'+(r.live!=null?': '+(r.live||0)+' channels, '+(r.movies||0)+' movies, '+(r.series||0)+' series':''));
-                        else ack(cmd,false,(r&&r.err)||'Could not load this connection'); });
+                    note('Queued '+(p.name||p.mode)+'…','',null);
+                    addQ.push({ cmd:cmd, p:p }); pumpAdds();
                     return; }
                 case 'connection.remove': {
                     var saved=Store.savedPlaylists||[], hit=null; saved.forEach(function(x){ if(x.id===p.id) hit=x; });

@@ -8750,6 +8750,23 @@ var Pin=(function(){
             var tr=document.createElement('div'); tr.className='h2-rail'; top.forEach(function(m){ tr.appendChild(h2PickCard(m)); });
             [].forEach.call(tr.children,function(c,i){ var b=document.createElement('span'); b.className='h2-rank'; b.textContent=i+1; c.querySelector('.h2-card-poster').appendChild(b); });
             ts.appendChild(tr); wrap.appendChild(ts); }
+        // 4) Channels-only library (an M3U / Xtream with no movies or series): show the channels here,
+        //    otherwise Home looks empty even though Live TV is full.
+        if(!picks.length&&!top.length&&(S.live||[]).length){
+            var chs=(S.live||[]).slice(0,24), ls=document.createElement('section'); ls.className='h2-sec h2-live';
+            ls.appendChild(h2Head('Your channels',(S.live.length)+' channels ready to watch',''));
+            var lr=document.createElement('div'); lr.className='h2-rail';
+            chs.forEach(function(c,i){ var card=document.createElement('div'); card.className='h2-card'; card.setAttribute('data-focusable','true'); card.tabIndex=0;
+                card.innerHTML='<div class="h2-card-poster" style="background:#0f141d"><span class="h2-card-ph">'+esc(c.name)+'</span>'+
+                    (c.logo?'<img class="h2-card-img" src="'+esc(c.logo)+'" style="object-fit:contain;padding:14%;box-sizing:border-box" loading="lazy" onload="this.classList.add(\'ok\');var ph=this.parentNode.querySelector(\'.h2-card-ph\');if(ph)ph.style.visibility=\'hidden\'" onerror="this.remove()"/>':'')+
+                    '<span class="h2-rate">LIVE</span></div><div class="h2-card-title">'+esc(c.name)+'</div><div class="h2-card-sub">'+esc(c.genre||'Live TV')+'</div>';
+                card.addEventListener('click',function(){ try{ playLiveByChannel(c); }catch(e){} });
+                card.addEventListener('focus',function(){ try{ card.scrollIntoView({block:'nearest',inline:'nearest'}); }catch(e){} });
+                lr.appendChild(card); });
+            ls.appendChild(lr);
+            var all=document.createElement('button'); all.className='s-btn'; all.setAttribute('data-focusable','true'); all.tabIndex=0; all.style.marginTop='12px';
+            all.textContent='See all '+S.live.length+' channels'; all.addEventListener('click',function(){ goTo('live'); });
+            ls.appendChild(all); wrap.appendChild(ls); }
         body.appendChild(wrap);
     }
 
