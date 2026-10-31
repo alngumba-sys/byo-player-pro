@@ -203,6 +203,7 @@ public class MainActivity extends Activity {
             tvMode = (um0 != null && um0.getCurrentModeType() == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION)
                     || getPackageManager().hasSystemFeature("android.software.leanback");
         } catch (Exception ignored) {}
+        final boolean tvMode0 = tvMode;
         s.setLoadWithOverviewMode(tvMode);
         s.setUseWideViewPort(tvMode);
         s.setTextZoom(100);
@@ -225,7 +226,23 @@ public class MainActivity extends Activity {
                 return true;   // handled: keep the app (and any playing movie) alive
             }
             @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                // Inject android-app class as early as possible so the dev banner never shows
+                if (!tvMode0 && view == webView) {
+                    view.evaluateJavascript(
+                        "document.documentElement.classList.add('android-app');" +
+                        "document.documentElement.classList.remove('tv-native');", null);
+                }
+            }
+            @Override
             public void onPageFinished(WebView view, String url) {
+                // Ensure android-app class is set (belt-and-suspenders with onPageStarted)
+                if (!tvMode0 && view == webView) {
+                    view.evaluateJavascript(
+                        "document.documentElement.classList.add('android-app');" +
+                        "var dh=document.querySelector('.dev-head');if(dh)dh.style.display='none';" +
+                        "var rh=document.querySelector('.remote-help');if(rh)rh.style.display='none';", null);
+                }
                 if (pendingResultJs != null && view == webView) {
                     final String js = pendingResultJs; pendingResultJs = null;
                     view.postDelayed(new Runnable() { public void run() { if (webView != null) webView.evaluateJavascript(js, null); } }, 4000);
