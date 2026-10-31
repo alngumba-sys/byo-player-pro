@@ -26,3 +26,4 @@ byo-payments/**/node_modules/
 .netlify/
 *.apk
 !tv3247.apk
+*.idsig
