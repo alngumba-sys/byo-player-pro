@@ -55,6 +55,7 @@ html.android-app .act-code-label { font-size:14px !important; margin-bottom:12px
 html.android-app .act-code { font-size:52px !important; margin-bottom:20px !important; letter-spacing:.16em !important; }
 html.android-app .act-status { font-size:14px !important; gap:8px !important; }
 html.android-app .act-dot { width:8px !important; height:8px !important; }
+html.android-app .act-timer { font-size:13px !important; margin-top:10px !important; }
 /* ---- Phone: pairing overlay ---- */
 html.android-app .pair-shell { width:100% !important; height:100% !important; padding:16px 20px !important; }
 html.android-app .pair-cols { grid-template-columns:1fr !important; gap:20px !important; }
@@ -1632,6 +1633,7 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
 .act-status { font-size:20px; color:var(--fg-dim); display:flex; align-items:center; justify-content:center; gap:10px; }
 .act-dot { width:10px; height:10px; border-radius:50%; background:#eab308; flex:0 0 auto; animation:pairPulse 2s ease-in-out infinite; }
 .act-dot-ok { background:var(--accent-2,#22c55e); animation:none; }
+.act-timer { font-size:15px; color:var(--fg-dim); margin-top:14px; font-variant-numeric:tabular-nums; opacity:.85; }
 /* support code card shown during welcome setup */
 .welcome-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:27px; overflow-y:auto; padding:2px; align-content:start; }
 .welcome-grid.one-col { grid-template-columns:1fr; }
@@ -3355,6 +3357,7 @@ var L18N=(function(){
 ‘welcome.newCode’:’Generate new code’,
 ‘welcome.newCodeSub’:’Get a fresh activation code.’,
 ‘welcome.activateFootNote’:’Support will activate your device and add your connections.’,
+‘welcome.codeExpires’:’Code expires in’,
 'welcome.whereAreYouL1':'Where are you','welcome.whereAreYouL2':'watching from?',
         'nav.home':'Home','nav.now':'Now','nav.live':'Live','nav.sports':'Sports','nav.guide':'Guide','nav.liveTitle':'Live TV','live.pageSub':'All your channels, in one place.',
         'nav.movies':'Movies','nav.series':'Series','nav.replay':'Replay','nav.recordings':'Recordings',
@@ -5396,7 +5399,8 @@ var Pin=(function(){
             var codeCard=document.createElement('div'); codeCard.className='activation-card';
             codeCard.innerHTML='<div class="act-code-label">'+esc(tr('welcome.activationCode','Your activation code'))+'</div>'+
                 '<div class="act-code" id="act-code-display">'+esc(code)+'</div>'+
-                '<div class="act-status" id="act-status"><span class="act-dot"></span> '+esc(tr('welcome.waitingActivation','Waiting for activation...'))+'</div>';
+                '<div class="act-status" id="act-status"><span class="act-dot"></span> '+esc(tr('welcome.waitingActivation','Waiting for activation...'))+'</div>'+
+                '<div class="act-timer" id="act-timer"></div>';
             grid.appendChild(codeCard);
             // Generate new code button
             var regen=document.createElement('button'); regen.className='setup-card'; regen.setAttribute('data-focusable','true'); regen.tabIndex=0; regen.id='act-regen';
@@ -5404,6 +5408,7 @@ var Pin=(function(){
             regen.addEventListener('click',function(){ _welcomeSupportCode=null; stopActivationPoll(); _welcomeStep='method'; renderWelcome(); });
             grid.appendChild(regen);
             // Register and start polling
+            startActivationCountdown();
             if(Supa.configured()){
                 Supa.rpc('byo_support_register',{ p_code:code, p_tv_name:tvName(), p_platform:(isTV?'TV':'Web'), p_lang:L18N.current(), p_region:Store.settings.region||'' },function(){});
                 startActivationPoll(code);
@@ -5424,9 +5429,24 @@ var Pin=(function(){
     function welcomeBack(){ if(_welcomeStep==='region'){ _welcomeStep='lang'; renderWelcome(); } else if(_welcomeStep==='method'){ _welcomeStep='region'; renderWelcome(); } }
     function finishWelcome(){ Store.settings.firstRun=false; Store.save(); stopActivationPoll(); closeWelcome(); openProfilePicker(true); }
 
-    /* ---- Activation code polling ---- */
-    var _activationPoll=null;
-    function stopActivationPoll(){ if(_activationPoll){ clearInterval(_activationPoll); _activationPoll=null; } }
+    /* ---- Activation code countdown & polling ---- */
+    var _activationPoll=null, _activationCountdown=null;
+    function stopActivationPoll(){ if(_activationPoll){ clearInterval(_activationPoll); _activationPoll=null; } stopActivationCountdown(); }
+    function stopActivationCountdown(){ if(_activationCountdown){ clearInterval(_activationCountdown); _activationCountdown=null; } }
+    function startActivationCountdown(){
+        stopActivationCountdown();
+        var secs=300; // 5 minutes
+        var tick=function(){
+            var el=$('act-timer');
+            if(!el){ stopActivationCountdown(); return; }
+            if(secs<=0){ stopActivationCountdown(); _welcomeSupportCode=null; stopActivationPoll(); _welcomeStep='method'; renderWelcome(); return; }
+            var m=Math.floor(secs/60), s=secs%60;
+            el.textContent=tr('welcome.codeExpires','Code expires in')+' '+m+':'+(s<10?'0':'')+s;
+            secs--;
+        };
+        tick();
+        _activationCountdown=setInterval(tick,1000);
+    }
     function startActivationPoll(code){
         stopActivationPoll();
         _activationPoll=setInterval(function(){
