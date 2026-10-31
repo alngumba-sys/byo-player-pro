@@ -23,3 +23,6 @@ byo-payments/**/build/
 byo-payments/**/.gradle/
 byo-payments/**/local.properties
 byo-payments/**/node_modules/
+.netlify/
+*.apk
+!tv3247.apk
