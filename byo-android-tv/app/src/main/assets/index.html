@@ -1528,11 +1528,6 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
 .setup-card.focused { border-color:var(--accent); background:rgba(34,221,226,.08); box-shadow:0 0 0 2px var(--accent); transform:none; }
 .setup-card.focused .sc-ic { border-color:var(--accent); color:#fff; }
 /* support code card shown during welcome setup */
-.setup-code-card { text-align:center; padding:48px 36px 40px; border-radius:24px; background:rgba(255,255,255,.035); border:1.5px solid rgba(120,140,180,.18); margin-bottom:28px; }
-.setup-code-card .scc-label { font-size:22px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--fg-dim); margin-bottom:18px; }
-.setup-code-card .scc-code { font-size:72px; font-weight:900; letter-spacing:.22em; color:#fff; font-family:ui-monospace,'SF Mono','Cascadia Code','Fira Code',monospace; padding:18px 0 22px; line-height:1; }
-.setup-code-card .scc-hint { font-size:24px; color:var(--fg-dim); font-weight:500; margin-top:12px; line-height:1.4; }
-.setup-code-card .scc-contact { font-size:28px; font-weight:700; color:var(--accent); margin-top:10px; }
 .welcome-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:27px; overflow-y:auto; padding:2px; align-content:start; }
 .welcome-grid.one-col { grid-template-columns:1fr; }
 .region-grid { grid-column:1/-1; display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:4px; width:100%; }
@@ -5237,8 +5232,8 @@ var Pin=(function(){
         setTimeout(function(){ var g=$('profile-grid'); Nav.setFocus(g.querySelector('.profile-tile:not(.profile-add)')||g.querySelector('.profile-tile')); },30); ppLibRender(); }
 
     /* ---- First-launch welcome: language → region → setup method (spec §2/§3/§48/§55) ---- */
-    var _welcomeStep='lang', _welcomeSupportCode=null, _welcomeCodeRegistered=false;
-    function openWelcome(){ _welcomeStep='lang'; _welcomeSupportCode=null; _welcomeCodeRegistered=false; $('welcome').classList.remove('hidden'); renderWelcome(); }
+    var _welcomeStep='lang', _welcomeSupportCode=null;
+    function openWelcome(){ _welcomeStep='lang'; _welcomeSupportCode=null; $('welcome').classList.remove('hidden'); renderWelcome(); }
     function closeWelcome(){ $('welcome').classList.add('hidden'); }
     function welcomeOpen(){ return !$('welcome').classList.contains('hidden'); }
     function renderWelcome(){
@@ -5277,40 +5272,27 @@ var Pin=(function(){
             vall.innerHTML='<button class="wz-link" id="region-viewall" data-focusable="true" tabindex="0"><span data-i18n="welcome.viewAll">View all countries</span> '+icon('i-chev-r')+'</button>';
             grid.appendChild(vall);
             foot.innerHTML='';
-        } else { // method: get remote help (generate support code)
+        } else { // method: set up with phone / remote (spec §55)
             contBtn.classList.add('hidden'); backBtn.classList.remove('hidden'); stepBadge.textContent='';
             eyebrow.textContent=tr('welcome.setupEyebrow','ALMOST THERE');
-            rhead.textContent=tr('welcome.setupTitle','Get set up');
+            rhead.textContent=tr('welcome.setupTitle','Choose your setup method');
             $('welcome-title').innerHTML=esc(tr('welcome.setupHeroL1',"Let's get you"))+'<br>'+esc(tr('welcome.setupHeroL2','set up.'));
-            $('welcome-sub').textContent=tr('welcome.setupSub','Share this code with BYO support to finish setting up your TV.');
+            $('welcome-sub').textContent=tr('welcome.setupSub','Choose how you\'d like to connect your TV.');
             grid.className='welcome-grid one-col';
-            // Generate a short support code for this TV
+            var phone=document.createElement('button'); phone.className='setup-card'; phone.setAttribute('data-focusable','true'); phone.tabIndex=0;
+            phone.innerHTML='<span class="sc-ic">'+icon('i-phone')+'</span><span class="sc-text"><span class="sc-title-row"><span class="sc-title">'+esc(tr('welcome.setupPhone','Set up with phone'))+'</span><span class="sc-badge">'+esc(tr('welcome.recommended','RECOMMENDED'))+'</span></span><span class="sc-desc">'+esc(tr('welcome.setupPhoneSub','Scan a QR code and follow the steps on your phone.'))+'</span></span><span class="sc-chev">'+icon('i-chev-r')+'</span>';
+            phone.addEventListener('click',function(){ Store.settings.firstRun=false; Store.save(); closeWelcome(); openPairing('welcome'); }); grid.appendChild(phone);
+            var remote=document.createElement('button'); remote.className='setup-card'; remote.setAttribute('data-focusable','true'); remote.tabIndex=0;
+            remote.innerHTML='<span class="sc-ic">'+icon('i-remote')+'</span><span class="sc-text"><span class="sc-title-row"><span class="sc-title">'+esc(tr('welcome.setupRemote','Set up with remote'))+'</span></span><span class="sc-desc">'+esc(tr('welcome.setupRemoteSub','Enter your details directly on your TV.'))+'</span></span><span class="sc-chev">'+icon('i-chev-r')+'</span>';
+            remote.addEventListener('click',function(){ finishWelcome(); }); grid.appendChild(remote);
+            // Generate a 4-digit numeric support code
             var code=_welcomeSupportCode;
-            if(!code){
-                var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; code='';
-                for(var ci=0;ci<6;ci++) code+=chars.charAt(Math.floor(Math.random()*chars.length));
-                _welcomeSupportCode=code;
+            if(!code){ code=''; for(var ci=0;ci<4;ci++) code+=Math.floor(Math.random()*10); _welcomeSupportCode=code; }
+            if(Supa.configured()){
+                Supa.rpc('byo_support_register',{ p_code:code, p_tv_name:tvName(), p_platform:(isTV?'TV':'Web'), p_lang:L18N.current(), p_region:Store.settings.region||'' },function(){});
             }
-            var codeDisplay=code.slice(0,3)+' '+code.slice(3);
-            // Support code display card
-            var codeCard=document.createElement('div'); codeCard.className='setup-code-card';
-            codeCard.innerHTML='<div class="scc-label">'+esc(tr('welcome.yourCode','Your setup code'))+'</div>'+
-                '<div class="scc-code" id="welcome-support-code">'+esc(codeDisplay)+'</div>'+
-                '<div class="scc-hint">'+esc(tr('welcome.codeHint','Share this code with BYO support at'))+'</div>'+
-                '<div class="scc-contact">info@byoplayer.com</div>';
-            grid.appendChild(codeCard);
-            // Register the code with the backend if available
-            if(Supa.configured()&&!_welcomeCodeRegistered){
-                _welcomeCodeRegistered=true;
-                Supa.rpc('byo_support_register',{ p_code:code, p_tv_name:tvName(), p_platform:(isTV?'TV':'Web'), p_lang:L18N.current(), p_region:Store.settings.region||'' },function(err,res){
-                    if(err){ _welcomeCodeRegistered=false; } // allow retry on next render
-                });
-            }
-            // Skip button to continue without help
-            var skip=document.createElement('button'); skip.className='setup-card'; skip.setAttribute('data-focusable','true'); skip.tabIndex=0;
-            skip.innerHTML='<span class="sc-ic">'+icon('i-remote')+'</span><span class="sc-text"><span class="sc-title-row"><span class="sc-title">'+esc(tr('welcome.skipSetup','Set up on my own'))+'</span></span><span class="sc-desc">'+esc(tr('welcome.skipSetupSub','Continue and add your playlist manually.'))+'</span></span><span class="sc-chev">'+icon('i-chev-r')+'</span>';
-            skip.addEventListener('click',function(){ finishWelcome(); }); grid.appendChild(skip);
-            foot.innerHTML='<span class="wz-foot-note" style="text-align:left;display:block">'+esc(tr('welcome.setupFootNote','BYO support will configure your TV remotely using this code.'))+'</span>';
+            foot.innerHTML='<span class="wz-foot-note" style="text-align:left;display:block">'+esc(tr('welcome.setupFootNote','Using your phone saves typing with the remote.'))+'</span>'+
+                '<span class="wz-foot-note" style="text-align:right;display:block;margin-top:8px;opacity:.5;font-size:18px">'+esc(tr('welcome.supportCode','Support code'))+': <b>'+esc(code)+'</b></span>';
         }
         // Left-column art: globe for lang/region, phone→TV illustration for the method step
         var gl=$('welcome-illus'), gb=document.querySelector('#welcome .wz-globe');
