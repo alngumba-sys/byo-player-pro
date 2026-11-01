@@ -150,6 +150,33 @@ public class MainActivity extends Activity {
 
     // If Android kills the WebView's renderer (low memory while a movie plays), don't let it take the
     // whole app down: drop the dead WebView and build a fresh one that reopens on the same profile.
+    private final java.util.ArrayList<Long> goneTimes = new java.util.ArrayList<>();
+    private void showStuckScreen(boolean crashed) {
+        try { doPreviewStop(); } catch (Exception ignored) {}
+        if (webView != null) { try { root.removeView(webView); webView.destroy(); } catch (Exception ignored) {} webView = null; }
+        String wv = "";
+        try { if (android.os.Build.VERSION.SDK_INT >= 26) { android.content.pm.PackageInfo pi = WebView.getCurrentWebViewPackage(); if (pi != null) wv = pi.packageName + " " + pi.versionName; } } catch (Throwable ignored) {}
+        String last = ""; try { last = getSharedPreferences("byo_diag", MODE_PRIVATE).getString("last", ""); } catch (Exception ignored) {}
+        String ver = ""; try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL); box.setGravity(android.view.Gravity.CENTER);
+        box.setBackgroundColor(0xFF0B1120); int pad = (int) (32 * getResources().getDisplayMetrics().density); box.setPadding(pad, pad, pad, pad);
+        android.widget.TextView t = new android.widget.TextView(this);
+        t.setTextColor(0xFFFFFFFF); t.setTextSize(22); t.setGravity(android.view.Gravity.CENTER);
+        t.setText("BYO Player could not open its screen");
+        android.widget.TextView d = new android.widget.TextView(this);
+        d.setTextColor(0xFFB8C2CF); d.setTextSize(15); d.setGravity(android.view.Gravity.CENTER); d.setPadding(0, pad / 2, 0, pad / 2);
+        d.setText((crashed ? "The TV's web engine crashed" : "Android closed the TV's web engine (low memory)") + " 3 times while loading.\n\n"
+                + "Please send a photo of this screen to BYO support.\n\n"
+                + "App " + ver + " \u00B7 " + (wv.isEmpty() ? "WebView unknown" : wv) + " \u00B7 Android " + android.os.Build.VERSION.RELEASE + " \u00B7 " + android.os.Build.MODEL
+                + (last.isEmpty() ? "" : ("\nLast issue: " + last)));
+        android.widget.Button b = new android.widget.Button(this);
+        b.setText("Try again"); b.setFocusable(true);
+        b.setOnClickListener(v -> { goneTimes.clear(); root.removeView(box); buildWebView(true); });
+        box.addView(t); box.addView(d); box.addView(b);
+        root.addView(box, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        b.requestFocus();
+    }
     private void recoverWebView() {
         noteIssue(this, "screen reloaded after low memory");
         try { doPreviewStop(); } catch (Exception ignored) {}
@@ -225,11 +252,21 @@ public class MainActivity extends Activity {
             @Override
             public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
                 if (view != webView) return true;
+                boolean crashed = false; int prio = -1;
+                try { if (android.os.Build.VERSION.SDK_INT >= 26) { crashed = detail.didCrash(); prio = detail.rendererPriorityAtExit(); } } catch (Throwable ignored) {}
+                noteIssue(MainActivity.this, (crashed ? "screen engine crashed" : "screen engine closed by Android (low memory)") + " p" + prio);
+                // The same failure over and over (e.g. the page kills the engine while it loads) must not turn
+                // into an endless restart: after 3 in 2 minutes, stop and say what happened.
+                long now = System.currentTimeMillis(); goneTimes.add(now);
+                while (!goneTimes.isEmpty() && now - goneTimes.get(0) > 120000) goneTimes.remove(0);
+                if (goneTimes.size() >= 3) { showStuckScreen(crashed); return true; }
                 recoverWebView();
                 return true;   // handled: keep the app (and any playing movie) alive
             }
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                if (view == webView) view.evaluateJavascript(
+                    "try{window.addEventListener('error',function(e){try{ByoAndroid.noteJsError(String(e.message||'error')+' @'+String(e.lineno||'')+':'+String(e.colno||''));}catch(_x){}});}catch(_e){}", null);
                 // Inject android-app class as early as possible so the dev banner never shows
                 if (!tvMode0 && view == webView) {
                     view.evaluateJavascript(
@@ -388,6 +425,9 @@ public class MainActivity extends Activity {
                     return o.toString();
                 } catch (Exception e) { return "{}"; }
             }
+
+            @JavascriptInterface
+            public void noteJsError(final String msg) { noteIssue(MainActivity.this, "page error: " + msg); }
 
             @JavascriptInterface
             public String lastIssue() {

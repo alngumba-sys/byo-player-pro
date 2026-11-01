@@ -1,6 +1,6 @@
 {
-  "versionCode": 209,
-  "versionName": "3.37.24",
+  "versionCode": 210,
+  "versionName": "3.37.25",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
   "notes": "Activation and remote help: support sets your days, connections load in the background, Live TV switches to a lighter copy instead of pausing, cleaner movie and series artwork, and smoother remote control on TV."
 }
