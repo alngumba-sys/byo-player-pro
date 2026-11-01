@@ -286,6 +286,39 @@
                 if(ep) out.push([big(ep.thumb,'w1280'),true]); }catch(e){}
             if(x.logo){ var bp=big(x.logo,'original'); if(bp!==x.logo) out.push([bp,false]); out.push([x.logo,false]); }
             return out; };
+        // Featured title on Home: find its sharpest picture. Provider movies are asked for their details (wide
+        // backdrop, plot) first; otherwise the title-screen list is tried (Emby backdrop, full-size poster).
+        window.__byoFeatArt=function(m, done){ if(!m) return;
+            function tryList(list){ var i=0; (function next(){ if(i>=list.length) return; var it=list[i++]; if(!it||!it[0]) return next(); var pre=new Image();
+                pre.onload=function(){ if(pre.naturalWidth<(it[1]?640:300)||(it[1]&&pre.naturalWidth<pre.naturalHeight)) return next(); if(it[1]) m._bd=it[0]; else m._bigPoster=it[0]; done(); };
+                pre.onerror=next; pre.src=it[0]; })(); }
+            function rest(){ var c=(window.__byoHeroArt?window.__byoHeroArt(m):[]).filter(function(x){ return x[0]!==m.logo; }); tryList(c); if(!m.backdrop) setTimeout(probe, 1500); }
+            // This title has no wide picture: look for top-rated titles that do, and show one of them instead
+            // (straight away while the viewer is still on the Featured banner, otherwise next time Home opens).
+            function probe(){ if(window.__byoFeatProbing) return; window.__byoFeatProbing=1;
+                var pool=(S.movies||[]).filter(function(x){ return x&&x.logo&&!x._vf&&!x._bd&&x._src&&x._src.api&&x._src.api.seriesInfo&&x.streamId!=null; });
+                pool.sort(function(a,b){ return (parseFloat(b.rating)||0)-(parseFloat(a.rating)||0); }); pool=pool.slice(0,60);
+                var pick=[]; while(pool.length&&pick.length<8){ pick.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]); }
+                var left=pick.length, swapped=false; if(!left){ window.__byoFeatProbing=0; return; }
+                pick.forEach(function(x){ x._vf=1; var u=x._src.api.seriesInfo(0).replace(/action=get_series_info&series_id=0$/,'action=get_vod_info&vod_id='+encodeURIComponent(x.streamId));
+                    Net.fetchJSON(u,function(j){ var i=(j&&j.info)||{}, bd=i.backdrop_path; if(Array.isArray(bd)) bd=bd[0];
+                        if(!x.plot&&i.plot) x.plot=String(i.plot);
+                        if(typeof bd==='string'&&/^https?:/.test(bd)){ x.backdrop=bd; var big=bd.replace(/\/t\/p\/[^\/]+\//,'/t/p/w1280/'); var pre=new Image();
+                            pre.onload=function(){ if(pre.naturalWidth<640||pre.naturalWidth<pre.naturalHeight) return; x._bd=big;
+                                if(swapped) return; swapped=true;
+                                try{ var hv=document.getElementById('view-home'), cur=Nav.current; if(hv&&hv.classList.contains('active-view')&&(!cur||cur.closest('.h2-feat')||cur===document.body)&&typeof renderHome==='function'){ S._heroBad=S._heroBad||{}; renderHome(); } }catch(_e){} };
+                            pre.src=big; } fin(); }, fin); });
+                function fin(){ if(--left<=0) window.__byoFeatProbing=0; } }
+            if(m._bd) return;
+            var api=m._src&&m._src.api;
+            if(api&&api.seriesInfo&&m.streamId!=null&&m.seasons===undefined&&!m._vf){ m._vf=1;
+                var u=api.seriesInfo(0).replace(/action=get_series_info&series_id=0$/,'action=get_vod_info&vod_id='+encodeURIComponent(m.streamId));
+                Net.fetchJSON(u,function(j){ var i=(j&&j.info)||{}; var bd=i.backdrop_path; if(Array.isArray(bd)) bd=bd[0];
+                    if(!m.plot&&i.plot) m.plot=String(i.plot); if(!m.cast&&i.cast) m.cast=String(i.cast);
+                    if(typeof bd==='string'&&/^https?:/.test(bd)){ m.backdrop=bd; }
+                    rest(); }, rest);
+                return; }
+            rest(); };
         window.__byoLibLog=function(){ return (S._libLog||[]).slice(); };
         function vodViaXtream(pl, src, out, idx, done){
             var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(!sx){ crumb(src.name+': movies and series left out (not an Xtream link)'); return done(); }

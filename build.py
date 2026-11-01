@@ -587,6 +587,15 @@ _rep("    function openMovie(m){ S.currentDetail={type:'movie',data:m}; S.prevVi
                     try{ var _w=Store.isWatched&&Store.isWatched('movie:'+m.id), _t=[m.dur||'Movie']; if(_w) _t.push('✓ Watched'); $('detail-meta').innerHTML=detailMetaHTML(m,'movie',_t); }catch(_e){}
                     try{ if(m.cast) renderCastFromItem(m); }catch(_e){}
                     try{ if(m.backdrop&&!$('view-detail').classList.contains('has-bd')) paintTitleBackdrop(m); }catch(_e){} } },function(){}); } }catch(_e){}""", 'vodinfo')
+# Home "Featured today": the first thing on screen. Use a sharp wide backdrop (the provider's, Emby's) or the poster
+# at full size, never the small list poster stretched across the TV.
+assert s.count("var src=m._bd||m.logo, wide=!!m._bd;")==2, 'featart'
+s=s.replace("var src=m._bd||m.logo, wide=!!m._bd;", "var src=m._bd||m._bigPoster||m.logo, wide=!!m._bd;")
+assert s.count("        render();\n        if(S._h2Rot){ clearInterval(S._h2Rot); S._h2Rot=null; }")==2, 'featart2'
+s=s.replace("        render();\n        if(S._h2Rot){ clearInterval(S._h2Rot); S._h2Rot=null; }",
+ "        render();\n        try{ if(window.__byoFeatArt) window.__byoFeatArt(m,function(){ try{ paintBackdrop(); var tp=el.querySelector('.h2-feat-tagline'); if(tp&&m.plot&&!tp.textContent){ var d=h2Sentence(m.plot); if(d){ tp.textContent='\\u201c'+d+'\\u201d'; tp.style.display=''; } } }catch(_e){} }); }catch(_e){}\n        if(S._h2Rot){ clearInterval(S._h2Rot); S._h2Rot=null; }")
+_rep("        var m=top[Math.floor(Math.random()*top.length)]||top[0];",
+     "        var _wb=top.filter(function(x){ return x._bd; }), _pk=_wb.length?_wb:top; var m=_pk[Math.floor(Math.random()*_pk.length)]||top[0];", 'featwide')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
