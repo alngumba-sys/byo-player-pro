@@ -19,11 +19,11 @@ window.__splitXtream=function(u){ try{ var m=String(u).match(/^(https?:\/\/[^\/?
 /* Native download (Android app only): no browser rules, normal player user-agent, follows http<->https redirects. */
 window.__byoFetchCbs={};
 window.__byoFetchCb=function(id,status,detail,path){ var cb=window.__byoFetchCbs[id]; if(!cb) return; delete window.__byoFetchCbs[id]; cb(status,detail,path); };
-window.__nativeFetch=function(url,done){ if(!(window.ByoAndroid&&ByoAndroid.fetchToFile)) return false;
+window.__nativeFetch=function(url,done,maxBytes){ if(!(window.ByoAndroid&&ByoAndroid.fetchToFile)) return false;
   var id='f'+Date.now()+Math.floor(Math.random()*1e6); var fired=false;
   var t=setTimeout(function(){ if(fired) return; fired=true; delete window.__byoFetchCbs[id]; done("err","timeout",""); },280000);
   window.__byoFetchCbs[id]=function(s,d,p){ if(fired) return; fired=true; clearTimeout(t); done(s,d,p); };
-  try{ ByoAndroid.fetchToFile(id,url); }catch(e){ clearTimeout(t); delete window.__byoFetchCbs[id]; return false; }
+  try{ if(maxBytes&&ByoAndroid.fetchToFileMax) ByoAndroid.fetchToFileMax(id,url,maxBytes); else ByoAndroid.fetchToFile(id,url); }catch(e){ clearTimeout(t); delete window.__byoFetchCbs[id]; return false; }
   return true; };
 window.__maskUrl=function(u){ try{ return String(u).replace(/(username|password|user|pass|token|api_key)=([^&]*)/ig,function(_,k,v){ return k+'='+(v?'\u2022\u2022\u2022':''); }); }catch(e){ return ''; } };
 window.__netErrText=function(r){ r=String(r||'');

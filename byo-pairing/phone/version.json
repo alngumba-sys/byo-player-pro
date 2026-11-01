@@ -1,6 +1,6 @@
 {
-  "versionCode": 213,
-  "versionName": "3.37.28",
+  "versionCode": 214,
+  "versionName": "3.37.29",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Fixes the TV restarting with very large playlists. Live channels load from the playlist, and movies and series come from the provider lists so they still appear."
+  "notes": "Fixes the TV restarting with very large playlists. Live channels show straight away, and movies and series from the provider are added in the background."
 }

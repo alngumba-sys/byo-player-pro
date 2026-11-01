@@ -23,7 +23,7 @@
     var Multi=(function(){
         var REG={};                 // emby/jellyfin item id -> api of the server it belongs to
         var report=[];              // last load result per source
-        var loading=false, tok=0, lastList=null, lastResults=null, lastTok=0;
+        var loading=false, tok=0, lastList=null, lastResults=null, lastTok=0, lastOnly=null;
         function st(){ return Store.settings||(Store.settings={}); }
         function on(){ return !!st().combineSources; }
         function keyOf(pl){ return pl.mode+'|'+(pl.mode==='m3u'?(pl.url||''):((pl.server||'')+'|'+(pl.user||''))); }
@@ -153,12 +153,25 @@
         function nativeJSON(url, maxMB, ok, bad){
             if(!(AB&&AB.fetchToFile&&window.__nativeFetch)) return Net.fetchJSON(url,ok,bad);
             if(!window.__nativeFetch(url,function(st,detail,path){
+                if(/^too-big:/.test(String(detail||''))) return bad('too-big:'+((+String(detail).slice(8))/1048576).toFixed(1));
                 if(st!=='ok'||!path) return bad(detail);
                 var sz=+((String(detail||'').match(/size:(\d+)/)||[])[1])||0;
                 if(sz>maxMB*1048576) return bad('too-big:'+(sz/1048576).toFixed(1));
                 var x=new XMLHttpRequest(); try{ x.open('GET',path,true); }catch(e){ return bad('read'); }
                 x.onload=function(){ var j=null; try{ j=JSON.parse(x.responseText); }catch(e){} x=null; if(j) ok(j); else bad('json'); };
-                x.onerror=function(){ bad('read'); }; x.send(); })) Net.fetchJSON(url,ok,bad); }
+                x.onerror=function(){ bad('read'); }; x.send(); }, maxMB*1048576)) Net.fetchJSON(url,ok,bad); }
+        function vodLater(pl, src, out, idx){
+            vodViaXtream(pl, src, out, idx, function(){ phase(src.key,null);
+                if(!(out.movies.length||out.series.length)) return;
+                (function tryApply(n){
+                    var arr=null, lst=null;
+                    if(lastResults&&lastResults.indexOf(out)>=0&&lastTok===tok){ arr=lastResults; lst=lastList; }
+                    else if(lastOnly&&lastOnly.results.indexOf(out)>=0&&lastOnly.tok===tok){ arr=lastOnly.results; lst=lastOnly.list; }
+                    if(arr&&!loading){
+                        if(apply(arr, { quiet:true, keepFilters:true, only:(arr===lastResults?undefined:lastOnly.cfg) })) saveSnap(lst);
+                        renderPlaylists(); renderActive(); publish();
+                        try{ setToast('Movies and series added from '+src.name+'.'); }catch(_e){} return; }
+                    if(n<60) setTimeout(function(){ tryApply(n+1); }, 5000); })(0); }); }
         function vodViaXtream(pl, src, out, idx, done){
             var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(!sx){ crumb(src.name+': movies and series left out (not an Xtream link)'); return done(); }
             var api; try{ api=xtreamApi(sx.server,sx.user,sx.pass); }catch(e){ return done(); }
@@ -193,9 +206,9 @@
                     out.movies=tagItems(cls.movies||[], idx, src);
                     out.series=tagItems(cls.series||[], idx, src);
                     if(idx) out.series.forEach(function(s){ (s.seasons||[]).forEach(function(se){ (se.episodes||[]).forEach(function(ep){ ep.id=String(ep.id)+'~'+idx; }); }); });
-                    out.ok=true; txt=null;
-                    if(out_trim[src.key]) return vodViaXtream(pl, src, out, idx, end);
-                    end();
+                    out.ok=true; txt=null; end();
+                    // Live channels are ready now; movies and series are added in the background when they arrive.
+                    if(out_trim[src.key]) setTimeout(function(){ vodLater(pl, src, out, idx); }, 3000);
                 },function(err){ out.err=String(err||'Could not load'); end(); });
                 return; }
             if(pl.mode==='plex'){
@@ -397,6 +410,7 @@
                 try{ if(opts.done) opts.done(results, done); }catch(_e){}
                 renderActive(); if(!opts.noPublish) publish();
                 if(!opts.only){ lastList=list; lastResults=results; lastTok=my; }
+                else { lastOnly={ list:list, results:results, tok:my, cfg:opts.only }; }
                 if(!opts.only&&!opts.noRetry) bgRetry(list, results, my, 0);
             } }
 

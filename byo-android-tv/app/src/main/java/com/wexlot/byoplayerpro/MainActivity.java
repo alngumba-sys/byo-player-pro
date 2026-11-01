@@ -308,9 +308,15 @@ public class MainActivity extends Activity {
             public void fetchToFileH(final String id, final String url, final String headersJson) { doFetch(id, url, headersJson); }
 
             @JavascriptInterface
-            public void fetchToFile(final String id, final String url) { doFetch(id, url, null); }
+            public void fetchToFile(final String id, final String url) { doFetch(id, url, null, 0); }
 
-            private void doFetch(final String id, final String url, final String headersJson) {
+            // Same as fetchToFile, but stops (detail "too-big:<bytes>") once the file passes maxBytes.
+            @JavascriptInterface
+            public void fetchToFileMax(final String id, final String url, final double maxBytes) { doFetch(id, url, null, (long) maxBytes); }
+
+            private void doFetch(final String id, final String url, final String headersJson) { doFetch(id, url, headersJson, 0); }
+
+            private void doFetch(final String id, final String url, final String headersJson, final long maxBytes) {
                 new Thread(new Runnable() { public void run() {
                     String status = "err", detail = "", path = "";
                     java.net.HttpURLConnection c = null;
@@ -341,9 +347,10 @@ public class MainActivity extends Activity {
                             java.io.File f = new java.io.File(getCacheDir(), "fetch_" + id.replaceAll("[^A-Za-z0-9]", "") + ".txt");
                             java.io.InputStream in = new java.io.BufferedInputStream(c.getInputStream());
                             java.io.OutputStream out = new java.io.FileOutputStream(f);
-                            byte[] buf = new byte[65536]; int n;
-                            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                            byte[] buf = new byte[65536]; int n; long total = 0; boolean tooBig = false;
+                            while ((n = in.read(buf)) > 0) { out.write(buf, 0, n); total += n; if (maxBytes > 0 && total > maxBytes) { tooBig = true; break; } }
                             out.close(); in.close();
+                            if (tooBig) { try { f.delete(); } catch (Exception ignored) {} throw new java.io.IOException("too-big:" + total); }
                             status = "ok"; path = "file://" + f.getAbsolutePath(); detail = "size:" + f.length();
                         }
                     } catch (java.net.SocketTimeoutException e) { detail = "timeout";
@@ -351,6 +358,7 @@ public class MainActivity extends Activity {
                     } catch (javax.net.ssl.SSLException e) { detail = "ssl";
                     } catch (java.net.ConnectException e) { detail = "refused";
                     } catch (java.net.MalformedURLException e) { detail = "bad-url";
+                    } catch (java.io.IOException e) { String m = String.valueOf(e.getMessage()); detail = m.startsWith("too-big:") ? m : "neterr";
                     } catch (Exception e) { detail = "neterr";
                     } finally { if (c != null) try { c.disconnect(); } catch (Exception ignored) {} }
                     final String js = "window.__byoFetchCb&&window.__byoFetchCb(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(status) + ","
