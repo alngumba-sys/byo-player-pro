@@ -94,7 +94,8 @@
             var src={ idx:idx, key:keyOf(pl), name:plName(pl), kind:kindOf(pl), api:null };
             var out={ ok:false, src:src, live:[], movies:[], series:[], err:'' };
             var finished=false; function fin(){ if(finished) return; finished=true; cb(out); }
-            var guard=setTimeout(function(){ if(!out.ok&&!out.err) out.err='Timed out'; fin(); }, (pl.mode==='emby'||pl.mode==='jellyfin')?240000:90000);
+            // Big provider playlists (live + movies + series in one file) can take minutes to download and sort on a phone.
+            var guard=setTimeout(function(){ if(!out.ok&&!out.err) out.err='Timed out'; fin(); }, 300000);
             function end(){ clearTimeout(guard); fin(); }
             try{
             if(pl.mode==='m3u'){
@@ -209,6 +210,30 @@
             return s; }
         function cfgKeep(extra){ var c=Store.cfg||{}, o={}; ['resumeLast','lastChannelId','epgTz','providerTz'].forEach(function(k){ if(c[k]!=null) o[k]=c[k]; }); for(var k in extra) o[k]=extra[k]; return o; }
 
+        // A connection that failed for a reason that can pass (timeout, network, server busy) is worth another try.
+        function retryable(r){ return !/wrong username|refused access|not an m3u|not found|not valid|could not find/i.test(String((r&&r.err)||'')); }
+        // Combined library: connections that still failed after a load are retried quietly on their own a few
+        // more times (1, 3 and 10 minutes later). The ones that loaded are kept as they are, so nothing is
+        // downloaded twice. A newer load of the library cancels this.
+        var BG_DELAYS=[60000, 180000, 600000];
+        function bgRetry(list, results, my, attempt){
+            var failed=[]; results.forEach(function(r,i){ if(r&&!r.ok&&retryable(r)) failed.push(i); });
+            if(!failed.length||attempt>=BG_DELAYS.length) return;
+            setTimeout(function(){ if(my!==tok||loading) return;
+                libLog('retrying '+failed.length+' connection(s) that did not load (try '+(attempt+1)+')');
+                var left=failed.length, fixed=[];
+                failed.forEach(function(i){ loadOne(list[i], i, function(r){ if(my!==tok) return;
+                    if(r&&r.ok){ results[i]=r; fixed.push(i); } else if(r) results[i]=r;
+                    if(--left>0) return;
+                    if(fixed.length){
+                        var done=apply(results, { quiet:true, keepFilters:true });
+                        if(done){ Store.cfg=cfgKeep({mode:'multi',name:'All connections'}); Store.save();
+                            if(results.every(function(x){ return x&&x.ok; })) saveSnap(list);
+                            try{ setToast('Loaded '+fixed.map(function(k){ return plName(list[k]); }).join(', ')+'.'); }catch(_e){}
+                            fixed.forEach(function(k){ try{ window.__byoConnRecovered&&window.__byoConnRecovered(list[k], resultFor(list[k])); }catch(_e){} }); }
+                        renderPlaylists(); renderActive(); publish(); }
+                    bgRetry(list, results, my, attempt+1); }); });
+            }, BG_DELAYS[attempt]); }
         // Load every included source (combined mode), or just `only` (single-source relaunch).
         function reload(opts){ opts=opts||{};
             var list=opts.only?[opts.only]:included();
@@ -227,7 +252,7 @@
                 if(my!==tok) return;
                 // A source that failed on a network hiccup (often because several connections were loading at the
                 // same time) gets one more quiet try on its own before the library is built.
-                var again=[]; if(!opts.noRetry) results.forEach(function(r,i){ if(r&&!r.ok&&!/wrong username|refused access|not an m3u|not found|not valid|could not find|timed out/i.test(String(r.err||''))) again.push(i); });
+                var again=[]; if(!opts.noRetry) results.forEach(function(r,i){ if(r&&!r.ok&&retryable(r)) again.push(i); });
                 if(again.length){ var k=0; (function step(){ if(my!==tok) return; if(k>=again.length) return finish(); var i=again[k++];
                         setTimeout(function(){ if(my!==tok) return; loadOne(list[i], i, function(r){ if(r&&r.ok) results[i]=r; step(); }); }, 3000); })(); return; }
                 finish(); }); });
@@ -242,6 +267,7 @@
                     renderPlaylists(); if(done&&opts.goHome) goTo('home'); }
                 try{ if(opts.done) opts.done(results, done); }catch(_e){}
                 renderActive(); if(!opts.noPublish) publish();
+                if(!opts.only&&!opts.noRetry) bgRetry(list, results, my, 0);
             } }
 
         // ---------- per-item routing ----------

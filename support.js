@@ -162,6 +162,9 @@
         // Single-connection mode: one at a time, since a second load would cancel the first. A second
         // connection in the same help session joins the library instead of replacing the first one.
         var addQ=[], adding=false, addsThisSession=0;
+        var waitFix={};   // connection key -> the support command it came from, while a background retry may still fix it
+        window.__byoConnRecovered=function(pl, rr){ try{ var k=Multi.keyOf(pl), cmd=waitFix[k]; if(!cmd) return; delete waitFix[k];
+            ack(cmd, true, 'Loaded after retrying'+(rr&&rr.live!=null?': '+(rr.live||0)+' channels, '+(rr.movies||0)+' movies, '+(rr.series||0)+' series':'')); }catch(e){} };
         function pumpAdds(){ while(!adding&&addQ.length){
             var it=addQ.shift(), cmd=it.cmd, p=it.p;
             var combine=(typeof p.combine==='boolean')?p.combine:!!(Store.settings&&Store.settings.combineSources);
@@ -174,7 +177,13 @@
             note('Adding '+(p.name||p.mode)+'…','',null);
             var done=function(r){ if(settled) return; settled=true; clearTimeout(guard);
                 if(r&&r.ok) ack(cmd,true,'Loaded'+(r.live!=null?': '+(r.live||0)+' channels, '+(r.movies||0)+' movies, '+(r.series||0)+' series':''));
-                else ack(cmd,false,(r&&r.err)||'Could not load this connection');
+                else { var why=(r&&r.err)||'Could not load this connection';
+                    // Timeouts and network trouble are retried by the phone in the background; say so, and
+                    // turn this item into "done" if a retry works (see __byoConnRecovered).
+                    if(!/wrong username|refused access|not an m3u|not found|not valid|could not find/i.test(why)){
+                        try{ waitFix[Multi.keyOf({ mode:p.mode, url:p.url||'', server:p.server||'', user:p.user||'' })]=cmd; }catch(_e){}
+                        why=why.replace(/[.\s]+$/,'')+'. Retrying automatically in 1, 3 and 10 minutes.'; }
+                    ack(cmd,false,why); }
                 if(serial){ adding=false; setTimeout(pumpAdds,300); } };
             var guard=setTimeout(function(){ done({ ok:false, err:'Still loading after 10 minutes (very large library or slow server)' }); },600000);
             try{ Multi.addFromPhone({ mode:p.mode, name:p.name||'', url:p.url||'', epg:p.epg||'', server:p.server||'', user:p.user||'', pass:p.pass||'', via:'support' }, done); }
