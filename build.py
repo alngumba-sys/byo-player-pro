@@ -556,6 +556,13 @@ _rep("""        rawGet(url, function(body){ ok(body); }, function(reason){
                 if(st==='ok'&&path){ rawGet(path,function(body){ ok(body); },function(){ err(window.__netErrText('read')); }); }
                 else err(window.__netErrText(detail||reason)); })) return;
             // On failure, fall through the proxy list (unless disabled).""", 'nativefetch')
+# Series whose episodes load only when opened: show the season count once it is known, never "? seasons".
+_rep("sub:s.genre+' · '+((s.seasons&&s.seasons.length)||'?')+' seasons', reason:reason };",
+     "sub:[s.genre, (s.seasons&&s.seasons.length)?(s.seasons.length+' season'+(s.seasons.length===1?'':'s')):''].filter(Boolean).join(' · '), reason:reason };", 'seasonsq1')
+_rep("(isSeries?'<span>'+((x.seasons&&x.seasons.length)||'?')+' seasons</span>'",
+     "(isSeries?((x.seasons&&x.seasons.length)?'<span>'+x.seasons.length+' season'+(x.seasons.length===1?'':'s')+'</span>':'')", 'seasonsq2')
+_rep("""<div class="p-sub">'+esc(s.genre)+' · '+((s.seasons&&s.seasons.length)||'?')+' seasons</div>""",
+     """<div class="p-sub">'+esc(s.genre)+((s.seasons&&s.seasons.length)?(' · '+s.seasons.length+' season'+(s.seasons.length===1?'':'s')):'')+'</div>""", 'seasonsq3')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
