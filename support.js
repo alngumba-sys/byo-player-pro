@@ -302,7 +302,7 @@
                 '<div class="sup-acts"><button class="s-btn primary" id="sup-msg-ok" data-focusable="true" tabindex="0">Start watching</button></div></div>';
             m._done=true; m.classList.remove('hidden'); document.body.classList.add('sup-on'); $('sup-msg-ok').addEventListener('click', closeMessage); setTimeout(function(){ Nav.setFocus($('sup-msg-ok')); },30); }
         function closeMessage(){ var m=$('support-msg'), done=!!(m&&m._done); if(m) m.classList.add('hidden');
-            if(done&&isOpen()&&!active()){ var o=$('support-ov'); if(o) o.classList.add('hidden'); try{ renderCard(); }catch(e){} restore(backTo, $('btn-support')); syncWall(); return; }
+            if(done&&isOpen()){ var o=$('support-ov'); if(o) o.classList.add('hidden'); try{ renderCard(); }catch(e){} restore(backTo, $('btn-support')); syncWall(); return; }
             if(isOpen()) restore($('sup-end')); else restore(msgBackTo||backTo, $('btn-support')); syncWall(); }
         function msgOpen(){ var m=$('support-msg'); return !!(m&&!m.classList.contains('hidden')); }
         function scope(){ if(msgOpen()) return $('support-msg'); if(isOpen()) return $('support-ov'); return null; }
