@@ -1,6 +1,6 @@
 {
-  "versionCode": 184,
-  "versionName": "3.36.72",
+  "versionCode": 209,
+  "versionName": "3.37.24",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Channels that are not sending video are now detected before you pick them: the app quietly checks channels as they scroll into view and remembers any that failed to play. Those are hidden from Sports and shown dimmed at the bottom of Live as 'Not available right now', re-checked every 30 minutes."
+  "notes": "Activation and remote help: support sets your days, connections load in the background, Live TV switches to a lighter copy instead of pausing, cleaner movie and series artwork, and smoother remote control on TV."
 }

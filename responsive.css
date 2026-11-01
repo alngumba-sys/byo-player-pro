@@ -2998,6 +2998,7 @@ html.light .bl-pay{ background:#eaf7ec; } html.light .bl-pay.telebirr{ backgroun
 .sup-timer b{ color:#fff; font-weight:800; letter-spacing:.03em; }
 .sup-timer.hidden{ display:none; }
 .sup-status:empty{ display:none !important; }
+.sup-card.sup-sink, .sup-card.sup-sink.focused, .sup-card.sup-sink:focus{ outline:none !important; box-shadow:none !important; transform:none !important; }   /* holds the remote's focus, not a button */
 .sl-s.sl-after{ color:#b5e9d8; font-size:clamp(13px,2.1vmin,21px); }
 #support-ov .sup-acts{ justify-content:center; }
 #support-ov.is-live .sup-ic{ background:rgba(43,212,167,.16) !important; color:#2bd4a7 !important; }

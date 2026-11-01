@@ -4928,7 +4928,11 @@ var Nav={ KEY:{LEFT:37,UP:38,RIGHT:39,DOWN:40,ENTER:13,RETURN:10009,BACK_KB:8,ES
         var pop=document.getElementById('opt-pop'); if(pop&&!pop.classList.contains('hidden')) return Array.prototype.slice.call(pop.querySelectorAll('[data-focusable="true"]'));
         var pmsg=document.getElementById('player-msg'); if(pmsg&&!pmsg.classList.contains('hidden')) return Array.prototype.slice.call(pmsg.querySelectorAll('[data-focusable="true"]'));
         return Array.prototype.slice.call(document.querySelectorAll('.view.active-view [data-focusable="true"]:not(.hidden), .topbar [data-focusable="true"]')).filter(function(el){ return el.offsetParent!==null; }); },
-    setFocus:function(el){ if(!el) return; if(this.current) this.current.classList.remove('focused'); this.current=el; el.classList.add('focused');
+    setFocus:function(el){ if(!el) return;
+        // A remote help screen or a message from support is on top: the remote stays on it. Anything behind
+        // asking for focus (e.g. Home redrawing when a library arrives) is sent to that screen instead.
+        try{ if(typeof Support!=='undefined'){ var _sc=Support.scope(); if(_sc&&!_sc.contains(el)){ var _f=_sc.querySelector('[data-focusable="true"]'); if(!_f) return; el=_f; } } }catch(_e){}
+        if(this.current) this.current.classList.remove('focused'); this.current=el; el.classList.add('focused');
         try{ el.dispatchEvent(new CustomEvent('navfocus',{bubbles:true})); }catch(_e){}
         // When focus lands on the top hero (Play / More Info / sound), scroll its scroll-body all the
         // way to the top so the full preview is revealed — 'nearest' alone leaves the preview clipped.
