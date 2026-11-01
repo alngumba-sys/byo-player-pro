@@ -556,6 +556,27 @@ _rep("""        rawGet(url, function(body){ ok(body); }, function(reason){
                 if(st==='ok'&&path){ rawGet(path,function(body){ ok(body); },function(){ err(window.__netErrText('read')); }); }
                 else err(window.__netErrText(detail||reason)); })) return;
             // On failure, fall through the proxy list (unless disabled).""", 'nativefetch')
+# ---- TV Guide with the provider's real programmes ----
+# Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
+_rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
+     "        function apiOf(c){ if(c&&c._src&&c._src.api&&(c._src.kind==='xtream'||c._src.api.shortEpg)) return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }", 'epgapi')
+_rep("        return { peek:peek, want:want, observe:observe };", "        return { peek:peek, want:want, observe:observe, tried:function(c){ return !!(c&&c.streamId!=null&&cache[key(c)]); } };", 'epgtried')
+# The Guide grid shows the provider's real programmes instead of made-up ones (those stay for the demo channels only).
+_rep("""        chans.forEach(function(c){
+            var sched=buildSchedule(c.epgGenre||c.genre||'News', c.order||0);""",
+"""        var _gWant=0;
+        chans.forEach(function(c){
+            var sched;
+            if(c.epgGenre) sched=buildSchedule(c.epgGenre, c.order||0);
+            else { var _L=LiveEpg.peek(c);
+                if(_L===null&&_gWant<60){ _gWant++; try{ LiveEpg.want(c); }catch(_e){} _L=LiveEpg.peek(c); }
+                sched={ slots:(_L||[]).map(function(p){ return { start:p.start, end:p.end, title:p.title, desc:p.desc }; }) };
+                if(!sched.slots.length) sched.slots=[{ start:new Date(winStart.getTime()), end:new Date(winStart.getTime()+totalMin*60000), title:((c.streamId==null||c.streamId===''||!LiveEpg.tried(c))?'No guide for this playlist':(_L===null?'Loading guide…':'No guide information for this channel')), noEpg:true }]; }""", 'guidereal')
+_rep("""b.innerHTML=bell+'<div class="gp-title">'+esc(sl.title)+'</div><div class="gp-time">'+sportTag+hhmm(sl.start)+'–'+hhmm(sl.end)+(isLive&&!isSport?' <span class="gp-badge">● LIVE</span>':'')+'</div>';""",
+"""b.innerHTML=sl.noEpg?('<div class="gp-title" style="opacity:.6">'+esc(sl.title)+'</div>'):(bell+'<div class="gp-title">'+esc(sl.title)+'</div><div class="gp-time">'+sportTag+hhmm(sl.start)+'–'+hhmm(sl.end)+(isLive&&!isSport?' <span class="gp-badge">● LIVE</span>':'')+'</div>');""", 'guidenoepg')
+# When programmes arrive, redraw the Guide (only while the viewer is not moving through its rows).
+_rep("try{ if(window.__byoH2NowRefresh) window.__byoH2NowRefresh(); }catch(e){} },350); }",
+     "try{ if(window.__byoH2NowRefresh) window.__byoH2NowRefresh(); }catch(e){} try{ var gv=$('view-guide'); if(gv&&gv.classList.contains('active-view')){ var cur=Nav.current, gr=$('guide-rows'); if(!(cur&&gr&&gr.contains(cur))){ var sx=gr?gr.parentNode.scrollTop:0; renderGuide(); try{ if(gr) gr.parentNode.scrollTop=sx; }catch(_e){} } } }catch(e){} },1200); }", 'guiderefresh')
 # Titles a big provider list could not fit at load time: the genre picker offers every category, opening one loads
 # all of it, and search also looks through the provider's full list kept on the TV.
 _rep("        var items = isChan ? channelsOf(list) : genresOf(list);",

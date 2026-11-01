@@ -21,7 +21,14 @@
             var p=Store.parental||{};
             return { version:d.version||'', platform:plat(), model:d.model||'', country:(Store.settings&&Store.settings.region)||'', lang:(Store.settings&&Store.settings.lang)||'en',
                 profiles:(Store.profiles||[]).length, parental:{ enabled:!!p.enabled, has_pin:!!p.pin, lock_settings:!!p.lockSettings },
-                flags:flags(), billing:b, library:lib, at:Date.now() }; }
+                flags:flags(), billing:b, library:lib, diag:diag(true), at:Date.now() }; }
+        // What happened on this TV (crashes, last steps, memory), so support can see it without a photo of the screen.
+        function diag(full){ var o={};
+            try{ if(window.ByoAndroid&&ByoAndroid.diagInfo) o=JSON.parse(ByoAndroid.diagInfo())||{}; }catch(e){ o={}; }
+            try{ if(window.ByoAndroid&&ByoAndroid.m3uLimitMb) o.limitMb=+ByoAndroid.m3uLimitMb()||0; }catch(e){}
+            try{ if(full) o.lib=(S._libLog||[]).slice(-6); }catch(e){}
+            if(!full){ delete o.crumbs; o.crashes=String(o.crashes||'').split(',').slice(0,3).join(','); o.last=String(o.last||'').slice(0,160); }
+            return o; }
 
         // ---------- sections on/off ----------
         var FLAG_SEL={ live:'.nav [data-view="live"]', sports:'.nav [data-view="sports"]', movies:'.nav [data-view="movies"]', series:'.nav [data-view="series"]', guide:'#nav-guide-dd', assistant:'.nav-ask-btn' };
@@ -36,7 +43,7 @@
             try{ var ax=Billing.access(); b={ state:billState(ax), days_left:Billing.daysLeft(), access:ax?ax.state:'' }; try{ if(Billing.inTrial()) b.ends=new Date(Billing.trialEndsAt()).toISOString(); }catch(_e){} }catch(e){}
             try{ lib={ live:(S.live||[]).length, movies:(S.movies||[]).length, series:(S.series||[]).length, connections:(Store.savedPlaylists||[]).length||((Store.cfg&&Store.cfg.mode)?1:0) }; }catch(e){}
             return { version:d.version||'', platform:plat(), model:d.model||'', country:(Store.settings&&Store.settings.region)||'', lang:(Store.settings&&Store.settings.lang)||'en',
-                profiles:(Store.profiles||[]).length, billing:b, library:lib }; }
+                profiles:(Store.profiles||[]).length, billing:b, library:lib, diag:diag(false) }; }
         function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res);
             // access set by support (enable / end / block) is kept on the server and applied at every check-in
             try{ var cur=Billing.access(); var want=(res.access&&res.access.state)?res.access:null; if(JSON.stringify(cur||null)!==JSON.stringify(want)){ var wasLocked=Billing.locked(); Billing.setAccess(want);

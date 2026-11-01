@@ -173,6 +173,11 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
 .chip.fl{ border-color:var(--inl); }
 .chip.fl.on{ border-color:var(--acc); background:#0D2A31; color:var(--acc); }
 .chip .n{ color:var(--muted); font-variant-numeric:tabular-nums; }
+.diag{ display:flex; flex-direction:column; gap:6px; font-size:13px; }
+.diag .dr{ display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+.diag .dk{ color:var(--faint); min-width:96px; }
+.diag .crumbs{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; white-space:pre-wrap; background:rgba(127,127,127,.08); border-radius:8px; padding:8px 10px; max-height:170px; overflow:auto; }
+.diag .bad{ color:#ff6b6b; } .diag .okc{ color:#3ddc97; }
 .fleet{ flex:1; min-height:0; display:flex; flex-direction:column; gap:12px; padding:12px 16px; }
 .fbar{ flex-shrink:0; flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px 10px; padding:10px 14px; }
 .fbar h2{ margin:0; font-size:16px; font-weight:800; white-space:nowrap; }
@@ -433,6 +438,8 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
           <div class="card flex scroll thin">
             <div class="ch"><h2>Connections</h2><span class="note ell" id="s-cmode">Passwords and links are never shown</span></div>
             <div class="conns thin" id="s-conns"></div>
+            <div class="kicker">TV health</div>
+            <div class="diag" id="s-diag"><div class="empty">The TV has not sent its health report yet (needs app 3.37.33 or newer).</div></div>
             <div class="kicker">Add a connection</div>
             <div class="seg" id="a-mode"><button data-m="xtream" class="on">Xtream</button><button data-m="m3u">M3U</button><button data-m="emby">Emby</button><button data-m="jellyfin">Jellyfin</button></div>
             <div class="fields">
@@ -596,6 +603,22 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   function hm(t){ if(!t) return ''; return new Date(t).toLocaleTimeString(undefined,{ hour:'2-digit', minute:'2-digit' }); }
   function host(u){ try{ return new URL(u).host; }catch(e){ return String(u||'').replace(/^https?:\/\//,'').split(/[\/?#]/)[0]; } }
 
+  // TV health: crashes, memory and the TV's last steps, sent by the app (3.37.33+) with every check-in.
+  function crashList(str){ return String(str||'').split(',').filter(Boolean).map(function(x){ var m=x.match(/^(\d+)([cm]?)$/); return m?{ at:+m[1], why:m[2]==='c'?'crashed':'closed by Android (low memory)' }:null; }).filter(Boolean); }
+  function paintDiag(g){ var el=$('s-diag'); if(!el) return;
+    if(!g||typeof g!=='object'||!Object.keys(g).length){ el.innerHTML='<div class="empty">The TV has not sent its health report yet (needs app 3.37.33 or newer).</div>'; return; }
+    var cr=crashList(g.crashes), day=Date.now()-86400000, recent=cr.filter(function(c){ return c.at>day; });
+    var crTxt=cr.length?('<span class="'+(recent.length?'bad':'')+'">'+recent.length+' in the last 24 h</span> · '+(g.crashTotal||cr.length)+' since install · last '+when(new Date(cr[0].at).toISOString())+' ('+cr[0].why+')'):'<span class="okc">None</span>';
+    var rows=[['Restarts',crTxt],
+      ['Memory',g.ramMb?(Math.round(g.ramMb/102.4)/10+' GB'+(g.freeMb!=null?' · '+(Math.round(g.freeMb/102.4)/10)+' GB free':'')+(g.lowRam?' · low-memory device':'')+(g.limitMb?' · playlists up to '+g.limitMb+' MB':'')):'?'],
+      ['Storage free',g.diskFreeMb!=null?(Math.round(g.diskFreeMb/102.4)/10+' GB'):'?'],
+      ['Android',[g.model,g.android].filter(Boolean).join(' · ')||'?'],
+      ['Web engine',g.webview||'?'],
+      ['Last problem',g.last||'None']];
+    var h=rows.map(function(r){ return '<div class="dr"><span class="dk">'+esc(r[0])+'</span><span>'+(r[0]==='Restarts'?r[1]:esc(r[1]))+'</span></div>'; }).join('');
+    var lines=String(g.crumbs||'').split('\n').filter(Boolean).concat((g.lib||[]).map(function(x){ return 'library: '+x; }));
+    if(lines.length) h+='<div class="dk">Last steps on the TV</div><div class="crumbs">'+esc(lines.join('\n'))+'</div>';
+    el.innerHTML=h; }
   function paint(){ var s=sess.session, d=sess.device||{}, lib=d.library||{}, bl=sess.billing||{};
     var live=(s.status==='connected');
     $('s-title').textContent=d.platform||'TV';
@@ -622,6 +645,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
         return '<div class="conn"><div class="tx"><div class="nm"><span>'+esc(c.name)+'</span>'+bd+'</div><div class="dt" title="'+esc(det)+'">'+esc(det)+'</div></div>'+
           (c.id?'<div class="conn-acts"><button class="btn sm" data-rf="'+esc(c.id)+'" data-nm="'+esc(c.name)+'"'+(live?'':' disabled')+' title="Load this connection again on the TV">'+(c.ok===false?'Retry':'Refresh')+'</button>'+
             '<button class="btn sm dng" data-rm="'+esc(c.id)+'" data-nm="'+esc(c.name)+'"'+(live?'':' disabled')+'>Remove</button></div>':'')+'</div>'; }).join(''):'<div class="empty">No connections on this TV yet.</div>';
+    paintDiag(d.diag);
     // Retry / Refresh one connection: the TV loads just that connection again (sent as "refresh" with its id).
     [].forEach.call(document.querySelectorAll('[data-rf]'),function(b){ b.onclick=function(){ send('refresh',{ id:b.getAttribute('data-rf'), name:b.getAttribute('data-nm') },null,$('a-err')); }; });
     [].forEach.call(document.querySelectorAll('[data-rm]'),function(b){ b.onclick=function(){ if(!confirm('Remove "'+b.getAttribute('data-nm')+'" from the customer’s TV?')) return; send('connection.remove',{ id:b.getAttribute('data-rm'), name:b.getAttribute('data-nm') },null,$('a-err')); }; });
@@ -726,7 +750,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
       var paidTxt=(pay.count?[pay.KES?amt('KES',pay.KES):'', pay.ETB?amt('ETB',pay.ETB):'', pay.TZS?amt('TZS',pay.TZS):''].filter(Boolean).join(' + '):'');
       var lastTxt=pay.last?('Last '+amt(pay.last.currency,pay.last.amount)+' · '+ago(pay.last.at)):'No payments yet';
       return '<div class="tv" data-k="'+k+'">'+
-        '<div class="c who"><div class="l1"><span class="dot'+(t.online?' on':'')+'" title="'+(t.online?'Online':'Offline')+'"></span><span class="ell">'+esc(name)+'</span><span class="id">'+esc(t.tv_id)+'</span>'+(t.help_code?'<button class="help" data-code="'+esc(t.help_code)+'" title="This TV is asking for help. Open the session.">HELP '+esc(t.help_code)+'</button>':'')+'</div>'+
+        '<div class="c who"><div class="l1"><span class="dot'+(t.online?' on':'')+'" title="'+(t.online?'Online':'Offline')+'"></span><span class="ell">'+esc(name)+'</span><span class="id">'+esc(t.tv_id)+'</span>'+(function(){ var g=t.diag||{}, n=crashList(g.crashes).filter(function(c){ return c.at>Date.now()-86400000; }).length; return n?'<span class="bdg bad" title="'+esc('Restarted '+n+' time(s) in the last 24 h. '+(g.last||''))+'">'+n+' restart'+(n===1?'':'s')+'</span>':''; })()+(t.help_code?'<button class="help" data-code="'+esc(t.help_code)+'" title="This TV is asking for help. Open the session.">HELP '+esc(t.help_code)+'</button>':'')+'</div>'+
           '<div class="l2" title="'+esc(where)+'">'+(cn?flag(t.country)+' '+esc(cn)+' · ':'')+esc(where||'No details yet')+'</div></div>'+
         '<div class="c plan"><div class="l1">'+pill(pl.badge)+(t.pending?'<span class="bdg warn" title="Saved. The TV picks this up within about 20 seconds.">waiting for TV</span>':'')+'</div><div class="pn" title="'+esc(pl.name)+'">'+esc(pl.name)+'</div>'+
           '<div class="l2" title="'+esc(pl.sub)+'">'+esc(pl.sub)+'</div></div>'+

@@ -52,22 +52,44 @@
         // Launch diagnostics (shown in Settings > About as "Library:") -- says whether the saved copy
         // was used, how long it took to read, or why it was downloaded again instead.
         function libLog(msg){ try{ var t=new Date(); function p2(n){ return (n<10?'0':'')+n; } (S._libLog=S._libLog||[]).push(p2(t.getHours())+':'+p2(t.getMinutes())+':'+p2(t.getSeconds())+' '+msg); if(S._libLog.length>10) S._libLog.shift(); }catch(e){} }
+        // The saved copy is kept small: empty fields and the default channel text are left out, and the long
+        // start of every link and picture address (server, username, password) is stored once in a table.
+        // Smaller copy = less memory while saving (a big save could close the screen engine on a TV) and a faster start.
+        var snapT=null;
         function saveSnap(list){ if(!list.length||!list.some(snapOk)) return;
-            setTimeout(function(){ try{
-                var lib=pendingSwap||S; var t0=Date.now(); var json=JSON.stringify({live:lib.live,movies:lib.movies,series:lib.series}, function(k,v){
-                    if(k==='_src') return (v&&v.key)?v.key:undefined;
+            clearTimeout(snapT); snapT=setTimeout(function(){ snapT=null; try{
+                var lib=pendingSwap||S; var t0=Date.now(), pre=[], preIx={}, keys=[], keyIx={};
+                function shrink(u){ u=String(u); var c=u.lastIndexOf('/'); if(c<8) return u; var h=u.slice(0,c+1), n=preIx[h]; if(n==null){ n=preIx[h]=pre.length; pre.push(h); } return '^'+n+'^'+u.slice(c+1); }
+                var json=JSON.stringify({live:lib.live,movies:lib.movies,series:lib.series}, function(k,v){
+                    if(k==='_src'){ if(!(v&&v.key)) return undefined; var si=keyIx[v.key]; if(si==null){ si=keyIx[v.key]=keys.length; keys.push(v.key); } return si; }
                     if(k.length>1&&k.charAt(0)==='_'&&k.charAt(1)==='_') return undefined;     // per-session caches
-                    if(k==='_mergedSeasons'||k==='_bdTried'||k==='_bd') return undefined;
+                    if(k==='_mergedSeasons'||k==='_bdTried'||k==='_bd'||k==='_origIdx') return undefined;
+                    if(v===null||v==='') return (/^\d+$/.test(k))?v:undefined;
+                    if((k==='url'||k==='logo'||k==='thumb'||k==='art')&&typeof v==='string'&&v.length>40&&v.charAt(0)!=='^') return shrink(v);
+                    if(k==='desc'&&typeof v==='string'&&/^(Live channel|Channel) from /.test(v)) return undefined;
                     return v; });
                 var mb=(json.length/1048576).toFixed(1);
-                Snap.put({ v:1, sig:libSig(list), at:Date.now(), json:json }, function(ok){ libLog(ok?('saved copy '+mb+' MB in '+(Date.now()-t0)+'ms'):('saving copy FAILED ('+mb+' MB)')); });
-            }catch(e){ libLog('saving copy threw '+(e&&e.message||e)); } }, 4000); }
+                var part={}; Object.keys(PARTIAL).forEach(function(k){ var P=PARTIAL[k]; if(!P) return; part[k]={ cats:P.cats||null, lim:P.lim,
+                    movies:P.movies?{ full:P.movies.full, kept:P.movies.kept, total:P.movies.total }:null, series:P.series?{ full:P.series.full, kept:P.series.kept, total:P.series.total }:null }; });
+                Snap.put({ v:2, sig:libSig(list), at:Date.now(), pre:pre, keys:keys, part:part, json:json }, function(ok){ libLog(ok?('saved copy '+mb+' MB in '+(Date.now()-t0)+'ms'):('saving copy FAILED ('+mb+' MB)')); });
+                json=null;
+            }catch(e){ libLog('saving copy threw '+(e&&e.message||e)); } }, 6000); }
         function srcMapFor(list){ var m={}; list.forEach(function(pl,i){ var k=keyOf(pl), sc={ idx:i, key:k, name:plName(pl), kind:kindOf(pl), api:null };
             if(pl.mode==='xtream'){ try{ sc.api=xtreamApi(pl.server,pl.user,pl.pass); }catch(_e){} }
             else if(pl.mode==='m3u'){ var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(sx){ try{ sc.api=xtreamApi(sx.server,sx.user,sx.pass); }catch(_e){} } } m[k]=sc; }); return m; }
-        function revive(d, list){ var m=srcMapFor(list);
-            function fix(it){ if(!it) return; if(typeof it._src==='string') it._src=m[it._src]; (it._alts||[]).forEach(fix); (it.seasons||[]).forEach(function(se){ (se&&se.episodes||[]).forEach(fix); }); }
-            d.live.forEach(fix); d.movies.forEach(fix); d.series.forEach(fix);
+        function revive(d, list, pre, part, keys){ var m=srcMapFor(list); pre=pre||[]; keys=keys||[];
+            function grow(u){ if(typeof u!=='string'||u.charAt(0)!=='^') return u; var e=u.indexOf('^',1); if(e<0) return u; var h=pre[+u.slice(1,e)]; return h==null?u:h+u.slice(e+1); }
+            function fix(it){ if(!it) return; if(typeof it._src==='number') it._src=m[keys[it._src]]; else if(typeof it._src==='string') it._src=m[it._src];
+                if(it.url) it.url=grow(it.url); if(it.logo) it.logo=grow(it.logo); if(it.thumb) it.thumb=grow(it.thumb); if(it.art) it.art=grow(it.art);
+                (it._alts||[]).forEach(fix); (it.seasons||[]).forEach(function(se){ (se&&se.episodes||[]).forEach(fix); }); }
+            d.live.forEach(function(c){ fix(c); if(c.desc==null&&c._src) c.desc='Live channel from '+c._src.name+'.'; if(c.epgGenre===undefined) c.epgGenre=null; if(c.tvgId===undefined) c.tvgId=''; });
+            d.movies.forEach(fix); d.series.forEach(function(x){ fix(x); if(x.seasons===undefined) x.seasons=null; });
+            // titles that were cut at load time stay reachable after a restart (genre loading and full search)
+            PARTIAL={}; Object.keys(part||{}).forEach(function(k){ var p=part[k], sc=m[k]; if(!p||!sc||!sc.api) return;
+                var out={ movies:d.movies.filter(function(x){ return x._src===sc; }), series:d.series.filter(function(x){ return x._src===sc; }) };
+                PARTIAL[k]={ api:sc.api, src:sc, idx:sc.idx, out:out, lim:p.lim||8, cats:p.cats||null,
+                    movies:p.movies?{ full:p.movies.full, kept:p.movies.kept, total:p.movies.total, done:{}, searched:{} }:null,
+                    series:p.series?{ full:p.series.full, kept:p.series.kept, total:p.series.total, done:{}, searched:{} }:null }; });
             var fx=null; list.forEach(function(pl){ if(pl.mode==='xtream'&&!fx){ var sc=m[keyOf(pl)]; fx=sc&&sc.api; } }); return fx; }
         // Fresh data from a background refresh: swap it in only when it changed, and only when the viewer is
         // not mid-browse (watching something, in Settings, or no button pressed for 15 s).
@@ -255,6 +277,7 @@
             try{ if(kind==='movies'&&S.moviesGenre===genre&&typeof renderMovies==='function') renderMovies(); if(kind==='series'&&S.seriesGenre===genre&&typeof renderSeries==='function') renderSeries(); }catch(_e){}
             try{ setToast(n+' more '+(kind==='movies'?'movies':'series')+' in '+genre+'.'); }catch(_e){} }); };
         window.__byoDeepSearch=deepSearch;
+        window.__byoLibLog=function(){ return (S._libLog||[]).slice(); };
         function vodViaXtream(pl, src, out, idx, done){
             var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(!sx){ crumb(src.name+': movies and series left out (not an Xtream link)'); return done(); }
             var api; try{ api=xtreamApi(sx.server,sx.user,sx.pass); }catch(e){ return done(); }
@@ -715,10 +738,10 @@
             var giveUp=setTimeout(function(){ if(!started){ started=true; S._libFromSnapWait=false; libLog('saved copy did not answer in 25s; downloading'); bootLoad(); } }, 25000);
             Snap.get(function(v){ if(started) return; var tRead=Date.now()-t0;
                 if(!v){ started=true; clearTimeout(giveUp); S._libFromSnapWait=false; libLog('no saved copy yet ('+tRead+'ms); downloading'); return bootLoad(); }
-                if(v.v!==1||!v.json){ started=true; clearTimeout(giveUp); S._libFromSnapWait=false; libLog('saved copy is from an older format; downloading'); return bootLoad(); }
+                if((v.v!==1&&v.v!==2)||!v.json){ started=true; clearTimeout(giveUp); S._libFromSnapWait=false; libLog('saved copy is from an older format; downloading'); return bootLoad(); }
                 if(v.sig!==libSig(list)){ started=true; clearTimeout(giveUp); S._libFromSnapWait=false; libLog('saved copy is for a different connection; downloading'); return bootLoad(); }
                 try{ var t1=Date.now(); var d=JSON.parse(v.json); if(!d||!Array.isArray(d.live)) throw 0;
-                    var fx=revive(d, list); if(started) return; started=true; clearTimeout(giveUp); S._libFromSnapWait=false;
+                    var fx=revive(d, list, v.pre, v.part, v.keys); if(started) return; started=true; clearTimeout(giveUp); S._libFromSnapWait=false;
                     S.live=d.live; S.movies=d.movies||[]; S.series=d.series||[]; S.replay=[]; S.emby=null; S.xtream=fx;
                     S._libLoading=false; S._libFailed=false; S._libFromSaved=true;
                     var ageMin=Math.round((Date.now()-(v.at||0))/60000);

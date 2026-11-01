@@ -258,6 +258,10 @@ public class MainActivity extends Activity {
                 try { if (android.os.Build.VERSION.SDK_INT >= 26) { crashed = detail.didCrash(); prio = detail.rendererPriorityAtExit(); } } catch (Throwable ignored) {}
                 noteIssue(MainActivity.this, (crashed ? "screen engine crashed" : "screen engine closed by Android (low memory)") + " p" + prio);
                 try { getSharedPreferences("byo_marks", MODE_PRIVATE).edit().putString("engineGoneAt", String.valueOf(System.currentTimeMillis())).commit(); } catch (Exception ignored) {}
+                try { android.content.SharedPreferences dp = getSharedPreferences("byo_diag", MODE_PRIVATE);
+                    String h = dp.getString("crashes", ""); h = System.currentTimeMillis() + (crashed ? "c" : "m") + (h.isEmpty() ? "" : "," + h);
+                    String[] parts = h.split(","); StringBuilder hb = new StringBuilder(); for (int i = 0; i < parts.length && i < 10; i++) { if (i > 0) hb.append(","); hb.append(parts[i]); }
+                    dp.edit().putString("crashes", hb.toString()).putInt("crashTotal", dp.getInt("crashTotal", 0) + 1).commit(); } catch (Exception ignored) {}
                 // The same failure over and over (e.g. the page kills the engine while it loads) must not turn
                 // into an endless restart: after 3 in 2 minutes, stop and say what happened.
                 long now = System.currentTimeMillis(); goneTimes.add(now);
@@ -652,6 +656,28 @@ public class MainActivity extends Activity {
             @JavascriptInterface
             public String getMark(final String key) {
                 try { return getSharedPreferences("byo_marks", MODE_PRIVATE).getString(key, ""); } catch (Exception e) { return ""; }
+            }
+
+            // Everything support needs to see what happened on this TV, without a photo of the screen.
+            @JavascriptInterface
+            public String diagInfo() {
+                org.json.JSONObject o = new org.json.JSONObject();
+                try {
+                    android.content.SharedPreferences dp = getSharedPreferences("byo_diag", MODE_PRIVATE);
+                    o.put("last", dp.getString("last", ""));
+                    o.put("crumbs", dp.getString("crumbs", ""));
+                    o.put("crashes", dp.getString("crashes", ""));
+                    o.put("crashTotal", dp.getInt("crashTotal", 0));
+                    o.put("android", android.os.Build.VERSION.RELEASE + " (API " + android.os.Build.VERSION.SDK_INT + ")");
+                    o.put("model", android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL);
+                    String wv = ""; try { if (android.os.Build.VERSION.SDK_INT >= 26) { android.content.pm.PackageInfo pi = WebView.getCurrentWebViewPackage(); if (pi != null) wv = pi.packageName + " " + pi.versionName; } } catch (Throwable ignored) {}
+                    o.put("webview", wv);
+                    android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                    android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo(); am.getMemoryInfo(mi);
+                    o.put("ramMb", mi.totalMem / (1024L * 1024L)); o.put("freeMb", mi.availMem / (1024L * 1024L)); o.put("lowRam", am.isLowRamDevice());
+                    java.io.File d = getFilesDir(); o.put("diskFreeMb", d.getUsableSpace() / (1024L * 1024L));
+                } catch (Exception ignored) {}
+                return o.toString();
             }
 
             @JavascriptInterface

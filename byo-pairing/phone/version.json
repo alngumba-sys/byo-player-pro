@@ -1,6 +1,6 @@
 {
-  "versionCode": 217,
-  "versionName": "3.37.32",
+  "versionCode": 218,
+  "versionName": "3.37.33",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Every movie and series from large providers is now reachable on TV: opening a genre loads all of it, and search looks through the full list."
+  "notes": "TV Guide shows your provider's real programmes, faster start with big libraries, and the TV now reports its health to BYO support so problems can be fixed without photos."
 }
