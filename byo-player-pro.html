@@ -8008,11 +8008,16 @@ var Pin=(function(){
         $('guide-action').classList.remove('hidden'); setTimeout(function(){ Nav.setFocus(row.querySelector('.s-btn')); },20);
     }
 
+    // Combined library: titles from a media server (Emby / Jellyfin / Plex, clean artwork) come before
+    // playlist-only titles, each group in the chosen order. A-Z stays strictly alphabetical.
+    function __srcRank(x){ var k=x&&x._src&&x._src.kind; return (k==='emby'||k==='plex')?0:(k==='xtream'?1:(k?2:0)); }
     function sortList(list,sortId,dir){ var a=list.slice(); var s=(dir==='asc')?1:-1;
+        var grp=sortId!=='az'&&a.length&&a[0]&&a[0].title!==undefined&&a[0].name===undefined&&a.some(function(x){ return x&&x._src&&x._src.kind; })&&a.some(function(x){ return __srcRank(x)===0; })&&a.some(function(x){ return __srcRank(x)>0; });
+        function g(x,y){ return grp?(__srcRank(x)-__srcRank(y)):0; }
         if(sortId==='az') a.sort(function(x,y){ return s*(x.name||x.title||'').localeCompare(y.name||y.title||''); });
-        else if(sortId==='rating') a.sort(function(x,y){ return s*(num(x.rating)-num(y.rating)); });   // desc = highest first
-        else if(sortId==='year') a.sort(function(x,y){ return s*(num(x.year)-num(y.year)); });          // desc = newest first
-        else a.sort(function(x,y){ return s*((y.order||0)-(x.order||0)); });
+        else if(sortId==='rating') a.sort(function(x,y){ return g(x,y)||s*(num(x.rating)-num(y.rating)); });   // desc = highest first
+        else if(sortId==='year') a.sort(function(x,y){ return g(x,y)||s*(num(x.year)-num(y.year)); });          // desc = newest first
+        else a.sort(function(x,y){ return g(x,y)||s*((y.order||0)-(x.order||0)); });
         return a; }
 
     function showView(name){ if(name!=='home') stopHeroPreview(); if(name==='detail'){ try{ $('view-detail').scrollTop=0; }catch(_e){} } else { try{ cancelDetailAutoplay(); $('view-detail').classList.remove('fading'); }catch(_e){} }

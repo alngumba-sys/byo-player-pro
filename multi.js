@@ -190,7 +190,16 @@
             var ok=results.filter(function(r){ return r.ok; });
             report=results.map(function(r){ return { key:r.src.key, name:r.src.name, ok:r.ok, err:r.err, live:r.live.length, movies:r.movies.length, series:r.series.length }; });
             if(!ok.length){ return false; }
-            var L=mergeLive(ok.map(function(r){ return r.live; })), M=mergeVod(ok.map(function(r){ return r.movies; })), SR=mergeVod(ok.map(function(r){ return r.series; }));
+            // Movies / series: media servers (Emby, Jellyfin, Plex) first, then Xtream, then M3U. When the same title
+            // is in several, the first copy is kept (its poster, details and playback) and the others become its
+            // backups, so the server's clean artwork wins over a playlist's.
+            var RK={ emby:0, plex:0, xtream:1, stalker:2, m3u:2 };
+            function rk(r){ var k=r&&r.src&&r.src.kind; return (k in RK)?RK[k]:2; }
+            var vod=ok.map(function(r,i){ return { r:r, i:i }; }).sort(function(a,b){ return (rk(a.r)-rk(b.r))||(a.i-b.i); }).map(function(x){ return x.r; });
+            // Sections per connection (set from the support console): e.g. Emby for movies and series only, an M3U for live TV only.
+            var USE={}; (Store.savedPlaylists||[]).forEach(function(p){ if(p&&p.use) USE[keyOf(p)]=p.use; });
+            function part(r, k){ var u=USE[r.src.key]; return (u&&u[k]===false)?[]:r[k]; }
+            var L=mergeLive(ok.map(function(r){ return part(r,'live'); })), M=mergeVod(vod.map(function(r){ return part(r,'movies'); })), SR=mergeVod(vod.map(function(r){ return part(r,'series'); }));
             var nl=L.items, nm=(typeof dedupeVod==='function')?dedupeVod(M.items,false):M.items, ns=(typeof dedupeVod==='function')?dedupeVod(SR.items,true):SR.items;
             var fe=null, fx=null; ok.forEach(function(r){ if(r.src.kind==='emby'&&!fe) fe=r.src.api; if(r.src.kind==='xtream'&&!fx) fx=r.src.api; });
             report.dup=L.dup+M.dup+SR.dup;
@@ -235,6 +244,15 @@
                         renderPlaylists(); renderActive(); publish(); }
                     bgRetry(list, results, my, attempt+1); }); });
             }, BG_DELAYS[attempt]); }
+        // Which sections one connection supplies ({ live, movies, series }). The library is rebuilt from what is
+        // already downloaded when possible, so nothing is fetched again.
+        function setUse(id, use){ var pl=null; (Store.savedPlaylists||[]).forEach(function(x){ if(x.id===id) pl=x; }); if(!pl) return false;
+            var u={ live:use.live!==false, movies:use.movies!==false, series:use.series!==false };
+            if(u.live&&u.movies&&u.series) delete pl.use; else pl.use=u; Store.save(); return true; }
+        function rebuildForUse(){
+            if(on()&&lastList&&lastResults&&lastTok===tok&&!loading){ if(apply(lastResults, { quiet:true, keepFilters:true })) saveSnap(lastList); renderPlaylists(); renderActive(); publish(); return; }
+            var c=Store.cfg||{}, cur=null; if(!on()) (Store.savedPlaylists||[]).forEach(function(x){ if(c.mode&&keyOf(x)===keyOf(c)) cur=x; });
+            reload(on()?{ quiet:true, keepFilters:true }:{ quiet:true, keepFilters:true, only:cur||undefined }); }
         // Load ONE saved connection again (support's Retry / Refresh). Combined library: only that connection
         // is downloaded and merged with the others already loaded. One-at-a-time: it becomes the active one.
         function retry(id, cb){ cb=cb||function(){};
@@ -408,7 +426,7 @@
         function deviceState(forPhone){ var saved=Store.savedPlaylists||[];
             var conns=saved.map(function(pl){ var r=null; report.forEach(function(x){ if(x.key===keyOf(pl)) r=x; }); var act=isActive(pl);
                 var hide=forPhone&&pl.managed;   // the customer's phone never sees support's details
-                var o={ id:pl.id, name:plName(pl), mode:pl.mode, host:hide?'':hostOf(pl), user:hide?'':(pl.user||''), on:on()?!pl.off:(!pl.off&&act), active:act, managed:!!pl.managed };
+                var o={ id:pl.id, name:plName(pl), mode:pl.mode, host:hide?'':hostOf(pl), user:hide?'':(pl.user||''), on:on()?!pl.off:(!pl.off&&act), active:act, managed:!!pl.managed, use:pl.use||null };
                 if(on()&&r){ o.ok=r.ok; o.err=r.ok?'':String(r.err||'').slice(0,80); o.live=r.live; o.movies=r.movies; o.series=r.series; }
                 else if(act){ o.ok=true; o.live=S.live.length; o.movies=S.movies.length; o.series=S.series.length; }
                 return o; });
@@ -525,5 +543,5 @@
             // Switching off the one being shown: hide its content (nothing else is switched on in this mode).
             if(wasActive){ Store.cfg={}; Store.save(); try{ clearLibrary(); }catch(e){} try{ renderAll(); }catch(e){} }
             try{ renderPlaylists(); }catch(e){} publish(); return true; }
-        return { retry:retry, useSaved:useSaved, setOn:setOn, setOnPl:setOnPl, on:on, plexSignIn:plexSignIn, connectEntry:connectEntry, saveEntry:saveEntry, connectPortal:connectPortal, publish:publish, renderActive:renderActive, addFromPhone:addFromPhone, deviceState:deviceState, keyOf:keyOf, reload:reload, reg:reg, ensureSeries:ensureSeries, altUrls:altUrls, render:render, afterConnect:afterConnect, boot:boot, _merge:{vod:mergeVod,live:mergeLive,norm:normTitle} };
+        return { retry:retry, setUse:setUse, rebuildForUse:rebuildForUse, useSaved:useSaved, setOn:setOn, setOnPl:setOnPl, on:on, plexSignIn:plexSignIn, connectEntry:connectEntry, saveEntry:saveEntry, connectPortal:connectPortal, publish:publish, renderActive:renderActive, addFromPhone:addFromPhone, deviceState:deviceState, keyOf:keyOf, reload:reload, reg:reg, ensureSeries:ensureSeries, altUrls:altUrls, render:render, afterConnect:afterConnect, boot:boot, _merge:{vod:mergeVod,live:mergeLive,norm:normTitle} };
     })();

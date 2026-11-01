@@ -223,6 +223,12 @@
                         if(typeof q.enabled==='boolean'){ if(q.enabled&&!pc.pin) return ack(cmd,false,'Set a PIN before turning parental controls on'); pc.enabled=q.enabled; done.push('parental controls '+(q.enabled?'on':'off')); }
                         if(typeof q.lockSettings==='boolean'){ pc.lockSettings=q.lockSettings; done.push('settings lock '+(q.lockSettings?'on':'off')); }
                         Store.save(); try{ renderParental(); }catch(e){} try{ renderAll(); }catch(e){} }
+                    if(p.sections&&typeof p.sections==='object'){   // sections per connection: { id: { live, movies, series } }
+                        var ch=0, names=[]; Object.keys(p.sections).forEach(function(id){ if(Multi.setUse(id, p.sections[id]||{})){ ch++;
+                            var pl=(Store.savedPlaylists||[]).filter(function(x){ return x.id===id; })[0], u=p.sections[id]||{};
+                            var on=['live','movies','series'].filter(function(k){ return u[k]!==false; }).map(function(k){ return {live:'Live TV',movies:'Movies',series:'Series'}[k]; });
+                            names.push((pl&&(pl.name||pl.mode)||'connection')+': '+(on.length?on.join(', '):'nothing')); } });
+                        if(ch){ try{ Multi.rebuildForUse(); }catch(e){} done.push(names.join('; ')); } }
                     if(!done.length) return ack(cmd,false,'Nothing to change');
                     setToast('Support changed: '+done.join(', ')+'.');
                     return ack(cmd,true,done.join(', ')); }

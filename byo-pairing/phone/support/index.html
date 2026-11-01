@@ -299,6 +299,12 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   .g2{ grid-template-columns:1fr 1fr; }
 }
 .conn-acts{ display:flex; gap:8px; flex:0 0 auto; }
+.pc-h{ margin:14px 0 8px; font-weight:800; font-size:13px; display:flex; gap:8px; align-items:baseline; }
+.pc-h .note{ font-weight:500; color:var(--faint); font-size:12px; }
+.pc-row{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
+.pc-nm{ font-weight:700; font-size:13px; }
+.pc-tg{ display:flex; gap:6px; }
+.tgl.sm{ height:28px; padding:0 8px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -465,6 +471,8 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
           <div class="card fix">
             <div class="ch"><h2>App sections</h2><span class="note ell">Unticked sections are hidden on the TV</span></div>
             <div class="tgls" id="f-flags"></div>
+            <div class="pc-h" id="f-conns-h">Per connection <span class="note">What each connection supplies to the TV</span></div>
+            <div id="f-conns"></div>
             <div class="foot"><span class="msg" id="f-err"></span><button class="btn pri" id="f-send">Save sections</button></div>
           </div>
           <div class="card flex">
@@ -633,6 +641,15 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
     var fl=sess.flags||{}; var fb=$('f-flags'); if(!fb.dataset.dirty){
       fb.innerHTML=FLAGS.map(function(f){ var on=fl[f[0]]!==false; return '<label class="tgl'+(on?'':' off')+'"><input type="checkbox" data-flag="'+f[0]+'"'+(on?' checked':'')+'><span class="box"></span><span>'+esc(f[1])+'</span></label>'; }).join('');
       [].forEach.call(fb.querySelectorAll('input'),function(i){ i.onchange=function(){ fb.dataset.dirty='1'; i.closest('.tgl').classList.toggle('off', !i.checked); }; i.disabled=!live; }); }
+    // sections per connection (only rebuilt when not being edited)
+    var pcs=(lib.connections||[]).filter(function(c){ return c.id; }), pb=$('f-conns');
+    $('f-conns-h').classList.toggle('hidden', !pcs.length);
+    if(!pb.dataset.dirty){
+      pb.innerHTML=pcs.map(function(c){ var u=c.use||{};
+        return '<div class="pc-row" data-id="'+esc(c.id)+'"><div class="pc-nm ell" title="'+esc(c.name)+'">'+esc(c.name)+'</div><div class="pc-tg">'+
+          [['live','Live TV'],['movies','Movies'],['series','Series']].map(function(k){ var on=u[k[0]]!==false;
+            return '<label class="tgl sm'+(on?'':' off')+'"><input type="checkbox" data-sec="'+k[0]+'"'+(on?' checked':'')+'><span class="box"></span><span>'+k[1]+'</span></label>'; }).join('')+'</div></div>'; }).join('');
+      [].forEach.call(pb.querySelectorAll('input'),function(i){ i.onchange=function(){ pb.dataset.dirty='1'; i.closest('.tgl').classList.toggle('off', !i.checked); }; i.disabled=!live; }); }
     // activity
     var cmds=(sess.commands||[]).slice().reverse();
     $('s-log').innerHTML=cmds.length?cmds.map(function(c){ var p=c.payload||{};
@@ -829,7 +846,12 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   $('b-custom').onclick=function(){ addDays($('b-days').value); };
 
   // flags
-  $('f-send').onclick=function(){ var f={}; [].forEach.call(document.querySelectorAll('#f-flags input'),function(i){ f[i.getAttribute('data-flag')]=i.checked; });
+  $('f-send').onclick=function(){
+    var pb=$('f-conns');
+    if(pb.dataset.dirty){ var secs={};
+      [].forEach.call(pb.querySelectorAll('.pc-row'),function(r){ var u={}; [].forEach.call(r.querySelectorAll('input'),function(i){ u[i.getAttribute('data-sec')]=i.checked; }); secs[r.getAttribute('data-id')]=u; });
+      send('settings',{ sections:secs },null,$('f-err')); delete pb.dataset.dirty; }
+    var f={}; [].forEach.call(document.querySelectorAll('#f-flags input'),function(i){ f[i.getAttribute('data-flag')]=i.checked; });
     say($('f-err'),'Saving…','busy'); api('support.flags',{ session_id:sess.session.id, flags:f }).then(function(j){ if(!j.ok){ say($('f-err'),j.error); return; } delete $('f-flags').dataset.dirty; say($('f-err'),'Saved.','good'); sess=j; paint(); setTimeout(function(){ say($('f-err'),''); },4000); }); };
 
   // device bar actions
