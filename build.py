@@ -573,6 +573,20 @@ _rep("""        if(x._bd){ show(x._bd,true); }
 _rep("""            s.seasons=seasons; s.epCount=seasons.reduce(function(a,x){return a+x.episodes.length;},0); cb(); },function(){ s.seasons=[]; cb(); }); }""",
 """            s.seasons=seasons; s.epCount=seasons.reduce(function(a,x){return a+x.episodes.length;},0); cb();
             try{ if(S.currentDetail&&S.currentDetail.data===s&&!$('view-detail').classList.contains('has-bd')) paintTitleBackdrop(s); }catch(_e){} },function(){ s.seasons=[]; cb(); }); }""", 'heroartrepaint')
+# Movies from a provider's lists: the list has no picture but the poster, so on opening one, ask the provider for
+# its details (wide backdrop, plot, running time, cast) and fill them in.
+_rep("    function openMovie(m){ S.currentDetail={type:'movie',data:m}; S.prevView=curSection();",
+     """    function openMovie(m){ S.currentDetail={type:'movie',data:m}; S.prevView=curSection();
+        try{ var _xa=m&&m._src&&m._src.api; if(_xa&&_xa.seriesInfo&&m.streamId!=null&&!m._vi){ m._vi=1; var _vu=_xa.seriesInfo(0).replace(/action=get_series_info&series_id=0$/,'action=get_vod_info&vod_id='+encodeURIComponent(m.streamId));
+            Net.fetchJSON(_vu,function(j){ var i=(j&&j.info)||{}; var bd=i.backdrop_path; if(Array.isArray(bd)) bd=bd[0];
+                if(typeof bd==='string'&&/^https?:/.test(bd)) m.backdrop=bd;
+                if(!m.plot&&i.plot) m.plot=String(i.plot); if(!m.dur&&i.duration) m.dur=String(i.duration).replace(/^0?(\\d+):(\\d\\d):\\d\\d$/,function(_a,h,mi){ h=+h; return (h?h+'h ':'')+(+mi)+'m'; });
+                if(!m.cast&&i.cast) m.cast=String(i.cast); if(!m.director&&i.director) m.director=String(i.director);
+                if(S.currentDetail&&S.currentDetail.data===m){
+                    try{ $('detail-plot').textContent=briefDesc(m,'movie'); }catch(_e){}
+                    try{ var _w=Store.isWatched&&Store.isWatched('movie:'+m.id), _t=[m.dur||'Movie']; if(_w) _t.push('✓ Watched'); $('detail-meta').innerHTML=detailMetaHTML(m,'movie',_t); }catch(_e){}
+                    try{ if(m.cast) renderCastFromItem(m); }catch(_e){}
+                    try{ if(m.backdrop&&!$('view-detail').classList.contains('has-bd')) paintTitleBackdrop(m); }catch(_e){} } },function(){}); } }catch(_e){}""", 'vodinfo')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
