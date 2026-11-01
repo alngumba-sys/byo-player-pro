@@ -107,7 +107,8 @@
             AB.setMark('inflight','{}');
             if(!gone||Date.now()-gone>10*60000||!Object.keys(prev).length) return;
             AB.setMark('engineGoneAt','');
-            var keys=Object.keys(prev), reading=keys.filter(function(k){ return prev[k]==='read'; }), sus=reading.length?reading:keys;
+            var keys=Object.keys(prev), sus=keys.filter(function(k){ return prev[k]==='read'; }); // only a connection being read into the page can close it; downloads run outside the page
+            if(!sus.length){ crumb('app closed while connections were downloading (none blamed)'); return; }
             var st=strikesGet(), changed=false;
             sus.forEach(function(k){ st[k]=(st[k]||0)+1; var nm0=k.split('|')[0]; (Store.savedPlaylists||[]).forEach(function(pl){ if(keyOf(pl)===k) nm0=plName(pl); }); crumb('crash while loading '+nm0+' (strike '+st[k]+')');
                 if(st[k]>=2){ (Store.savedPlaylists||[]).forEach(function(pl){ if(keyOf(pl)===k&&!pl.off){ pl.off=true; pl.crashErr=CRASH_ERR; changed=true; crumb('switched off '+plName(pl)+' after 2 crashes');
@@ -115,6 +116,37 @@
             strikesSet(st); if(changed) Store.save();
         }catch(e){} }
         function strikeClear(key){ var st=strikesGet(); if(st[key]){ delete st[key]; strikesSet(st); } }
+        // M3U in the Android app: download natively to a file, check its size against what this device can hold,
+        // trim huge playlists to live channels natively, and only then read it into the page.
+        function m3uText(url, src, ok, bad){
+            var MB=1048576;
+            function readFile(path, sz){ phase(src.key,'read'); crumb('reading '+src.name+': '+(sz/MB).toFixed(1)+' MB');
+                var x=new XMLHttpRequest(); try{ x.open('GET',path,true); }catch(e){ return bad(window.__netErrText('read')); }
+                x.onload=function(){ var t=x.responseText; x=null; if(t&&t.length) ok(t); else bad('The playlist is empty.'); };
+                x.onerror=function(){ bad('Could not read the downloaded playlist.'); }; x.send(); }
+            if(!(AB&&AB.fetchToFile&&window.__nativeFetch)){
+                return Net.fetchText(url,function(txt){ crumb('downloaded '+src.name+': '+(String(txt).length/MB).toFixed(1)+' MB'); phase(src.key,'read'); ok(txt); },bad); }
+            var lim=8; try{ lim=+AB.m3uLimitMb()||8; }catch(e){}
+            var started=window.__nativeFetch(url,function(st,detail,path){
+                if(st!=='ok'||!path) return bad(window.__netErrText(detail));
+                var sz=+((String(detail||'').match(/size:(\d+)/)||[])[1])||0;
+                crumb('downloaded '+src.name+': '+(sz/MB).toFixed(1)+' MB (this device reads up to '+lim+' MB)');
+                if(!sz||sz<=lim*MB||!AB.slimM3U) {
+                    if(sz>lim*MB) return bad('This playlist is too big for this device ('+Math.round(sz/MB)+' MB). Add it with the provider\'s Xtream login instead.');
+                    return readFile(path,sz); }
+                phase(src.key,'slim'); crumb('trimming '+src.name+' to live channels');
+                var id='s'+Date.now()+Math.floor(Math.random()*1e6);
+                window.__byoFetchCbs[id]=function(s2,d2,p2){
+                    if(s2!=='ok'||!p2) return bad('This playlist is too big for this device ('+Math.round(sz/MB)+' MB). Add it with the provider\'s Xtream login instead.');
+                    var nsz=+((String(d2).match(/size:(\d+)/)||[])[1])||0, kept=+((String(d2).match(/kept:(\d+)/)||[])[1])||0, dropped=+((String(d2).match(/dropped:(\d+)/)||[])[1])||0;
+                    crumb('trimmed '+src.name+': '+(nsz/MB).toFixed(1)+' MB, '+kept+' live kept, '+dropped+' movies/episodes left out');
+                    if(!kept) return bad('This playlist has no live channels this device can hold ('+Math.round(sz/MB)+' MB of movies and series). Add it with the provider\'s Xtream login instead.');
+                    if(nsz>lim*2*MB) return bad('This playlist is too big for this device even with live channels only ('+Math.round(nsz/MB)+' MB). Add it with the provider\'s Xtream login instead.');
+                    out_trim[src.key]=dropped; readFile(p2,nsz); };
+                try{ AB.slimM3U(id,path); }catch(e){ delete window.__byoFetchCbs[id]; bad('This playlist is too big for this device.'); } });
+            if(!started) Net.fetchText(url,function(txt){ phase(src.key,'read'); ok(txt); },bad);
+        }
+        var out_trim={};
         function loadOne(pl, idx, cb){
             var src={ idx:idx, key:keyOf(pl), name:plName(pl), kind:kindOf(pl), api:null };
             var out={ ok:false, src:src, live:[], movies:[], series:[], err:'' };
@@ -127,8 +159,7 @@
             function end(){ clearTimeout(guard); fin(); }
             try{
             if(pl.mode==='m3u'){
-                Net.fetchText(pl.url,function(txt){
-                    crumb('downloaded '+src.name+': '+(String(txt).length/1048576).toFixed(1)+' MB'); phase(src.key,'read');
+                m3uText(pl.url,src,function(txt){
                     if(String(txt).indexOf('#EXTINF')===-1){ out.err='Not an M3U playlist'; return end(); }
                     var cls=Net.classifyM3U(Net.parseM3U(txt));
                     out.live=tagItems(cls.live.map(function(c,i){ c.id='live-'+i; c.order=i; c.epgGenre=null; c.desc='Channel from '+src.name+'.'; return c; }), idx, src);
@@ -249,7 +280,7 @@
         function cfgKeep(extra){ var c=Store.cfg||{}, o={}; ['resumeLast','lastChannelId','epgTz','providerTz'].forEach(function(k){ if(c[k]!=null) o[k]=c[k]; }); for(var k in extra) o[k]=extra[k]; return o; }
 
         // A connection that failed for a reason that can pass (timeout, network, server busy) is worth another try.
-        function retryable(r){ return !/wrong username|refused access|not an m3u|not found|not valid|could not find/i.test(String((r&&r.err)||'')); }
+        function retryable(r){ return !/wrong username|refused access|not an m3u|not found|not valid|could not find|too big|no live channels this device/i.test(String((r&&r.err)||'')); }
         // Combined library: connections that still failed after a load are retried quietly on their own a few
         // more times (1, 3 and 10 minutes later). The ones that loaded are kept as they are, so nothing is
         // downloaded twice. A newer load of the library cancels this.

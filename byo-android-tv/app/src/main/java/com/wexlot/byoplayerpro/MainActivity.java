@@ -344,7 +344,7 @@ public class MainActivity extends Activity {
                             byte[] buf = new byte[65536]; int n;
                             while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
                             out.close(); in.close();
-                            status = "ok"; path = "file://" + f.getAbsolutePath();
+                            status = "ok"; path = "file://" + f.getAbsolutePath(); detail = "size:" + f.length();
                         }
                     } catch (java.net.SocketTimeoutException e) { detail = "timeout";
                     } catch (java.net.UnknownHostException e) { detail = "dns";
@@ -353,6 +353,55 @@ public class MainActivity extends Activity {
                     } catch (java.net.MalformedURLException e) { detail = "bad-url";
                     } catch (Exception e) { detail = "neterr";
                     } finally { if (c != null) try { c.disconnect(); } catch (Exception ignored) {} }
+                    final String js = "window.__byoFetchCb&&window.__byoFetchCb(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(status) + ","
+                            + org.json.JSONObject.quote(detail) + "," + org.json.JSONObject.quote(path) + ")";
+                    runOnUiThread(new Runnable() { public void run() { if (webView != null) webView.evaluateJavascript(js, null); } });
+                } }).start();
+            }
+
+            // How big a playlist file (MB) this device can safely read into the page. TVs and boxes have little memory.
+            @JavascriptInterface
+            public int m3uLimitMb() {
+                try {
+                    android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                    android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo(); am.getMemoryInfo(mi);
+                    long gb = mi.totalMem / (1024L * 1024L * 1024L);
+                    if (am.isLowRamDevice() || mi.totalMem < 2700L * 1024L * 1024L) return 8;
+                    if (gb < 5) return 20;
+                    return 40;
+                } catch (Exception e) { return 8; }
+            }
+
+            // Rewrite a downloaded M3U keeping only live channels (drops movie / series entries) so huge
+            // provider playlists fit in the TV's memory. Answers through __byoFetchCb like fetchToFile.
+            @JavascriptInterface
+            public void slimM3U(final String id, final String fileUrl) {
+                new Thread(new Runnable() { public void run() {
+                    String status = "err", detail = "", path = "";
+                    try {
+                        String fp = fileUrl.startsWith("file://") ? fileUrl.substring(7) : fileUrl;
+                        java.io.File src = new java.io.File(fp);
+                        java.io.File dst = new java.io.File(getCacheDir(), "slim_" + id.replaceAll("[^A-Za-z0-9]", "") + ".txt");
+                        java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(src), "UTF-8"), 65536);
+                        java.io.Writer w = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(dst), "UTF-8"), 65536);
+                        java.util.regex.Pattern vod = java.util.regex.Pattern.compile("(/movie/|/movies/|/series/|/vod/|\\.(mp4|mkv|avi|m4v|mov|wmv|flv|webm|mpg|mpeg)(\\?|$))", java.util.regex.Pattern.CASE_INSENSITIVE);
+                        StringBuilder pend = new StringBuilder(); boolean inEntry = false; long kept = 0, dropped = 0; String line; boolean first = true;
+                        while ((line = r.readLine()) != null) {
+                            if (first) { first = false; if (line.startsWith("\uFEFF")) line = line.substring(1); if (line.startsWith("#EXTM3U")) { w.write(line); w.write("\n"); continue; } }
+                            String t = line.trim();
+                            if (t.isEmpty()) continue;
+                            if (t.startsWith("#EXTINF")) { pend.setLength(0); pend.append(line).append("\n"); inEntry = true; continue; }
+                            if (t.startsWith("#")) { if (inEntry) pend.append(line).append("\n"); continue; }
+                            if (inEntry) {
+                                if (vod.matcher(t).find()) dropped++; else { w.write(pend.toString()); w.write(line); w.write("\n"); kept++; }
+                                pend.setLength(0); inEntry = false;
+                            }
+                        }
+                        r.close(); w.close();
+                        try { src.delete(); } catch (Exception ignored) {}
+                        status = "ok"; path = "file://" + dst.getAbsolutePath();
+                        detail = "size:" + dst.length() + ";kept:" + kept + ";dropped:" + dropped;
+                    } catch (Throwable e) { detail = "slim:" + e.getClass().getSimpleName(); }
                     final String js = "window.__byoFetchCb&&window.__byoFetchCb(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(status) + ","
                             + org.json.JSONObject.quote(detail) + "," + org.json.JSONObject.quote(path) + ")";
                     runOnUiThread(new Runnable() { public void run() { if (webView != null) webView.evaluateJavascript(js, null); } });
