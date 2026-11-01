@@ -90,16 +90,45 @@
 
         // ---------- loading one source ----------
         function tagItems(arr, idx, src){ arr.forEach(function(it){ if(idx) it.id=String(it.id)+'~'+idx; it._src=src; }); return arr; }
+        // ---------- crash guard ----------
+        // A connection too big for this device (e.g. a huge provider playlist on a TV) can crash the web engine
+        // while it is read, and the app would then reload and crash again forever. The loading steps and the
+        // connections in flight are written through the Android app (kept even if the engine crashes); on the
+        // next start a connection that was being read during a crash gets a strike, and after 2 it is switched
+        // off and reported to support ("Closed the app while loading"). Retry from support switches it back on.
+        var AB=window.ByoAndroid, inflight={};
+        function crumb(m){ try{ if(AB&&AB.crumb) AB.crumb(String(m)); }catch(e){} try{ libLog(m); }catch(e){} }
+        function phase(key, ph){ if(ph) inflight[key]=ph; else delete inflight[key]; try{ if(AB&&AB.setMark) AB.setMark('inflight', JSON.stringify(inflight)); }catch(e){} }
+        function strikesGet(){ try{ return JSON.parse((AB&&AB.getMark&&AB.getMark('strikes'))||'{}')||{}; }catch(e){ return {}; } }
+        function strikesSet(o){ try{ if(AB&&AB.setMark) AB.setMark('strikes', JSON.stringify(o)); }catch(e){} }
+        var CRASH_ERR='Closed the app while loading (too big for this device). Retry to load it again.';
+        function crashCheck(){ try{ if(!(AB&&AB.getMark)) return;
+            var gone=+AB.getMark('engineGoneAt')||0, prev={}; try{ prev=JSON.parse(AB.getMark('inflight')||'{}')||{}; }catch(e){}
+            AB.setMark('inflight','{}');
+            if(!gone||Date.now()-gone>10*60000||!Object.keys(prev).length) return;
+            AB.setMark('engineGoneAt','');
+            var keys=Object.keys(prev), reading=keys.filter(function(k){ return prev[k]==='read'; }), sus=reading.length?reading:keys;
+            var st=strikesGet(), changed=false;
+            sus.forEach(function(k){ st[k]=(st[k]||0)+1; var nm0=k.split('|')[0]; (Store.savedPlaylists||[]).forEach(function(pl){ if(keyOf(pl)===k) nm0=plName(pl); }); crumb('crash while loading '+nm0+' (strike '+st[k]+')');
+                if(st[k]>=2){ (Store.savedPlaylists||[]).forEach(function(pl){ if(keyOf(pl)===k&&!pl.off){ pl.off=true; pl.crashErr=CRASH_ERR; changed=true; crumb('switched off '+plName(pl)+' after 2 crashes');
+                    setTimeout(function(){ try{ setToast(plName(pl)+' was switched off: it closed the app while loading.'); }catch(_e){} },4000); } }); } });
+            strikesSet(st); if(changed) Store.save();
+        }catch(e){} }
+        function strikeClear(key){ var st=strikesGet(); if(st[key]){ delete st[key]; strikesSet(st); } }
         function loadOne(pl, idx, cb){
             var src={ idx:idx, key:keyOf(pl), name:plName(pl), kind:kindOf(pl), api:null };
             var out={ ok:false, src:src, live:[], movies:[], series:[], err:'' };
-            var finished=false; function fin(){ if(finished) return; finished=true; cb(out); }
+            var finished=false; function fin(){ if(finished) return; finished=true; phase(src.key,null);
+                crumb((out.ok?'loaded ':'did not load ')+src.name+(out.ok?(': '+out.live.length+' ch, '+out.movies.length+' movies, '+out.series.length+' series'):(' ('+String(out.err||'').slice(0,40)+')')));
+                if(out.ok) strikeClear(src.key); cb(out); }
+            phase(src.key,'download'); crumb('loading '+src.name+' ('+pl.mode+')');
             // Big provider playlists (live + movies + series in one file) can take minutes to download and sort on a phone.
             var guard=setTimeout(function(){ if(!out.ok&&!out.err) out.err='Timed out'; fin(); }, 300000);
             function end(){ clearTimeout(guard); fin(); }
             try{
             if(pl.mode==='m3u'){
                 Net.fetchText(pl.url,function(txt){
+                    crumb('downloaded '+src.name+': '+(String(txt).length/1048576).toFixed(1)+' MB'); phase(src.key,'read');
                     if(String(txt).indexOf('#EXTINF')===-1){ out.err='Not an M3U playlist'; return end(); }
                     var cls=Net.classifyM3U(Net.parseM3U(txt));
                     out.live=tagItems(cls.live.map(function(c,i){ c.id='live-'+i; c.order=i; c.epgGenre=null; c.desc='Channel from '+src.name+'.'; return c; }), idx, src);
@@ -126,7 +155,7 @@
                 xtreamCats(api, function(m){ xcats=m; one(); });
                 function one(){ if(--left===0){ if(xcats){ catApply(out.live,xcats.live); catApply(out.movies,xcats.vod); catApply(out.series,xcats.series); } out.ok=okAny; if(!okAny&&!out.err) out.err='The server did not answer'; end(); } }
                 Net.fetchJSON(api.liveStreams,function(arr){ if(arr&&!Array.isArray(arr)&&arr.user_info&&String(arr.user_info.auth)==='0') out.err='Wrong username or password'; if(Array.isArray(arr)){ okAny=true; out.live=tagItems(arr.map(function(o,i){ return {id:'live-'+(o.stream_id||i),name:o.name||'Channel',genre:o.category_name||('Cat '+(o.category_id||'')),logo:o.stream_icon||'',url:api.liveUrl(o.stream_id),streamId:o.stream_id,tvgId:o.epg_channel_id||'',epgGenre:null,order:i,desc:'Live channel from '+src.name+'.'}; }), idx, src); } one(); },function(e){ out.err=String(e||''); one(); });
-                Net.fetchJSON(api.vodStreams,function(arr){ if(Array.isArray(arr)){ okAny=true; out.movies=tagItems(arr.map(function(o,i){ return {id:'movie-'+(o.stream_id||i),title:o.name||'Movie',genre:o.category_name||('Cat '+(o.category_id||'')),year:(o.year||''),rating:(o.rating||o.rating_5based||'–'),plot:o.plot||o.description||'',gi:i,order:i,streamId:o.stream_id,tmdb:(o.tmdb||o.tmdb_id||''),
+                Net.fetchJSON(api.vodStreams,function(arr){ phase(src.key,'read'); if(Array.isArray(arr)){ okAny=true; out.movies=tagItems(arr.map(function(o,i){ return {id:'movie-'+(o.stream_id||i),title:o.name||'Movie',genre:o.category_name||('Cat '+(o.category_id||'')),year:(o.year||''),rating:(o.rating||o.rating_5based||'–'),plot:o.plot||o.description||'',gi:i,order:i,streamId:o.stream_id,tmdb:(o.tmdb||o.tmdb_id||''),
                     logo:(o.stream_icon||o.cover||o.cover_big||o.movie_image||''),url:api.vodUrl(o.stream_id,o.container_extension)}; }), idx, src); } one(); },function(){ one(); });
                 Net.fetchJSON(api.seriesList,function(arr){ if(Array.isArray(arr)){ okAny=true; out.series=tagItems(arr.map(function(o,i){ return {id:'series-'+(o.series_id||i),title:o.name||'Series',genre:o.category_name||('Cat '+(o.category_id||'')),year:(o.year||o.releaseDate||''),rating:(o.rating||'–'),plot:o.plot||'',gi:i,order:i,seasons:null,seriesId:o.series_id,tmdb:(o.tmdb||o.tmdb_id||''),
                     logo:(o.cover||o.cover_big||o.series_image||'')}; }), idx, src); } one(); },function(){ one(); });
@@ -140,7 +169,7 @@
                 function pid(o,k){ var p=o.ProviderIds||{}; return p[k]||p[k.toLowerCase()]||p[k.toUpperCase()]||''; }
                 function dedupe(items){ var seen={}, out2=[]; (items||[]).forEach(function(o){ if(!o||!o.Id||seen[o.Id]) return; seen[o.Id]=1; out2.push(o); }); return out2; }
                 function img(o){ return (o.ImageTags&&o.ImageTags.Primary)?eapi.imageUrl(o.Id,o.ImageTags.Primary):''; }
-                eapi.movies(function(res){ out.movies=tagItems(dedupe(res&&res.Items).map(function(o,i){ REG[o.Id]=eapi; var ct=(o.Container||'').split(',')[0]||'mp4';
+                eapi.movies(function(res){ phase(src.key,'read'); crumb('downloaded '+src.name+': '+((res&&res.Items)||[]).length+' movies'); out.movies=tagItems(dedupe(res&&res.Items).map(function(o,i){ REG[o.Id]=eapi; var ct=(o.Container||'').split(',')[0]||'mp4';
                     return {id:'movie-'+o.Id,title:o.Name||'Movie',genre:firstGenre(o),year:(o.ProductionYear||''),rating:(o.CommunityRating?Math.round(o.CommunityRating*10)/10:'–'),plot:o.Overview||'',gi:i,order:i,embyId:o.Id,embyContainer:ct,tmdb:pid(o,'Tmdb'),imdb:pid(o,'Imdb'),
                         logo:img(o), url:eapi.streamUrl(o.Id,ct)}; }), idx, src); one2(); }, function(){ one2(); });
                 eapi.series(function(res){ out.series=tagItems(dedupe(res&&res.Items).map(function(o,i){ REG[o.Id]=eapi;
@@ -259,7 +288,7 @@
             var pl=null; (Store.savedPlaylists||[]).forEach(function(x){ if(x.id===id) pl=x; });
             if(!pl) return cb({ ok:false, err:'That connection is no longer on this TV' });
             if(loading) return cb({ ok:false, err:'The TV is still loading its connections. Try again in a minute.' });
-            if(pl.off){ pl.off=false; Store.save(); }
+            if(pl.off||pl.crashErr){ pl.off=false; delete pl.crashErr; Store.save(); } strikeClear(keyOf(pl));
             if(!on()) return addFromPhone({ mode:pl.mode, name:pl.name, url:pl.url, epg:pl.epg, server:pl.server, user:pl.user, pass:pl.pass, via:'support' }, cb);
             var k=keyOf(pl), idx=-1;
             if(lastList&&lastResults&&lastTok===tok) lastList.forEach(function(x,i){ if(keyOf(x)===k) idx=i; });
@@ -428,6 +457,7 @@
                 var hide=forPhone&&pl.managed;   // the customer's phone never sees support's details
                 var o={ id:pl.id, name:plName(pl), mode:pl.mode, host:hide?'':hostOf(pl), user:hide?'':(pl.user||''), on:on()?!pl.off:(!pl.off&&act), active:act, managed:!!pl.managed, use:pl.use||null };
                 if(on()&&r){ o.ok=r.ok; o.err=r.ok?'':String(r.err||'').slice(0,80); o.live=r.live; o.movies=r.movies; o.series=r.series; }
+                if(pl.crashErr){ o.ok=false; o.err=pl.crashErr; }
                 else if(act){ o.ok=true; o.live=S.live.length; o.movies=S.movies.length; o.series=S.series.length; }
                 return o; });
             var keep={}, ks=Object.keys(results).sort(function(a,b){ return results[b].at-results[a].at; }).slice(0,12); ks.forEach(function(k){ keep[k]=results[k]; }); results=keep;
@@ -493,6 +523,7 @@
         function afterConnect(){ renderActive(); publish(); if(!on()) return false; setTimeout(function(){ reload({goHome:true}); },50); return true; }
         // On app launch: bring the user's library back (combined, or the single active connection).
         function boot(){
+            crashCheck();
             var list=bootList();
             if(!list.length||!list.every(snapOk)){ libLog('no saved copy for this kind of source; downloading'); return bootLoad(); }
             // Wait for the saved copy. A big library (tens of MB of JSON) can take well over the old

@@ -665,8 +665,10 @@ _rep("""    function parseM3U(t){ var lines=t.split(/\\r?\\n/),out=[],p=null;
         for(var i=0;i<lines.length;i++){ var l=lines[i].trim(); if(!l) continue;
             if(l.indexOf('#EXTINF')===0){ p={name:nm(l)||attr(l,'tvg-name')||'Unnamed',genre:attr(l,'group-title')||'Ungrouped',logo:attr(l,'tvg-logo'),tvgId:attr(l,'tvg-id'),url:''}; }
             else if(l.charAt(0)==='#'){ continue; } else { if(p){ p.url=l; out.push(p); p=null; } else out.push({name:l,genre:'Ungrouped',logo:'',url:l}); } }
-        return out; }""", """    function parseM3U(t){ var lines=t.split(/\\r?\\n/),out=[],p=null,pend=null,SO=window.__byoStreamOpts;
-        for(var i=0;i<lines.length;i++){ var l=lines[i].trim(); if(!l) continue;
+        return out; }""", """    function parseM3U(t){ var out=[],p=null,pend=null,SO=window.__byoStreamOpts,_pos=0,_n=t.length;
+        // Line by line, without first splitting the whole text into an array: a large provider playlist
+        // (tens of MB) split in one go could use up the TV web engine's memory and crash it.
+        while(_pos<_n){ var _e=t.indexOf('\\n',_pos); if(_e<0) _e=_n; var l=t.slice(_pos,_e).trim(); _pos=_e+1; if(!l) continue;
             if(l.indexOf('#EXTINF')===0){ p={name:nm(l)||attr(l,'tvg-name')||'Unnamed',genre:attr(l,'group-title')||'Ungrouped',logo:attr(l,'tvg-logo'),tvgId:attr(l,'tvg-id'),url:''}; p._o=pend||{}; pend=null; if(SO) SO.extinf(l,p._o); }
             else if(l.charAt(0)==='#'){ if(SO&&!/^#EXTM3U/i.test(l)){ if(p) SO.line(l,p._o); else SO.line(l,(pend=pend||{})); } continue; }
             else { var o=p?p._o:(pend||{}); var u=SO?SO.url(l,o):l; if(SO) SO.reg(u,o); if(o.drm&&p) p.drm=o.drm;

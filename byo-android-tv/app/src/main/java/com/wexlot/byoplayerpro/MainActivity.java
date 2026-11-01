@@ -157,6 +157,7 @@ public class MainActivity extends Activity {
         String wv = "";
         try { if (android.os.Build.VERSION.SDK_INT >= 26) { android.content.pm.PackageInfo pi = WebView.getCurrentWebViewPackage(); if (pi != null) wv = pi.packageName + " " + pi.versionName; } } catch (Throwable ignored) {}
         String last = ""; try { last = getSharedPreferences("byo_diag", MODE_PRIVATE).getString("last", ""); } catch (Exception ignored) {}
+        String crumbs = ""; try { crumbs = getSharedPreferences("byo_diag", MODE_PRIVATE).getString("crumbs", ""); } catch (Exception ignored) {}
         String ver = ""; try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
         android.widget.LinearLayout box = new android.widget.LinearLayout(this);
         box.setOrientation(android.widget.LinearLayout.VERTICAL); box.setGravity(android.view.Gravity.CENTER);
@@ -169,7 +170,8 @@ public class MainActivity extends Activity {
         d.setText((crashed ? "The TV's web engine crashed" : "Android closed the TV's web engine (low memory)") + " 3 times while loading.\n\n"
                 + "Please send a photo of this screen to BYO support.\n\n"
                 + "App " + ver + " \u00B7 " + (wv.isEmpty() ? "WebView unknown" : wv) + " \u00B7 Android " + android.os.Build.VERSION.RELEASE + " \u00B7 " + android.os.Build.MODEL
-                + (last.isEmpty() ? "" : ("\nLast issue: " + last)));
+                + (last.isEmpty() ? "" : ("\nLast issue: " + last))
+                + (crumbs.isEmpty() ? "" : ("\n\nLast steps:\n" + crumbs)));
         android.widget.Button b = new android.widget.Button(this);
         b.setText("Try again"); b.setFocusable(true);
         b.setOnClickListener(v -> { goneTimes.clear(); root.removeView(box); buildWebView(true); });
@@ -255,6 +257,7 @@ public class MainActivity extends Activity {
                 boolean crashed = false; int prio = -1;
                 try { if (android.os.Build.VERSION.SDK_INT >= 26) { crashed = detail.didCrash(); prio = detail.rendererPriorityAtExit(); } } catch (Throwable ignored) {}
                 noteIssue(MainActivity.this, (crashed ? "screen engine crashed" : "screen engine closed by Android (low memory)") + " p" + prio);
+                try { getSharedPreferences("byo_marks", MODE_PRIVATE).edit().putString("engineGoneAt", String.valueOf(System.currentTimeMillis())).commit(); } catch (Exception ignored) {}
                 // The same failure over and over (e.g. the page kills the engine while it loads) must not turn
                 // into an endless restart: after 3 in 2 minutes, stop and say what happened.
                 long now = System.currentTimeMillis(); goneTimes.add(now);
@@ -428,6 +431,26 @@ public class MainActivity extends Activity {
 
             @JavascriptInterface
             public void noteJsError(final String msg) { noteIssue(MainActivity.this, "page error: " + msg); }
+
+            // Loading trail and markers, written straight to storage (commit) so they survive a crash of
+            // the web engine: the page uses them to see which connection was loading when it crashed.
+            @JavascriptInterface
+            public void crumb(final String msg) {
+                try { android.content.SharedPreferences sp = getSharedPreferences("byo_diag", MODE_PRIVATE);
+                    String when = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
+                    String all = sp.getString("crumbs", ""); String line = when + " " + (msg.length() > 120 ? msg.substring(0, 120) : msg);
+                    String[] parts = (all.isEmpty() ? new String[0] : all.split("\n")); StringBuilder b = new StringBuilder();
+                    int from = Math.max(0, parts.length - 7); for (int i = from; i < parts.length; i++) b.append(parts[i]).append("\n");
+                    b.append(line); sp.edit().putString("crumbs", b.toString()).commit(); } catch (Exception ignored) {}
+            }
+            @JavascriptInterface
+            public void setMark(final String key, final String value) {
+                try { getSharedPreferences("byo_marks", MODE_PRIVATE).edit().putString(key, value == null ? "" : value).commit(); } catch (Exception ignored) {}
+            }
+            @JavascriptInterface
+            public String getMark(final String key) {
+                try { return getSharedPreferences("byo_marks", MODE_PRIVATE).getString(key, ""); } catch (Exception e) { return ""; }
+            }
 
             @JavascriptInterface
             public String lastIssue() {
