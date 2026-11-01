@@ -2885,6 +2885,7 @@ html.no-topbar #app{ padding-top:0 !important; }
 
 /* ===== 77. Remote help ===== */
 .support-ov{ position:absolute; inset:0; z-index:400; background:rgba(4,8,14,.82); display:flex; align-items:center; justify-content:center; }
+#support-msg.support-ov{ z-index:410; }   /* a message from support always sits above the remote help screen */
 .support-ov.hidden{ display:none !important; }
 .sup-card{ width:min(880px,86%); background:#0f151d; border:1px solid #1a2330; border-radius:24px; padding:40px 44px; box-shadow:0 30px 80px rgba(0,0,0,.6); color:#f2f5f8; }
 .sup-head{ display:flex; align-items:center; gap:18px; }
@@ -2993,6 +2994,12 @@ html.light .bl-pay{ background:#eaf7ec; } html.light .bl-pay.telebirr{ backgroun
 .sl-s b{ color:#fff; }
 .sl-c{ margin-top:clamp(6px,1.2vmin,10px); font-size:clamp(12px,1.7vmin,16px); color:#8fbfb0; font-weight:700; letter-spacing:.08em; }
 #support-ov.is-live .sup-status{ color:#8d99a6 !important; }
+.sup-timer{ text-align:center; margin:clamp(10px,1.8vmin,16px) 0 clamp(2px,.6vmin,6px); font-size:clamp(14px,2.2vmin,20px); color:#9fb0c0; font-variant-numeric:tabular-nums; }
+.sup-timer b{ color:#fff; font-weight:800; letter-spacing:.03em; }
+.sup-timer.hidden{ display:none; }
+.sup-status:empty{ display:none !important; }
+.sl-s.sl-after{ color:#b5e9d8; font-size:clamp(13px,2.1vmin,21px); }
+#support-ov .sup-acts{ justify-content:center; }
 #support-ov.is-live .sup-ic{ background:rgba(43,212,167,.16) !important; color:#2bd4a7 !important; }
 .bp-steps p{ margin:0; flex:1; min-width:0; }
 

@@ -61,10 +61,10 @@
         function ov(){ var o=$('support-ov'); if(o) return o;
             o=document.createElement('div'); o.id='support-ov'; o.className='support-ov hidden';
             o.innerHTML='<div class="sup-card"><div class="sup-head"><span class="sup-ic">'+icon('i-bell')+'</span><div><div class="sup-title">Remote help</div><div class="sup-sub" id="sup-sub"></div></div></div>'+
-                '<div class="sup-live hidden" id="sup-live"></div><div class="sup-code" id="sup-code"></div><div class="sup-status" id="sup-status"></div><div class="sup-log" id="sup-log"></div>'+
-                '<div class="sup-acts"><button class="s-btn" id="sup-hide" data-focusable="true" tabindex="0">Keep help on &amp; close</button><button class="s-btn danger" id="sup-end" data-focusable="true" tabindex="0">End help</button></div></div>';
+                '<div class="sup-live hidden" id="sup-live"></div><div class="sup-code" id="sup-code"></div><div class="sup-timer" id="sup-timer"></div><div class="sup-status" id="sup-status"></div><div class="sup-log" id="sup-log"></div>'+
+                '<div class="sup-acts"><button class="s-btn danger" id="sup-end" data-focusable="true" tabindex="0">End help</button></div></div>';
             ($('stage')||document.body).appendChild(o);
-            $('sup-hide').addEventListener('click', hide); $('sup-end').addEventListener('click', function(){ end(true); });
+            $('sup-end').addEventListener('click', function(){ end(true); });
             return o; }
         // Where the remote was before a help screen opened. Focus goes back there a moment AFTER the
         // screen closes, so the OK press that closed it can't also press whatever is underneath
@@ -74,7 +74,7 @@
         function restore(el, fallback){ setTimeout(function(){ try{ if(usable(el)) Nav.setFocus(el); else if(fallback&&usable(fallback)) Nav.setFocus(fallback); else Nav.focusFirst(); }catch(e){} }, 300); }
         function syncWall(){ var on=isOpen()||msgOpen(); document.body.classList.toggle('sup-on', on);
             if(!on){ try{ if(!Billing.locked()&&Billing.isWallOpen()) Billing.closeWall(); }catch(e){} try{ if(Billing.locked()&&!Billing.isWallOpen()) setTimeout(function(){ if(!isOpen()&&!msgOpen()&&Billing.locked()) Billing.openWall('expired'); },350); }catch(e){} } }
-        function show(){ if(!isOpen()) backTo=Nav.current; document.body.classList.add('sup-on'); ov().classList.remove('hidden'); paint(); setTimeout(function(){ Nav.setFocus($('sup-hide')); },30); }
+        function show(){ if(!isOpen()) backTo=Nav.current; document.body.classList.add('sup-on'); ov().classList.remove('hidden'); paint(); setTimeout(function(){ Nav.setFocus($('sup-end')); },30); }
         function hide(){ var o=$('support-ov'); if(o) o.classList.add('hidden'); try{ renderCard(); }catch(e){} if(!msgOpen()) restore(backTo, $('btn-support')); syncWall(); }
         function isOpen(){ var o=$('support-ov'); return !!(o&&!o.classList.contains('hidden')); }
         function paint(){ if(!$('support-ov')) return;
@@ -83,13 +83,22 @@
             var live=(st==='connected'); $('sup-code').classList.toggle('hidden', live); $('support-ov').classList.toggle('is-live', live);
             $('sup-live').classList.toggle('hidden', !live);
             if(live) $('sup-live').innerHTML='<div class="sl-top"><span class="sl-dot"></span><span class="sl-t">Support is connected</span></div>'+
-                '<div class="sl-s">'+esc(agent||'BYO support')+' is working on your TV now. This usually takes <b>less than 5 minutes</b>.</div>'+(code?'<div class="sl-c">Code '+esc(code)+'</div>':'');
+                '<div class="sl-s">'+esc(agent||'BYO support')+' is setting up your TV now. This usually takes <b>less than 10 minutes</b>.</div>'+
+                '<div class="sl-s sl-after">When support is done, you will be able to watch Live TV, movies and series.</div>'+(code?'<div class="sl-c">Code '+esc(code)+'</div>':'');
             var tid=String(devKey()||'').slice(-6).toUpperCase();
             $('sup-sub').textContent= st==='connected' ? 'Changes support makes show up below.' :
                                       st==='waiting' ? 'Read this code to BYO support. It works for 15 minutes.'+(tid?' TV ID '+tid+'.':'') :
                                       st==='opening' ? 'Getting a code…' : 'Help has ended.';
-            $('sup-status').textContent= st==='waiting' ? 'Waiting for support to connect…' : st==='connected' ? 'You can keep watching. Press End help at any time.' : (sess&&sess.err)||'';
+            $('sup-status').textContent= st==='waiting' ? 'Waiting for support to connect…' : st==='connected' ? '' : (sess&&sess.err)||''; tickTimer();
             $('sup-log').innerHTML=log.slice(-6).reverse().map(function(l){ return '<div class="sup-li '+(l.ok===false?'err':(l.ok?'ok':''))+'"><b>'+esc(l.t)+'</b>'+(l.d?'<span>'+esc(l.d)+'</span>':'')+'</div>'; }).join(''); }
+        // Time left, from the same end time the support console shows ("Ends in"). It moves when support adds time.
+        function fmtLeft(ms){ var t=Math.max(0,Math.floor(ms/1000)), m=Math.floor(t/60), sec=t%60; return m+':'+(sec<10?'0':'')+sec; }
+        function tickTimer(){ var el=$('sup-timer'); if(!el) return;
+            var st=sess?sess.status:'', exp=sess&&sess.exp;
+            if(!exp||(st!=='waiting'&&st!=='connected')){ el.textContent=''; el.classList.add('hidden'); return; }
+            el.classList.remove('hidden');
+            el.innerHTML=(st==='connected'?'Time remaining ':'Code expires in ')+'<b>'+fmtLeft(exp-Date.now())+'</b>'; }
+        setInterval(function(){ try{ if(isOpen()) tickTimer(); }catch(e){} }, 1000);
         function note(t, d, ok){ log.push({t:t, d:d||'', ok:ok}); if(log.length>30) log=log.slice(-30); paint(); }
 
         // Card at the top of Settings > Connection.
@@ -129,14 +138,14 @@
             Supa.rpc('byo_support_poll',{ p_session_id:sess.id, p_token:sess.token, p_state:snapshot() },function(err,res){ busy=false;
                 if(err||!res) return;                                   // network blip: try again next tick
                 if(res.error){ note('Help stopped', res.error, false); sess.status='ended'; finish(); return; }
-                if(res.claimed_by) agent=res.claimed_by;
+                if(res.claimed_by) agent=res.claimed_by; if(res.expires_at){ var ex=Date.parse(res.expires_at); if(ex&&ex!==sess.exp){ sess.exp=ex; save(); } }
                 if(res.status!==sess.status){ var was=sess.status; sess.status=res.status; save();
-                    if(res.status==='connected'&&was!=='connected'){ setToast('BYO support is connected.'); note('Support connected', agent);
+                    if(res.status==='connected'&&was!=='connected'){
                         try{ if(typeof window.__onSupportConnected==='function'){ var f=window.__onSupportConnected; window.__onSupportConnected=null; f(agent); } }catch(e){} }
                     if(res.status==='ended'||res.status==='expired'){
                         if(res.status==='expired') setToast(res.status==='expired'&&was==='waiting'?'The help code expired.':'Remote help has ended.');
                         else if(res.ended_by==='timeout') { note('Help time is up',''); message('Remote help has ended','The time for this help session ran out. If you still need help, open Get remote help again for a new code.', true); }
-                        else { note('Support has finished',''); message('All done!', (agent?agent+' from ':'')+'BYO support has finished helping you.\nHappy watching!', true); }
+                        else { note('Support has finished',''); message('All done!', (agent?agent+' from ':'')+'BYO support has finished setting up your TV.\nYou can now watch Live TV, movies and series. Happy watching!', true); }
                         finish(); return; }
                     paint(); renderCard(); }
                 (res.commands||[]).forEach(run); }); }
@@ -286,8 +295,8 @@
                 '<div class="sup-acts"><button class="s-btn primary" id="sup-msg-ok" data-focusable="true" tabindex="0">Start watching</button></div></div>';
             m._done=true; m.classList.remove('hidden'); document.body.classList.add('sup-on'); $('sup-msg-ok').addEventListener('click', closeMessage); setTimeout(function(){ Nav.setFocus($('sup-msg-ok')); },30); }
         function closeMessage(){ var m=$('support-msg'), done=!!(m&&m._done); if(m) m.classList.add('hidden');
-            if(done&&isOpen()){ var o=$('support-ov'); if(o) o.classList.add('hidden'); try{ renderCard(); }catch(e){} restore(backTo, $('btn-support')); syncWall(); return; }
-            if(isOpen()) restore($('sup-hide')); else restore(msgBackTo||backTo, $('btn-support')); syncWall(); }
+            if(done&&isOpen()&&!active()){ var o=$('support-ov'); if(o) o.classList.add('hidden'); try{ renderCard(); }catch(e){} restore(backTo, $('btn-support')); syncWall(); return; }
+            if(isOpen()) restore($('sup-end')); else restore(msgBackTo||backTo, $('btn-support')); syncWall(); }
         function msgOpen(){ var m=$('support-msg'); return !!(m&&!m.classList.contains('hidden')); }
         function scope(){ if(msgOpen()) return $('support-msg'); if(isOpen()) return $('support-ov'); return null; }
         function back(){ if(msgOpen()){ closeMessage(); return true; } if(isOpen()){ hide(); return true; } return false; }
