@@ -433,7 +433,12 @@ public class MainActivity extends Activity {
             // list the TV can hold: short keys, no plots, and when it is still over budgetBytes, the most recently
             // added titles are kept. Reads the file twice as a stream, so memory stays small.
             @JavascriptInterface
-            public void slimXtream(final String id, final String fileUrl, final String kind, final double budgetBytes) {
+            public void slimXtream(final String id, final String fileUrl, final String kind, final double budgetBytes) { slimXtreamFull(id, fileUrl, kind, budgetBytes, ""); }
+
+            // Same, and when titles are left out, the whole compact list is also kept on the TV (one title per line)
+            // under fullName, so searchFull can still find every title.
+            @JavascriptInterface
+            public void slimXtreamFull(final String id, final String fileUrl, final String kind, final double budgetBytes, final String fullName) {
                 new Thread(new Runnable() { public void run() {
                     String status = "err", detail = "", path = "";
                     try {
@@ -463,16 +468,52 @@ public class MainActivity extends Activity {
                         java.io.Writer w = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(dst), "UTF-8"), 65536);
                         r = new android.util.JsonReader(new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(src), "UTF-8"), 65536));
                         r.setLenient(true); r.beginArray(); w.write("["); boolean first = true; int kept = 0;
+                        java.io.Writer fw = null;
+                        if (cut != Long.MIN_VALUE && fullName != null && fullName.length() > 0)
+                            fw = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(new java.io.File(getFilesDir(), "full_" + fullName.replaceAll("[^A-Za-z0-9_]", "") + ".txt")), "UTF-8"), 65536);
                         while (r.hasNext()) {
                             String[] rec = readRec(r, kind);
+                            if (fw != null) { fw.write(rec[0]); fw.write("\n"); }
                             if (cut != Long.MIN_VALUE && parseLong(rec[1]) < cut) continue;
                             if (!first) w.write(","); w.write(rec[0]); first = false; kept++;
                         }
-                        w.write("]"); w.close(); r.close();
+                        w.write("]"); w.close(); r.close(); if (fw != null) fw.close();
                         try { src.delete(); } catch (Exception ignored) {}
                         status = "ok"; path = "file://" + dst.getAbsolutePath();
                         detail = "size:" + dst.length() + ";kept:" + kept + ";total:" + n;
                     } catch (Throwable e) { detail = "slim:" + e.getClass().getSimpleName(); }
+                    final String js = "window.__byoFetchCb&&window.__byoFetchCb(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(status) + ","
+                            + org.json.JSONObject.quote(detail) + "," + org.json.JSONObject.quote(path) + ")";
+                    runOnUiThread(new Runnable() { public void run() { if (webView != null) webView.evaluateJavascript(js, null); } });
+                } }).start();
+            }
+
+            // Look through a full list kept by slimXtreamFull for titles containing every word of the query.
+            // Answers through __byoFetchCb with a file holding a JSON array of up to max compact records.
+            @JavascriptInterface
+            public void searchFull(final String id, final String fullName, final String query, final int max) {
+                new Thread(new Runnable() { public void run() {
+                    String status = "err", detail = "", path = "";
+                    try {
+                        java.io.File f = new java.io.File(getFilesDir(), "full_" + fullName.replaceAll("[^A-Za-z0-9_]", "") + ".txt");
+                        if (!f.exists()) throw new java.io.FileNotFoundException("nofull");
+                        String[] words = query.toLowerCase(java.util.Locale.ROOT).trim().split("\\s+");
+                        java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(f), "UTF-8"), 65536);
+                        java.io.File out = new java.io.File(getCacheDir(), "sf_" + id.replaceAll("[^A-Za-z0-9]", "") + ".json");
+                        java.io.Writer w = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(out), "UTF-8"));
+                        w.write("["); int n = 0; String line;
+                        while ((line = r.readLine()) != null && n < max) {
+                            String low = line.toLowerCase(java.util.Locale.ROOT); boolean ok = true;
+                            for (String wd : words) if (wd.length() > 0 && low.indexOf(wd) < 0) { ok = false; break; }
+                            if (!ok) continue;
+                            try { String nm = new org.json.JSONObject(line).optString("n", "").toLowerCase(java.util.Locale.ROOT);
+                                for (String wd : words) if (wd.length() > 0 && nm.indexOf(wd) < 0) { ok = false; break; } } catch (Exception e) { ok = false; }
+                            if (!ok) continue;
+                            if (n > 0) w.write(","); w.write(line); n++;
+                        }
+                        w.write("]"); w.close(); r.close();
+                        status = "ok"; path = "file://" + out.getAbsolutePath(); detail = "found:" + n;
+                    } catch (Throwable e) { detail = "search:" + e.getClass().getSimpleName(); }
                     final String js = "window.__byoFetchCb&&window.__byoFetchCb(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(status) + ","
                             + org.json.JSONObject.quote(detail) + "," + org.json.JSONObject.quote(path) + ")";
                     runOnUiThread(new Runnable() { public void run() { if (webView != null) webView.evaluateJavascript(js, null); } });

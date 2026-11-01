@@ -1,6 +1,6 @@
 {
-  "versionCode": 216,
-  "versionName": "3.37.31",
+  "versionCode": 217,
+  "versionName": "3.37.32",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Large provider playlists now load on TV through the provider lists: every live channel and series, and the newest movies the TV can hold. No more restarts."
+  "notes": "Every movie and series from large providers is now reachable on TV: opening a genre loads all of it, and search looks through the full list."
 }

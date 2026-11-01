@@ -556,6 +556,18 @@ _rep("""        rawGet(url, function(body){ ok(body); }, function(reason){
                 if(st==='ok'&&path){ rawGet(path,function(body){ ok(body); },function(){ err(window.__netErrText('read')); }); }
                 else err(window.__netErrText(detail||reason)); })) return;
             // On failure, fall through the proxy list (unless disabled).""", 'nativefetch')
+# Titles a big provider list could not fit at load time: the genre picker offers every category, opening one loads
+# all of it, and search also looks through the provider's full list kept on the TV.
+_rep("        var items = isChan ? channelsOf(list) : genresOf(list);",
+     "        var items = isChan ? channelsOf(list) : genresOf(list); if(!isChan&&window.__byoExtraGenres){ try{ window.__byoExtraGenres(kind).forEach(function(g){ if(items.indexOf(g)<0) items.push(g); }); }catch(_e){} }", 'extragenres')
+_rep("""                else { if(isMovies) S.moviesGenre=val; else S.seriesGenre=val; }
+                closeCatPicker(); renderCatBar(kind); isMovies?renderMovies():renderSeries();""",
+"""                else { if(isMovies) S.moviesGenre=val; else S.seriesGenre=val; }
+                closeCatPicker(); renderCatBar(kind); isMovies?renderMovies():renderSeries();
+                if(!isChan){ try{ window.__byoFillGenre&&window.__byoFillGenre(kind,val); }catch(_e){} }""", 'fillgenre')
+_rep("""            renderSearchResults(keepFilterFocus, res); }); }""",
+"""            renderSearchResults(keepFilterFocus, res);
+            try{ if(window.__byoDeepSearch) window.__byoDeepSearch(q0,function(n){ if(n&&SEARCH.q===q0&&SEARCH.filter===f0&&$('view-search').classList.contains('active-view')){ try{ Search.invalidate&&Search.invalidate(); }catch(_e){} renderSearchAsync(keepFilterFocus); } }); }catch(_e){} }); }""", 'deepsearch')
 _rep("err('Could not load — the host blocks browser requests and no proxy succeeded. This works directly on the TV.');", "err(window.__netErrText(reason));", 'errtext')
 
 for _v in ['live','evs','soon','teamEvents','byPref']:

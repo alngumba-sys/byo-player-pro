@@ -175,7 +175,7 @@
                     if(n<60) setTimeout(function(){ tryApply(n+1); }, 5000); })(0); }); }
         // Provider list (Xtream JSON) in the Android app: downloaded natively, made compact natively (short keys, no
         // plots, newest titles first when it is over budget), then read into the page.
-        function listViaNative(url, kind, budgetMB, src, ok, bad){
+        function listViaNative(url, kind, budgetMB, src, ok, bad, fullName){
             if(!(AB&&AB.slimXtream&&window.__nativeFetch)) return Net.fetchJSON(url,function(a){ ok(a,''); },bad);
             var MB=1048576;
             if(!window.__nativeFetch(url,function(st,detail,path){
@@ -188,14 +188,73 @@
                     crumb(src.name+' '+kind+': '+num('kept')+' of '+num('total')+', '+(num('size')/MB).toFixed(1)+' MB');
                     phase(src.key,'read');
                     var x=new XMLHttpRequest(); try{ x.open('GET',p2,true); }catch(e){ return bad('read'); }
-                    x.onload=function(){ var a=null; try{ a=JSON.parse(x.responseText); }catch(e){} x=null; if(Array.isArray(a)) ok(a,note); else bad('json'); };
+                    x.onload=function(){ var a=null; try{ a=JSON.parse(x.responseText); }catch(e){} x=null; if(Array.isArray(a)) ok(a,note,{kept:num('kept'),total:num('total')}); else bad('json'); };
                     x.onerror=function(){ bad('read'); }; x.send(); };
-                try{ AB.slimXtream(id,path,kind,budgetMB*MB); }catch(e){ delete window.__byoFetchCbs[id]; bad('slim'); } }, 600*MB)) Net.fetchJSON(url,function(a){ ok(a,''); },bad); }
+                try{ if(fullName&&AB.slimXtreamFull) AB.slimXtreamFull(id,path,kind,budgetMB*MB,fullName); else AB.slimXtream(id,path,kind,budgetMB*MB); }catch(e){ delete window.__byoFetchCbs[id]; bad('slim'); } }, 600*MB)) Net.fetchJSON(url,function(a){ ok(a,''); },bad); }
         function cimg(u){ u=u||''; return u.charAt(0)==='~'?('https://image.tmdb.org/t/p/w342/'+u.slice(1)):u; }
         function cx(o){ return { n:(o.n!=null?o.n:o.name)||'', i:(o.i!=null?o.i:(o.stream_id!=null?o.stream_id:o.series_id)), c:(o.c!=null?o.c:o.category_id),
             l:cimg(o.l!=null?o.l:(o.stream_icon||o.cover||'')), x:(o.x||o.container_extension||''), e:(o.e!=null?o.e:(o.epg_channel_id||'')),
             y:(o.y||o.year||o.releaseDate||''), r:(o.r||o.rating||'–'), t:(o.t||o.tmdb_id||o.tmdb||''), g:(o.g||o.genre||'') }; }
         function xLimits(){ var lim=8; try{ lim=+AB.m3uLimitMb()||8; }catch(e){} return lim; }
+        function mapX(kind, api, o0, i){ var o=cx(o0);
+            if(kind==='movies') return {id:'movie-'+(o.i||i),title:o.n||'Movie',genre:'Cat '+(o.c||''),year:o.y,rating:o.r,plot:'',gi:i,order:i,streamId:o.i,tmdb:o.t,logo:o.l,url:api.vodUrl(o.i,o.x)};
+            return {id:'series-'+(o.i||i),title:o.n||'Series',genre:'Cat '+(o.c||''),year:o.y,rating:o.r,plot:'',gi:i,order:i,seasons:null,seriesId:o.i,tmdb:o.t,logo:o.l}; }
+        function fullNameOf(src, kind){ var h=0, k=String(src.key); for(var i=0;i<k.length;i++){ h=((h<<5)-h+k.charCodeAt(i))|0; } return kind+'_'+(h>>>0).toString(36); }
+        // ---------- titles the TV could not hold at load time ----------
+        // PARTIAL[key].movies / .series is set when a provider list was cut to the newest titles. The rest stay
+        // reachable: opening a category fetches that whole category, and search looks through the full list
+        // kept on the TV. Whatever is found is added to the library for this session.
+        var PARTIAL={};
+        function partials(kind){ var a=[]; Object.keys(PARTIAL).forEach(function(k){ var P=PARTIAL[k]; if(P&&P[kind]&&!(P.src&&isOffKey(k))) a.push(P); }); return a; }
+        function isOffKey(k){ var off=false; (Store.savedPlaylists||[]).forEach(function(pl){ if(keyOf(pl)===k&&pl.off) off=true; }); return off; }
+        function addFound(P, kind, arr){ var listOut=P.out[kind], have={}, idf=kind==='movies'?'streamId':'seriesId', added=[];
+            for(var i=0;i<listOut.length;i++) have[String(listOut[i][idf])]=1;
+            var base=listOut.length;
+            arr.forEach(function(o0,i){ var it=mapX(kind,P.api,o0,base+i); if(have[String(it[idf])]) return; have[String(it[idf])]=1; added.push(it); });
+            if(!added.length) return 0;
+            tagItems(added, P.idx, P.src);
+            if(P.cats) catApply(added, kind==='movies'?P.cats.vod:P.cats.series);
+            added.forEach(function(it){ listOut.push(it); (kind==='movies'?S.movies:S.series).push(it); });
+            try{ Search.invalidate&&Search.invalidate(); }catch(_e){}
+            return added.length; }
+        function catNamesOf(P, kind){ var m=P.cats&&(kind==='movies'?P.cats.vod:P.cats.series); return m||{}; }
+        // Category names the loaded titles do not cover yet, so the genre picker still offers them.
+        function extraGenres(kind){ var out=[]; var Ps=partials(kind); if(!Ps.length) return out;
+            var seen={}; (kind==='movies'?S.movies:S.series).forEach(function(x){ if(x&&x.genre) seen[String(x.genre).trim().toLowerCase()]=1; });
+            Ps.forEach(function(P){ var m=catNamesOf(P,kind); Object.keys(m).forEach(function(id){ var nm=m[id]; if(nm&&!seen[nm.trim().toLowerCase()]){ seen[nm.trim().toLowerCase()]=1; out.push(nm); } }); });
+            return out; }
+        function fillGenre(kind, genre, cb){ cb=cb||function(){}; if(!genre||genre==='All') return cb(0);
+            var Ps=partials(kind), jobs=[];
+            Ps.forEach(function(P){ var m=catNamesOf(P,kind), st=P[kind];
+                Object.keys(m).forEach(function(id){ var nm=m[id]; if(st.done[id]) return;
+                    var hit=false; try{ hit=(typeof matchGenre==='function')?matchGenre({genre:nm},genre):(nm.toLowerCase()===String(genre).toLowerCase()); }catch(e){ hit=nm.toLowerCase()===String(genre).toLowerCase(); }
+                    if(hit) jobs.push({P:P,id:id,name:nm}); }); });
+            if(!jobs.length) return cb(0);
+            var total=0, left=jobs.length; try{ setToast('Loading all '+(kind==='movies'?'movies':'series')+' in '+genre+'…'); }catch(_e){}
+            jobs.forEach(function(j){ j.P[kind].done[j.id]=1;
+                var url=(kind==='movies'?j.P.api.vodStreams:j.P.api.seriesList)+'&category_id='+encodeURIComponent(j.id);
+                listViaNative(url, kind==='movies'?'movie':'series', j.P.lim, j.P.src, function(arr){ total+=addFound(j.P,kind,arr); arr=null; fin(); },
+                    function(e){ j.P[kind].done[j.id]=0; crumb('category '+j.name+' did not load ('+e+')'); fin(); }); });
+            function fin(){ if(--left) return; crumb(genre+': '+total+' more '+kind+' loaded'); cb(total); } }
+        var deepCache={};
+        function deepSearch(q, cb){ q=String(q||'').trim().toLowerCase(); if(q.length<3||!(AB&&AB.searchFull)) return cb(0);
+            var jobs=[]; ['movies','series'].forEach(function(kind){ partials(kind).forEach(function(P){ if(!P[kind].searched[q]) jobs.push({P:P,kind:kind}); }); });
+            if(!jobs.length) return cb(0);
+            var total=0, left=jobs.length;
+            jobs.forEach(function(j){ j.P[j.kind].searched[q]=1;
+                var id='q'+Date.now()+Math.floor(Math.random()*1e6);
+                window.__byoFetchCbs[id]=function(st,detail,path){
+                    if(st!=='ok'||!path) return fin();
+                    var x=new XMLHttpRequest(); try{ x.open('GET',path,true); }catch(e){ return fin(); }
+                    x.onload=function(){ var a=null; try{ a=JSON.parse(x.responseText); }catch(e){} if(Array.isArray(a)) total+=addFound(j.P,j.kind,a); fin(); };
+                    x.onerror=fin; x.send(); };
+                try{ AB.searchFull(id, j.P[j.kind].full, q, 300); }catch(e){ delete window.__byoFetchCbs[id]; fin(); } });
+            function fin(){ if(--left) return; cb(total); } }
+        window.__byoExtraGenres=extraGenres;
+        window.__byoFillGenre=function(kind, genre){ fillGenre(kind, genre, function(n){ if(!n) return;
+            try{ if(kind==='movies'&&S.moviesGenre===genre&&typeof renderMovies==='function') renderMovies(); if(kind==='series'&&S.seriesGenre===genre&&typeof renderSeries==='function') renderSeries(); }catch(_e){}
+            try{ setToast(n+' more '+(kind==='movies'?'movies':'series')+' in '+genre+'.'); }catch(_e){} }); };
+        window.__byoDeepSearch=deepSearch;
         function vodViaXtream(pl, src, out, idx, done){
             var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(!sx){ crumb(src.name+': movies and series left out (not an Xtream link)'); return done(); }
             var api; try{ api=xtreamApi(sx.server,sx.user,sx.pass); }catch(e){ return done(); }
@@ -205,13 +264,14 @@
                 if(mv) out.movies=mv; if(se) out.series=se;
                 if(xcats){ catApply(out.movies,xcats.vod); catApply(out.series,xcats.series); }
                 crumb(src.name+': '+out.movies.length+' movies, '+out.series.length+' series'); done(); }
-            xtreamCats(api, function(m){ xcats=m; one(); });
-            listViaNative(api.vodStreams, 'movie', lim, src, function(arr){ mv=tagItems(arr.map(function(o0,i){ var o=cx(o0); return {id:'movie-'+(o.i||i),title:o.n||'Movie',genre:'Cat '+(o.c||''),year:o.y,rating:o.r,plot:'',gi:i,order:i,streamId:o.i,tmdb:o.t,
-                    logo:o.l,url:api.vodUrl(o.i,o.x)}; }), idx, src); arr=null; one(); },
-                function(e){ crumb(src.name+': movies not loaded ('+e+')'); one(); });
-            listViaNative(api.seriesList, 'series', lim, src, function(arr){ se=tagItems(arr.map(function(o0,i){ var o=cx(o0); return {id:'series-'+(o.i||i),title:o.n||'Series',genre:'Cat '+(o.c||''),year:o.y,rating:o.r,plot:'',gi:i,order:i,seasons:null,seriesId:o.i,tmdb:o.t,
-                    logo:o.l}; }), idx, src); arr=null; one(); },
-                function(e){ crumb(src.name+': series not loaded ('+e+')'); one(); });
+            xtreamCats(api, function(m){ xcats=m; if(PARTIAL[src.key]) PARTIAL[src.key].cats=m; one(); });
+            var P=PARTIAL[src.key]={ api:api, src:src, idx:idx, out:out, lim:lim, cats:null, movies:null, series:null };
+            listViaNative(api.vodStreams, 'movie', lim, src, function(arr,note,meta){ mv=tagItems(arr.map(function(o0,i){ return mapX('movies',api,o0,i); }), idx, src); arr=null;
+                    if(meta&&meta.kept<meta.total) P.movies={ full:fullNameOf(src,'movies'), kept:meta.kept, total:meta.total, done:{}, searched:{} }; one(); },
+                function(e){ crumb(src.name+': movies not loaded ('+e+')'); one(); }, fullNameOf(src,'movies'));
+            listViaNative(api.seriesList, 'series', lim, src, function(arr,note,meta){ se=tagItems(arr.map(function(o0,i){ return mapX('series',api,o0,i); }), idx, src); arr=null;
+                    if(meta&&meta.kept<meta.total) P.series={ full:fullNameOf(src,'series'), kept:meta.kept, total:meta.total, done:{}, searched:{} }; one(); },
+                function(e){ crumb(src.name+': series not loaded ('+e+')'); one(); }, fullNameOf(src,'series'));
         }
         // An M3U link from an Xtream panel (get.php?username=..&password=..) in the Android app: load it through the
         // provider's lists instead of the playlist file (which can be hundreds of MB). Live channels first; movies and
