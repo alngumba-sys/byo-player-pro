@@ -157,7 +157,7 @@
             case 'connection.remove': return 'Connection removed';
             case 'settings': return 'Settings changed';
             case 'message': return 'Message from support';
-            case 'refresh': return 'Library refreshed';
+            case 'refresh': return p.id?('Loaded again: '+(p.name||'connection')):'Library refreshed';
             case 'signout': return 'Signed out';
             case 'billing.refresh': case 'trial.add': case 'access.set': return 'Trial / subscription updated';
             case 'flags': return 'Sections updated';
@@ -228,7 +228,14 @@
                     setToast('Support changed: '+done.join(', ')+'.');
                     return ack(cmd,true,done.join(', ')); }
                 case 'message': { message(p.title||'Message from BYO support', p.text||''); return ack(cmd,true,'Shown on the TV'); }
-                case 'refresh': { setToast('Support is refreshing your library…'); try{ Billing.sync(function(){}); }catch(e){}
+                case 'refresh': {
+                    if(p.id){   // Retry / Refresh one connection
+                        note('Loading '+(p.name||'connection')+' again…','',null);
+                        Multi.retry(p.id, function(r){ var ok=!!(r&&r.ok);
+                            if(ok){ try{ var pl0=(Store.savedPlaylists||[]).filter(function(x){ return x.id===p.id; })[0]; if(pl0) window.__byoConnRecovered(pl0, r); }catch(_e){} }   // the original "Add connection" error becomes done too
+                            ack(cmd, ok, ok?('Loaded'+(r.live!=null?': '+(r.live||0)+' channels, '+(r.movies||0)+' movies, '+(r.series||0)+' series':'')):((r&&r.err)||'Could not load this connection')); });
+                        return; }
+                    setToast('Support is refreshing your library…'); try{ Billing.sync(function(){}); }catch(e){}
                     var cur=null; try{ var c=Store.cfg||{}; (Store.savedPlaylists||[]).forEach(function(x){ if(c.mode&&c.mode!=='multi'&&Multi.keyOf(x)===Multi.keyOf(c)) cur=x; }); }catch(e){}
                     var fin=function(res, ok){ ack(cmd, !!ok, ok?('Reloaded: '+S.live.length+' channels, '+S.movies.length+' movies, '+S.series.length+' series'):'Nothing could be loaded'); };
                     if(Store.settings&&Store.settings.combineSources&&(Store.savedPlaylists||[]).length) Multi.reload({ quiet:true, done:fin });

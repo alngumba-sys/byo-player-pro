@@ -298,6 +298,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   .tgls{ grid-template-columns:repeat(2,minmax(0,1fr)); }
   .g2{ grid-template-columns:1fr 1fr; }
 }
+.conn-acts{ display:flex; gap:8px; flex:0 0 auto; }
 </style>
 </head>
 <body>
@@ -611,7 +612,10 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
         var counts=(c.live!=null)?(c.live+' ch · '+(c.movies||0)+' movies · '+(c.series||0)+' series'):'';
         var det=[String(c.mode||'').toUpperCase(), c.host, c.user?('user '+c.user):'', counts, c.err].filter(Boolean).join(' · ');
         return '<div class="conn"><div class="tx"><div class="nm"><span>'+esc(c.name)+'</span>'+bd+'</div><div class="dt" title="'+esc(det)+'">'+esc(det)+'</div></div>'+
-          (c.id?'<button class="btn sm dng" data-rm="'+esc(c.id)+'" data-nm="'+esc(c.name)+'"'+(live?'':' disabled')+'>Remove</button>':'')+'</div>'; }).join(''):'<div class="empty">No connections on this TV yet.</div>';
+          (c.id?'<div class="conn-acts"><button class="btn sm" data-rf="'+esc(c.id)+'" data-nm="'+esc(c.name)+'"'+(live?'':' disabled')+' title="Load this connection again on the TV">'+(c.ok===false?'Retry':'Refresh')+'</button>'+
+            '<button class="btn sm dng" data-rm="'+esc(c.id)+'" data-nm="'+esc(c.name)+'"'+(live?'':' disabled')+'>Remove</button></div>':'')+'</div>'; }).join(''):'<div class="empty">No connections on this TV yet.</div>';
+    // Retry / Refresh one connection: the TV loads just that connection again (sent as "refresh" with its id).
+    [].forEach.call(document.querySelectorAll('[data-rf]'),function(b){ b.onclick=function(){ send('refresh',{ id:b.getAttribute('data-rf'), name:b.getAttribute('data-nm') },null,$('a-err')); }; });
     [].forEach.call(document.querySelectorAll('[data-rm]'),function(b){ b.onclick=function(){ if(!confirm('Remove "'+b.getAttribute('data-nm')+'" from the customer’s TV?')) return; send('connection.remove',{ id:b.getAttribute('data-rm'), name:b.getAttribute('data-nm') },null,$('a-err')); }; });
     // billing
     var tb=d.billing||{}, state, text;
@@ -632,10 +636,10 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
     // activity
     var cmds=(sess.commands||[]).slice().reverse();
     $('s-log').innerHTML=cmds.length?cmds.map(function(c){ var p=c.payload||{};
-        var what=c.kind==='connection.add'?((p.name||String(p.mode||'').toUpperCase())+(p.host?' · '+p.host:'')):(c.kind==='connection.remove'?(p.name||''):(c.kind==='message'?(p.title||''):((c.kind==='billing.refresh'||c.kind==='trial.add')?((p.days>0?'+':'')+p.days+' days'):(c.kind==='access.set'?({ active:'Enable '+(p.days||'')+' days', ended:'End access', blocked:'Block', clear:'Back to normal' }[p.state]||''):''))));
+        var what=c.kind==='connection.add'?((p.name||String(p.mode||'').toUpperCase())+(p.host?' · '+p.host:'')):((c.kind==='connection.remove'||c.kind==='refresh')?(p.name||''):(c.kind==='message'?(p.title||''):((c.kind==='billing.refresh'||c.kind==='trial.add')?((p.days>0?'+':'')+p.days+' days'):(c.kind==='access.set'?({ active:'Enable '+(p.days||'')+' days', ended:'End access', blocked:'Block', clear:'Back to normal' }[p.state]||''):''))));
         var res=c.result?('TV: '+c.result):(c.status==='pending'?'Waiting for the TV to collect it…':(c.status==='delivered'?'The TV is working on it…':''));
         var l2=[what,res].filter(Boolean).join(' · ');
-        return '<div class="ev '+esc(c.status)+'"><div class="tx"><div class="l1"><span>'+esc(KIND[c.kind]||c.kind)+'</span>'+pill(c.status)+'</div>'+(l2?'<div class="l2" title="'+esc(l2)+'">'+esc(l2)+'</div>':'')+'</div><time>'+esc(hm(c.created_at))+'</time></div>'; }).join(''):'<div class="empty">Nothing sent yet.</div>';
+        return '<div class="ev '+esc(c.status)+'"><div class="tx"><div class="l1"><span>'+esc((c.kind==='refresh'&&c.payload&&c.payload.id)?'Retry connection':(KIND[c.kind]||c.kind))+'</span>'+pill(c.status)+'</div>'+(l2?'<div class="l2" title="'+esc(l2)+'">'+esc(l2)+'</div>':'')+'</div><time>'+esc(hm(c.created_at))+'</time></div>'; }).join(''):'<div class="empty">Nothing sent yet.</div>';
   }
 
   // ---------- all TVs ----------

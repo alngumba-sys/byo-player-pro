@@ -23,7 +23,7 @@
     var Multi=(function(){
         var REG={};                 // emby/jellyfin item id -> api of the server it belongs to
         var report=[];              // last load result per source
-        var loading=false, tok=0;
+        var loading=false, tok=0, lastList=null, lastResults=null, lastTok=0;
         function st(){ return Store.settings||(Store.settings={}); }
         function on(){ return !!st().combineSources; }
         function keyOf(pl){ return pl.mode+'|'+(pl.mode==='m3u'?(pl.url||''):((pl.server||'')+'|'+(pl.user||''))); }
@@ -220,6 +220,7 @@
             var failed=[]; results.forEach(function(r,i){ if(r&&!r.ok&&retryable(r)) failed.push(i); });
             if(!failed.length||attempt>=BG_DELAYS.length) return;
             setTimeout(function(){ if(my!==tok||loading) return;
+                failed=failed.filter(function(i){ return results[i]&&!results[i].ok; }); if(!failed.length) return;   // fixed meanwhile (e.g. support pressed Retry)
                 libLog('retrying '+failed.length+' connection(s) that did not load (try '+(attempt+1)+')');
                 var left=failed.length, fixed=[];
                 failed.forEach(function(i){ loadOne(list[i], i, function(r){ if(my!==tok) return;
@@ -234,6 +235,27 @@
                         renderPlaylists(); renderActive(); publish(); }
                     bgRetry(list, results, my, attempt+1); }); });
             }, BG_DELAYS[attempt]); }
+        // Load ONE saved connection again (support's Retry / Refresh). Combined library: only that connection
+        // is downloaded and merged with the others already loaded. One-at-a-time: it becomes the active one.
+        function retry(id, cb){ cb=cb||function(){};
+            var pl=null; (Store.savedPlaylists||[]).forEach(function(x){ if(x.id===id) pl=x; });
+            if(!pl) return cb({ ok:false, err:'That connection is no longer on this TV' });
+            if(loading) return cb({ ok:false, err:'The TV is still loading its connections. Try again in a minute.' });
+            if(pl.off){ pl.off=false; Store.save(); }
+            if(!on()) return addFromPhone({ mode:pl.mode, name:pl.name, url:pl.url, epg:pl.epg, server:pl.server, user:pl.user, pass:pl.pass, via:'support' }, cb);
+            var k=keyOf(pl), idx=-1;
+            if(lastList&&lastResults&&lastTok===tok) lastList.forEach(function(x,i){ if(keyOf(x)===k) idx=i; });
+            // Not part of the last combined load (or the library changed since): rebuild the combined library.
+            if(idx<0){ reload({ quiet:true, keepFilters:true, noPublish:true, done:function(){ cb(resultFor(pl)); publish(); } }); return; }
+            var my=tok; setToast('Loading '+plName(pl)+' again…'); libLog('support asked to load '+plName(pl)+' again');
+            loadOne(lastList[idx], idx, function(r){ if(my!==tok) return cb({ ok:false, err:'The library was reloaded meanwhile' });
+                lastResults[idx]=r;
+                var done=apply(lastResults, { quiet:true, keepFilters:true });
+                if(done){ Store.cfg=cfgKeep({mode:'multi',name:'All connections'}); Store.save();
+                    if(lastResults.every(function(x){ return x&&x.ok; })) saveSnap(lastList); }
+                setToast(r&&r.ok?('Loaded '+plName(pl)+'.'):('Could not load '+plName(pl)+'.'));
+                renderPlaylists(); renderActive(); publish();
+                cb(resultFor(pl)); }); }
         // Load every included source (combined mode), or just `only` (single-source relaunch).
         function reload(opts){ opts=opts||{};
             var list=opts.only?[opts.only]:included();
@@ -267,6 +289,7 @@
                     renderPlaylists(); if(done&&opts.goHome) goTo('home'); }
                 try{ if(opts.done) opts.done(results, done); }catch(_e){}
                 renderActive(); if(!opts.noPublish) publish();
+                if(!opts.only){ lastList=list; lastResults=results; lastTok=my; }
                 if(!opts.only&&!opts.noRetry) bgRetry(list, results, my, 0);
             } }
 
@@ -502,5 +525,5 @@
             // Switching off the one being shown: hide its content (nothing else is switched on in this mode).
             if(wasActive){ Store.cfg={}; Store.save(); try{ clearLibrary(); }catch(e){} try{ renderAll(); }catch(e){} }
             try{ renderPlaylists(); }catch(e){} publish(); return true; }
-        return { useSaved:useSaved, setOn:setOn, setOnPl:setOnPl, on:on, plexSignIn:plexSignIn, connectEntry:connectEntry, saveEntry:saveEntry, connectPortal:connectPortal, publish:publish, renderActive:renderActive, addFromPhone:addFromPhone, deviceState:deviceState, keyOf:keyOf, reload:reload, reg:reg, ensureSeries:ensureSeries, altUrls:altUrls, render:render, afterConnect:afterConnect, boot:boot, _merge:{vod:mergeVod,live:mergeLive,norm:normTitle} };
+        return { retry:retry, useSaved:useSaved, setOn:setOn, setOnPl:setOnPl, on:on, plexSignIn:plexSignIn, connectEntry:connectEntry, saveEntry:saveEntry, connectPortal:connectPortal, publish:publish, renderActive:renderActive, addFromPhone:addFromPhone, deviceState:deviceState, keyOf:keyOf, reload:reload, reg:reg, ensureSeries:ensureSeries, altUrls:altUrls, render:render, afterConnect:afterConnect, boot:boot, _merge:{vod:mergeVod,live:mergeLive,norm:normTitle} };
     })();
