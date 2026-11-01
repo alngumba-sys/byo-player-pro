@@ -15941,6 +15941,36 @@ var Pin=(function(){
     // Test hook (only when localStorage.byo_debug is '1'): lets an automated check reach module-scoped functions.
     try{ if(localStorage.getItem('byo_debug')==='1'){ window.__byoDbg={ S:S, Store:Store, ChanHealth:ChanHealth, chanEventInfo:chanEventInfo, chanEventTitle:chanEventTitle, eventPopularity:eventPopularity, liveCard:liveCard, playLiveByChannel:function(c){ return playLiveByChannel(c); }, computeLiveView:function(){ return computeLiveView(); }, toasts:[] };
         var _st0=setToast; setToast=function(m,x){ try{ window.__byoDbg.toasts.push(String(m)); }catch(e){} return _st0(m,x); }; } }catch(e){}
+    // Lighter copies of a live channel. Playlists often carry the same channel several times
+    // ("SuperSport 1 FHD", "SuperSport 1 HD", "SuperSport 1 SD"). The Android player gets the lighter
+    // ones as quality levels: when the line can't keep up it switches to one instead of pausing, and
+    // steps back up when things are smooth again. Weights are estimates from the name tags.
+    var _LQ={ src:null, n:-1, map:null };
+    var _LQ_TAG=/\b(?:2160p?|1080p?|720p?|576p?|540p?|480p?|360p?|240p?|8k|4k|uhd|fhd|full\s*hd|hd\+?|sd|hevc|h\.?26[45]|x26[45]|hdr|\d{2}\s*fps)\b/gi;
+    function __lqKey(nm){ return String(nm||'').toLowerCase().replace(/\[[^\]]*\]/g,' ').replace(_LQ_TAG,' ').replace(/[^a-z0-9À-￿]+/g,' ').replace(/\s+/g,' ').trim(); }
+    function __lqWeight(nm){ var t=String(nm||''), b=4.5e6, l='Original', tagged=true;
+        if(/\b(2160p?|4k|8k|uhd)\b/i.test(t)){ b=16e6; l='4K'; }
+        else if(/\b(1080p?|fhd|full\s*hd)\b/i.test(t)){ b=6e6; l='FHD'; }
+        else if(/\b(720p?|hd\+?)\b/i.test(t)){ b=3.5e6; l='HD'; }
+        else if(/\b(576p?|540p?|480p?|sd)\b/i.test(t)){ b=1.5e6; l='SD'; }
+        else if(/\b(360p?|240p?)\b/i.test(t)){ b=0.7e6; l='Low'; }
+        else tagged=false;
+        if(/\b(hevc|h\.?265|x265)\b/i.test(t)) b=Math.round(b*0.6);
+        return { b:b, label:l, tagged:tagged }; }
+    function __liveLighter(c){ try{
+        if(!c||!c.name||!c.url) return null;
+        var L=S.live||[];
+        if(_LQ.src!==L||_LQ.n!==L.length){ var m={};
+            for(var i=0;i<L.length;i++){ var x=L[i]; if(!x||!x.url||!x.name||/^stalker:/.test(x.url)) continue; var k=__lqKey(x.name); if(!k) continue; (m[k]=m[k]||[]).push(x); }
+            _LQ={ src:L, n:L.length, map:m }; }
+        var grp=_LQ.map[__lqKey(c.name)]; if(!grp||grp.length<2) return null;
+        var me=__lqWeight(c.name), seen={}, out=[];
+        grp.forEach(function(x){ if(x===c||x.url===c.url) return; var w=__lqWeight(x.name);
+            if(!w.tagged||w.b>=me.b||seen[w.label]) return; seen[w.label]=1; out.push({ label:w.label, url:x.url, bitrate:w.b }); });
+        if(!out.length) return null;
+        out.sort(function(a,b){ return b.bitrate-a.bitrate; });
+        return { orig:me.b, list:out.slice(0,3) };
+    }catch(e){ return null; } }
     function playLiveByChannel(c){ var _ev=chanEventInfo(c); if(_ev&&_ev.status!=='live'){ eventNotLive(c,_ev); return; }
         var idx=computeLiveView().indexOf(c); if(idx<0){ S.liveView=[c]; idx=0; } S.currentLiveIndex=idx; S.playerFrom='live';
         var e=c.epgGenre?epgFor(c.epgGenre):null; playContent(c.url,c.name,c.genre,{type:'live',from:'live',epg:e,channelId:c.id,genre:c.genre}); }
@@ -15993,7 +16023,7 @@ var Pin=(function(){
                         var gg=cur?cur.genre:(opts.genre||''); var arr=all.filter(function(c){ return c&&c.url&&!/^stalker:/.test(c.url)&&StreamOpts.playable(StreamOpts.drmInfo(c.url))&&(!gg||c.genre===gg); }).slice(0,500);
                         var at=-1; for(var cj=0;cj<arr.length;cj++){ if(arr[cj].id===opts.channelId){ at=cj; break; } }
                         if(at<0){ arr.unshift({id:opts.channelId,name:title,genre:sub,url:url}); at=0; }
-                        P.channels=arr.map(function(c){ var _o={ title:c.name||'', sub:c.genre||'', url:c.url }; try{ var _h=window.__byoStreamOpts&&window.__byoStreamOpts.headersFor(c.url); if(_h) _o.headers=_h; var _d2=window.__byoStreamOpts.drmInfo(c.url); if(_d2) _o.drm=_d2; }catch(_e){} return _o; }); P.chIndex=at; chIds=arr.map(function(c){ return c.id; });
+                        P.channels=arr.map(function(c){ var _o={ title:c.name||'', sub:c.genre||'', url:c.url }; try{ var _lq=__liveLighter(c); if(_lq){ _o.bitrate=_lq.orig; _o.qualities=_lq.list; } }catch(_e){} try{ var _h=window.__byoStreamOpts&&window.__byoStreamOpts.headersFor(c.url); if(_h) _o.headers=_h; var _d2=window.__byoStreamOpts.drmInfo(c.url); if(_d2) _o.drm=_d2; }catch(_e){} return _o; }); P.chIndex=at; chIds=arr.map(function(c){ return c.id; }); try{ var _cq=__liveLighter(arr[at]); if(_cq&&!P.qualities){ P.qualities=_cq.list; P.origBitrate=_cq.orig; } }catch(_e){}
                         if(opts.channelId){ Store.cfg.lastChannelId=opts.channelId; Store.save(); }
                     }catch(e){}
                 }

@@ -75,7 +75,7 @@ public class PlayerActivity extends Activity {
             EXTRA_QUALITIES = "qualities", EXTRA_LIVE = "live", EXTRA_CHANNELS = "channels", EXTRA_CH_INDEX = "chIndex", EXTRA_HEADERS = "headers", EXTRA_DRM = "drm", EXTRA_EPISODES = "episodes", EXTRA_META = "meta", EXTRA_GUARD = "guard", EXTRA_ORIG_BITRATE = "origBitrate";
 
     private static class Q { String label; String url; long bitrate; Q(String l, String u, long b){ label=l; url=u; bitrate=b; } }
-    private static class Ch { String title, sub, url; JSONObject headers, drm; Ch(String t, String s, String u, JSONObject h, JSONObject d){ title=t; sub=s; url=u; headers=h; drm=d; } }
+    private static class Ch { String title, sub, url; JSONObject headers, drm; JSONArray quals; long bitrate; Ch(String t, String s, String u, JSONObject h, JSONObject d){ title=t; sub=s; url=u; headers=h; drm=d; } }
     // ClearKey protection for the current item: {type, keys:[{kid,key}] (hex), licenseUrl}
     private JSONObject baseDrm, curDrm;
     // Per-stream HTTP headers from the playlist (#EXTVLCOPT / #EXTHTTP / KODIPROP / url|User-Agent=...).
@@ -147,7 +147,8 @@ public class PlayerActivity extends Activity {
         try { String cj = in.getStringExtra(EXTRA_CHANNELS);
             if (cj != null) { JSONArray a = new JSONArray(cj);
                 for (int i = 0; i < a.length(); i++) { JSONObject o = a.getJSONObject(i);
-                    channels.add(new Ch(o.optString("title"), o.optString("sub"), o.optString("url"), o.optJSONObject("headers"), o.optJSONObject("drm"))); } }
+                    Ch ch = new Ch(o.optString("title"), o.optString("sub"), o.optString("url"), o.optJSONObject("headers"), o.optJSONObject("drm"));
+                    ch.quals = o.optJSONArray("qualities"); ch.bitrate = o.optLong("bitrate", 0); channels.add(ch); } }
             chIndex = in.getIntExtra(EXTRA_CH_INDEX, 0);
         } catch (Exception ignored) {}
 
@@ -293,7 +294,7 @@ public class PlayerActivity extends Activity {
         @Override public void onTracksChanged(Tracks tracks) { updateQualityLabel(); }
         @Override public void onPlayerError(PlaybackException error) {
             spinner.setVisibility(View.GONE);
-            try { int hs0 = httpStatus(error); String u0 = live && !channels.isEmpty() && chIndex < channels.size() ? channels.get(chIndex).url : (qualities.isEmpty() ? "" : qualities.get(qIndex).url);
+            try { int hs0 = httpStatus(error); String u0 = curUrl();
                 String host = ""; try { host = android.net.Uri.parse(u0).getHost(); } catch (Exception ignored) {}
                 lastErr = error.getErrorCodeName().replace("ERROR_CODE_", "") + (hs0 > 0 ? " HTTP " + hs0 : "") + (host != null && !host.isEmpty() ? " @ " + host : ""); } catch (Exception ignored) {}
             // Live fell behind the playlist window → simply rejoin the live edge.
@@ -408,6 +409,13 @@ public class PlayerActivity extends Activity {
     private boolean hasCustomUa() { JSONObject hd = (live && !channels.isEmpty() && chIndex < channels.size() && channels.get(chIndex).headers != null) ? channels.get(chIndex).headers : baseHeaders;
         if (hd == null) return false; java.util.Iterator<String> it = hd.keys(); while (it.hasNext()) if ("user-agent".equalsIgnoreCase(it.next())) return true; return false; }
 
+    /** The stream in use: the quality level picked (live: the channel or one of its lighter copies). */
+    private String curUrl() {
+        if (!qualities.isEmpty() && qIndex > 0 && qIndex < qualities.size()) return qualities.get(qIndex).url;
+        if (live && !channels.isEmpty() && chIndex < channels.size()) return channels.get(chIndex).url;
+        return qualities.isEmpty() ? "" : qualities.get(qIndex).url;
+    }
+
     private void reconnect(String msg) {
         retries++;
         // First attempt on a movie/episode is a soft retry: re-prepare the same item where it stopped. It
@@ -419,7 +427,7 @@ public class PlayerActivity extends Activity {
         final long pos = live ? 0 : Math.max(0, player.getCurrentPosition());
         spinner.setVisibility(View.VISIBLE);
         if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
-        h.postDelayed(() -> { if (player != null) { String u = live && !channels.isEmpty() ? channels.get(chIndex).url : qualities.get(qIndex).url; load(u, pos); } },
+        h.postDelayed(() -> { if (player != null) { load(curUrl(), pos); } },
                 Math.min(1000L * retries * retries, 8000L));
     }
 
@@ -448,7 +456,7 @@ public class PlayerActivity extends Activity {
         if (!waitingNet || finishing || player == null) return;
         waitingNet = false; retries = 0; h.removeCallbacks(netPoll);
         errorText.setVisibility(View.GONE);
-        if (live) { load(channels.isEmpty() ? qualities.get(qIndex).url : channels.get(chIndex).url, 0); return; }
+        if (live) { load(curUrl(), 0); return; }
         if (player.getPlaybackState() == Player.STATE_IDLE) player.prepare(); else player.play();
     }
     private final Runnable netPoll = () -> { if (!waitingNet) return; if (online()) networkBack(); else h.postDelayed(this.netPoll, 3000); };
@@ -485,7 +493,7 @@ public class PlayerActivity extends Activity {
         long est = meter != null ? meter.getBitrateEstimate() : 0;
         long ahead = player.getTotalBufferedDuration();
         if (est <= 0 || ahead < 20000) return;
-        if (qualities.size() > 1 && qIndex > 1) {          // Emby: back to the next server level (never straight to Original)
+        if (qualities.size() > 1 && (qIndex > 1 || (live && qIndex == 1))) {   // Emby: back to the next server level (never straight to Original); live: back up to the channel's original too
             Q up = qualities.get(qIndex - 1);
             if (now - lastStallAt > 180000 && now - lastSwitchAt > 180000 && up.bitrate < Long.MAX_VALUE && est * 0.65 >= up.bitrate * 1.3)
                 switchTo(qIndex - 1, "Quality improved to " + up.label);
@@ -541,7 +549,7 @@ public class PlayerActivity extends Activity {
 
     private void switchTo(int idx, String msg) {
         if (player == null || idx < 0 || idx >= qualities.size()) return;
-        long pos = Math.max(0, player.getCurrentPosition());
+        long pos = live ? 0 : Math.max(0, player.getCurrentPosition());
         qIndex = idx; lastSwitchAt = System.currentTimeMillis(); bufferingSince = 0;
         h.removeCallbacks(stallCheck);
         load(qualities.get(idx).url, pos);
@@ -560,7 +568,9 @@ public class PlayerActivity extends Activity {
         titleView.setText(c.title); subView.setText(c.sub); subView.setVisibility(c.sub.isEmpty() ? View.GONE : View.VISIBLE);
         everPlayed = false; retries = 0; capBitrate = Long.MAX_VALUE; rebuffers.clear(); lastStallAt = 0; if (loadCtl != null) loadCtl.reset();
         selector.setParameters(selector.buildUponParameters().clearOverridesOfType(C.TRACK_TYPE_VIDEO).setMaxVideoBitrate(Integer.MAX_VALUE));
-        qualities.clear(); qualities.add(new Q("Original", c.url, Long.MAX_VALUE)); qIndex = 0;
+        qualities.clear(); qualities.add(new Q("Original", c.url, c.bitrate > 0 ? c.bitrate : Long.MAX_VALUE)); qIndex = 0;
+        try { if (c.quals != null) for (int i = 0; i < c.quals.length(); i++) { JSONObject q = c.quals.getJSONObject(i);
+            qualities.add(new Q(q.optString("label"), q.optString("url"), q.optLong("bitrate"))); } } catch (Exception ignored) {}
         load(c.url, 0);
         view.showController();
     }

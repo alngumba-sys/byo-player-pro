@@ -285,7 +285,7 @@ s=s.replace(_pc, """    function playContent(url,title,sub,opts){ opts=opts||{};
                         var gg=cur?cur.genre:(opts.genre||''); var arr=all.filter(function(c){ return c&&c.url&&!/^stalker:/.test(c.url)&&StreamOpts.playable(StreamOpts.drmInfo(c.url))&&(!gg||c.genre===gg); }).slice(0,500);
                         var at=-1; for(var cj=0;cj<arr.length;cj++){ if(arr[cj].id===opts.channelId){ at=cj; break; } }
                         if(at<0){ arr.unshift({id:opts.channelId,name:title,genre:sub,url:url}); at=0; }
-                        P.channels=arr.map(function(c){ var _o={ title:c.name||'', sub:c.genre||'', url:c.url }; try{ var _h=window.__byoStreamOpts&&window.__byoStreamOpts.headersFor(c.url); if(_h) _o.headers=_h; var _d2=window.__byoStreamOpts.drmInfo(c.url); if(_d2) _o.drm=_d2; }catch(_e){} return _o; }); P.chIndex=at; chIds=arr.map(function(c){ return c.id; });
+                        P.channels=arr.map(function(c){ var _o={ title:c.name||'', sub:c.genre||'', url:c.url }; try{ var _lq=__liveLighter(c); if(_lq){ _o.bitrate=_lq.orig; _o.qualities=_lq.list; } }catch(_e){} try{ var _h=window.__byoStreamOpts&&window.__byoStreamOpts.headersFor(c.url); if(_h) _o.headers=_h; var _d2=window.__byoStreamOpts.drmInfo(c.url); if(_d2) _o.drm=_d2; }catch(_e){} return _o; }); P.chIndex=at; chIds=arr.map(function(c){ return c.id; }); try{ var _cq=__liveLighter(arr[at]); if(_cq&&!P.qualities){ P.qualities=_cq.list; P.origBitrate=_cq.orig; } }catch(_e){}
                         if(opts.channelId){ Store.cfg.lastChannelId=opts.channelId; Store.save(); }
                     }catch(e){}
                 }
