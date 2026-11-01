@@ -429,6 +429,97 @@ public class MainActivity extends Activity {
                 } }).start();
             }
 
+            // Turn a provider list (Xtream get_live_streams / get_vod_streams / get_series JSON) into a compact
+            // list the TV can hold: short keys, no plots, and when it is still over budgetBytes, the most recently
+            // added titles are kept. Reads the file twice as a stream, so memory stays small.
+            @JavascriptInterface
+            public void slimXtream(final String id, final String fileUrl, final String kind, final double budgetBytes) {
+                new Thread(new Runnable() { public void run() {
+                    String status = "err", detail = "", path = "";
+                    try {
+                        String fp = fileUrl.startsWith("file://") ? fileUrl.substring(7) : fileUrl;
+                        java.io.File src = new java.io.File(fp);
+                        java.io.File dst = new java.io.File(getCacheDir(), "xs_" + id.replaceAll("[^A-Za-z0-9]", "") + ".json");
+                        long budget = (long) budgetBytes;
+                        // pass 1: size and "added" time of every record
+                        long[] added = new long[1024]; int[] lens = new int[1024]; int n = 0;
+                        android.util.JsonReader r = new android.util.JsonReader(new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(src), "UTF-8"), 65536));
+                        r.setLenient(true); r.beginArray();
+                        while (r.hasNext()) {
+                            String[] rec = readRec(r, kind);
+                            if (n == added.length) { added = java.util.Arrays.copyOf(added, n * 2); lens = java.util.Arrays.copyOf(lens, n * 2); }
+                            added[n] = parseLong(rec[1]); lens[n] = rec[0].length() + 1; n++;
+                        }
+                        r.close();
+                        long total = 0; for (int i = 0; i < n; i++) total += lens[i];
+                        long cut = Long.MIN_VALUE;
+                        if (total > budget && n > 0) {
+                            Integer[] ix = new Integer[n]; for (int i = 0; i < n; i++) ix[i] = i;
+                            final long[] ad = added; java.util.Arrays.sort(ix, new java.util.Comparator<Integer>() { public int compare(Integer a, Integer b) { return Long.compare(ad[b], ad[a]); } });
+                            long acc = 0; for (int k = 0; k < n; k++) { acc += lens[ix[k]]; if (acc > budget) break; cut = ad[ix[k]]; }
+                            if (cut == Long.MIN_VALUE) cut = Long.MAX_VALUE;
+                        }
+                        // pass 2: write the kept records in the provider's order
+                        java.io.Writer w = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(dst), "UTF-8"), 65536);
+                        r = new android.util.JsonReader(new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(src), "UTF-8"), 65536));
+                        r.setLenient(true); r.beginArray(); w.write("["); boolean first = true; int kept = 0;
+                        while (r.hasNext()) {
+                            String[] rec = readRec(r, kind);
+                            if (cut != Long.MIN_VALUE && parseLong(rec[1]) < cut) continue;
+                            if (!first) w.write(","); w.write(rec[0]); first = false; kept++;
+                        }
+                        w.write("]"); w.close(); r.close();
+                        try { src.delete(); } catch (Exception ignored) {}
+                        status = "ok"; path = "file://" + dst.getAbsolutePath();
+                        detail = "size:" + dst.length() + ";kept:" + kept + ";total:" + n;
+                    } catch (Throwable e) { detail = "slim:" + e.getClass().getSimpleName(); }
+                    final String js = "window.__byoFetchCb&&window.__byoFetchCb(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(status) + ","
+                            + org.json.JSONObject.quote(detail) + "," + org.json.JSONObject.quote(path) + ")";
+                    runOnUiThread(new Runnable() { public void run() { if (webView != null) webView.evaluateJavascript(js, null); } });
+                } }).start();
+            }
+
+            private long parseLong(String v) { try { return Long.parseLong(v.trim()); } catch (Exception e) { return 0; } }
+
+            private String shortImg(String u) {
+                if (u == null) return "";
+                String P = "https://image.tmdb.org/t/p/";
+                if (u.startsWith(P)) { String rest = u.substring(P.length()); int sl = rest.indexOf('/'); return "~" + (sl >= 0 ? rest.substring(sl + 1) : rest); }
+                return u;
+            }
+
+            // One record as compact JSON plus its "added" time. Unknown fields are skipped.
+            private String[] readRec(android.util.JsonReader r, String kind) throws java.io.IOException {
+                java.util.HashMap<String, String> m = new java.util.HashMap<>();
+                if (r.peek() != android.util.JsonToken.BEGIN_OBJECT) { r.skipValue(); return new String[]{"{}", "0"}; }
+                r.beginObject();
+                while (r.hasNext()) {
+                    String k = r.nextName(); android.util.JsonToken t = r.peek();
+                    if (t == android.util.JsonToken.STRING || t == android.util.JsonToken.NUMBER) m.put(k, r.nextString());
+                    else if (t == android.util.JsonToken.BOOLEAN) m.put(k, String.valueOf(r.nextBoolean()));
+                    else r.skipValue();
+                }
+                r.endObject();
+                org.json.JSONObject o = new org.json.JSONObject();
+                try {
+                    o.put("n", m.containsKey("name") ? m.get("name") : "");
+                    o.put("c", m.containsKey("category_id") ? m.get("category_id") : "");
+                    if ("series".equals(kind)) {
+                        o.put("i", m.get("series_id")); o.put("l", shortImg(m.get("cover")));
+                        if (m.containsKey("releaseDate")) o.put("y", m.get("releaseDate"));
+                        if (m.containsKey("genre")) o.put("g", m.get("genre"));
+                    } else {
+                        o.put("i", m.get("stream_id")); o.put("l", shortImg(m.get("stream_icon")));
+                        if ("live".equals(kind)) { if (m.containsKey("epg_channel_id")) o.put("e", m.get("epg_channel_id")); if ("1".equals(m.get("tv_archive"))) o.put("a", 1); }
+                        else { if (m.containsKey("container_extension")) o.put("x", m.get("container_extension")); if (m.containsKey("year")) o.put("y", m.get("year")); }
+                    }
+                    if (m.containsKey("rating") && !"live".equals(kind)) o.put("r", m.get("rating"));
+                    String tm = m.containsKey("tmdb_id") ? m.get("tmdb_id") : m.get("tmdb"); if (tm != null && tm.length() > 0 && !"null".equals(tm)) o.put("t", tm);
+                } catch (Exception ignored) {}
+                String ad = m.containsKey("added") ? m.get("added") : (m.containsKey("last_modified") ? m.get("last_modified") : "0");
+                return new String[]{o.toString(), ad == null ? "0" : ad};
+            }
+
             // Native JSON POST (used for Supabase RPC). Bypasses WebView CORS / file:// origin quirks.
             // Result comes back via window.__byoHttpCb(id, status, body); status 0 = network error.
             @JavascriptInterface
