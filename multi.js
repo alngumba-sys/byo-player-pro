@@ -135,16 +135,17 @@
                 if(!sz||sz<=lim*MB||!AB.slimM3U) {
                     if(sz>lim*MB) return bad('This playlist is too big for this device ('+Math.round(sz/MB)+' MB). Add it with the provider\'s Xtream login instead.');
                     return readFile(path,sz); }
-                phase(src.key,'slim'); crumb('trimming '+src.name+' to live channels');
+                phase(src.key,'slim'); crumb('trimming '+src.name+' to fit this device');
                 var id='s'+Date.now()+Math.floor(Math.random()*1e6);
                 window.__byoFetchCbs[id]=function(s2,d2,p2){
                     if(s2!=='ok'||!p2) return bad('This playlist is too big for this device ('+Math.round(sz/MB)+' MB). Add it with the provider\'s Xtream login instead.');
-                    var nsz=+((String(d2).match(/size:(\d+)/)||[])[1])||0, kept=+((String(d2).match(/kept:(\d+)/)||[])[1])||0, dropped=+((String(d2).match(/dropped:(\d+)/)||[])[1])||0;
-                    crumb('trimmed '+src.name+': '+(nsz/MB).toFixed(1)+' MB, '+kept+' live kept, '+dropped+' movies/episodes left out');
+                    function num(k){ return +((String(d2).match(new RegExp(k+':(\\d+)'))||[])[1])||0; }
+                    var nsz=num('size'), kept=num('kept')+num('movies')+num('series'), dropped=num('dropped');
+                    crumb('trimmed '+src.name+': '+(nsz/MB).toFixed(1)+' MB, '+num('kept')+' live, '+num('movies')+' movies, '+num('series')+' episodes kept, '+dropped+' left out');
                     if(!kept) return bad('This playlist has no live channels this device can hold ('+Math.round(sz/MB)+' MB of movies and series). Add it with the provider\'s Xtream login instead.');
                     if(nsz>lim*2*MB) return bad('This playlist is too big for this device even with live channels only ('+Math.round(nsz/MB)+' MB). Add it with the provider\'s Xtream login instead.');
                     out_trim[src.key]=dropped; readFile(p2,nsz); };
-                try{ AB.slimM3U(id,path); }catch(e){ delete window.__byoFetchCbs[id]; bad('This playlist is too big for this device.'); } });
+                try{ AB.slimM3U(id,path,lim*2*MB); }catch(e){ delete window.__byoFetchCbs[id]; bad('This playlist is too big for this device.'); } });
             if(!started) Net.fetchText(url,function(txt){ phase(src.key,'read'); ok(txt); },bad);
         }
         var out_trim={};

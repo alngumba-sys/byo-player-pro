@@ -380,35 +380,48 @@ public class MainActivity extends Activity {
                 } catch (Exception e) { return 8; }
             }
 
-            // Rewrite a downloaded M3U keeping only live channels (drops movie / series entries) so huge
-            // provider playlists fit in the TV's memory. Answers through __byoFetchCb like fetchToFile.
+            // Rewrite a downloaded M3U so it fits the TV's memory: every live channel first, then movies, then
+            // series episodes, until the new file reaches budgetBytes. Answers through __byoFetchCb like fetchToFile.
             @JavascriptInterface
-            public void slimM3U(final String id, final String fileUrl) {
+            public void slimM3U(final String id, final String fileUrl, final double budgetBytes) {
                 new Thread(new Runnable() { public void run() {
                     String status = "err", detail = "", path = "";
                     try {
                         String fp = fileUrl.startsWith("file://") ? fileUrl.substring(7) : fileUrl;
                         java.io.File src = new java.io.File(fp);
                         java.io.File dst = new java.io.File(getCacheDir(), "slim_" + id.replaceAll("[^A-Za-z0-9]", "") + ".txt");
-                        java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(src), "UTF-8"), 65536);
-                        java.io.Writer w = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(dst), "UTF-8"), 65536);
+                        java.util.regex.Pattern ser = java.util.regex.Pattern.compile("(/series/|[sS]\\d{1,2}\\s*[eE]\\d{1,3})");
                         java.util.regex.Pattern vod = java.util.regex.Pattern.compile("(/movie/|/movies/|/series/|/vod/|\\.(mp4|mkv|avi|m4v|mov|wmv|flv|webm|mpg|mpeg)(\\?|$))", java.util.regex.Pattern.CASE_INSENSITIVE);
-                        StringBuilder pend = new StringBuilder(); boolean inEntry = false; long kept = 0, dropped = 0; String line; boolean first = true;
-                        while ((line = r.readLine()) != null) {
-                            if (first) { first = false; if (line.startsWith("\uFEFF")) line = line.substring(1); if (line.startsWith("#EXTM3U")) { w.write(line); w.write("\n"); continue; } }
-                            String t = line.trim();
-                            if (t.isEmpty()) continue;
-                            if (t.startsWith("#EXTINF")) { pend.setLength(0); pend.append(line).append("\n"); inEntry = true; continue; }
-                            if (t.startsWith("#")) { if (inEntry) pend.append(line).append("\n"); continue; }
-                            if (inEntry) {
-                                if (vod.matcher(t).find()) dropped++; else { w.write(pend.toString()); w.write(line); w.write("\n"); kept++; }
+                        java.io.Writer w = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(dst), "UTF-8"), 65536);
+                        long budget = (long) budgetBytes, written = 0; long[] kept = new long[3]; long dropped = 0;
+                        w.write("#EXTM3U\n"); written += 8;
+                        long cap = budget;
+                        for (int pass = 0; pass < 3; pass++) {   // 0 = live, 1 = movies, 2 = series
+                            if (pass == 1) cap = written + Math.max(0, budget - written) / 2;   // movies get half of what is left, series the rest
+                            if (pass == 2) cap = budget;
+                            java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(src), "UTF-8"), 65536);
+                            StringBuilder pend = new StringBuilder(); boolean inEntry = false; String line; boolean full = false;
+                            while ((line = r.readLine()) != null) {
+                                String t = line.trim();
+                                if (t.isEmpty()) continue;
+                                if (t.startsWith("#EXTINF")) { pend.setLength(0); pend.append(line).append("\n"); inEntry = true; continue; }
+                                if (t.startsWith("#")) { if (inEntry) pend.append(line).append("\n"); continue; }
+                                if (!inEntry) continue;
+                                boolean isVod = vod.matcher(t).find();
+                                int kind = !isVod ? 0 : ((ser.matcher(t).find() || ser.matcher(pend).find()) ? 2 : 1);
+                                if (kind == pass) {
+                                    int len = pend.length() + t.length() + 1;
+                                    if (pass > 0 && (full || written + len > cap)) { full = true; dropped++; }
+                                    else { w.write(pend.toString()); w.write(t); w.write("\n"); written += len; kept[pass]++; }
+                                }
                                 pend.setLength(0); inEntry = false;
                             }
+                            r.close();
                         }
-                        r.close(); w.close();
+                        w.close();
                         try { src.delete(); } catch (Exception ignored) {}
                         status = "ok"; path = "file://" + dst.getAbsolutePath();
-                        detail = "size:" + dst.length() + ";kept:" + kept + ";dropped:" + dropped;
+                        detail = "size:" + dst.length() + ";kept:" + kept[0] + ";movies:" + kept[1] + ";series:" + kept[2] + ";dropped:" + dropped;
                     } catch (Throwable e) { detail = "slim:" + e.getClass().getSimpleName(); }
                     final String js = "window.__byoFetchCb&&window.__byoFetchCb(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(status) + ","
                             + org.json.JSONObject.quote(detail) + "," + org.json.JSONObject.quote(path) + ")";
