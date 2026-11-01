@@ -62,9 +62,8 @@
             o=document.createElement('div'); o.id='support-ov'; o.className='support-ov hidden';
             o.innerHTML='<div class="sup-card"><div class="sup-head"><span class="sup-ic">'+icon('i-bell')+'</span><div><div class="sup-title">Remote help</div><div class="sup-sub" id="sup-sub"></div></div></div>'+
                 '<div class="sup-live hidden" id="sup-live"></div><div class="sup-code" id="sup-code"></div><div class="sup-timer" id="sup-timer"></div><div class="sup-status" id="sup-status"></div><div class="sup-log" id="sup-log"></div>'+
-                '<div class="sup-acts"><button class="s-btn danger" id="sup-end" data-focusable="true" tabindex="0">End help</button></div></div>';
+                '</div>';
             ($('stage')||document.body).appendChild(o);
-            $('sup-end').addEventListener('click', function(){ end(true); });
             return o; }
         // Where the remote was before a help screen opened. Focus goes back there a moment AFTER the
         // screen closes, so the OK press that closed it can't also press whatever is underneath
@@ -74,7 +73,7 @@
         function restore(el, fallback){ setTimeout(function(){ try{ if(usable(el)) Nav.setFocus(el); else if(fallback&&usable(fallback)) Nav.setFocus(fallback); else Nav.focusFirst(); }catch(e){} }, 300); }
         function syncWall(){ var on=isOpen()||msgOpen(); document.body.classList.toggle('sup-on', on);
             if(!on){ try{ if(!Billing.locked()&&Billing.isWallOpen()) Billing.closeWall(); }catch(e){} try{ if(Billing.locked()&&!Billing.isWallOpen()) setTimeout(function(){ if(!isOpen()&&!msgOpen()&&Billing.locked()) Billing.openWall('expired'); },350); }catch(e){} } }
-        function show(){ if(!isOpen()) backTo=Nav.current; document.body.classList.add('sup-on'); ov().classList.remove('hidden'); paint(); setTimeout(function(){ Nav.setFocus($('sup-end')); },30); }
+        function show(){ if(!isOpen()) backTo=Nav.current; document.body.classList.add('sup-on'); ov().classList.remove('hidden'); paint(); }   // no buttons: support ends the session; Back hides this screen
         function hide(){ var o=$('support-ov'); if(o) o.classList.add('hidden'); try{ renderCard(); }catch(e){} if(!msgOpen()) restore(backTo, $('btn-support')); syncWall(); }
         function isOpen(){ var o=$('support-ov'); return !!(o&&!o.classList.contains('hidden')); }
         function paint(){ if(!$('support-ov')) return;
@@ -303,7 +302,7 @@
             m._done=true; m.classList.remove('hidden'); document.body.classList.add('sup-on'); $('sup-msg-ok').addEventListener('click', closeMessage); setTimeout(function(){ Nav.setFocus($('sup-msg-ok')); },30); }
         function closeMessage(){ var m=$('support-msg'), done=!!(m&&m._done); if(m) m.classList.add('hidden');
             if(done&&isOpen()){ var o=$('support-ov'); if(o) o.classList.add('hidden'); try{ renderCard(); }catch(e){} restore(backTo, $('btn-support')); syncWall(); return; }
-            if(isOpen()) restore($('sup-end')); else restore(msgBackTo||backTo, $('btn-support')); syncWall(); }
+            if(isOpen()) { /* back on the help screen: nothing to focus */ } else restore(msgBackTo||backTo, $('btn-support')); syncWall(); }
         function msgOpen(){ var m=$('support-msg'); return !!(m&&!m.classList.contains('hidden')); }
         function scope(){ if(msgOpen()) return $('support-msg'); if(isOpen()) return $('support-ov'); return null; }
         function back(){ if(msgOpen()){ closeMessage(); return true; } if(isOpen()){ hide(); return true; } return false; }

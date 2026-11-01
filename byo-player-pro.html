@@ -5775,7 +5775,8 @@ var Pin=(function(){
         $('profile-picker').classList.add('hidden'); }
     function profilePickerOpen(){ return !$('profile-picker').classList.contains('hidden'); }
     /* ---- Library status on the profile screen: on start-up the app (re)loads every connection. Say so,
-       with progress, and only let a profile open once the library is in (or failed / user skips). ---- */
+       with progress. Profiles are never locked: the library keeps loading in the background (a slow or
+       broken connection must not keep anyone out of the app); Home shows it arriving. ---- */
     var _ppLib={ t0:0, timer:null, skip:false, doneAt:0 };
     function libFirstTime(){ try{ return !localStorage.getItem('byo_lib_ok'); }catch(e){ return false; } }
     function ppLibActive(){ return !!S._libLoading && !_ppLib.skip; }
@@ -5788,15 +5789,14 @@ var Pin=(function(){
             var first=libFirstTime(), tot=Math.max(1,L.total||1), dn=Math.min(tot,L.done||0);
             var pct=Math.round(((dn+0.35)/(tot+0.35))*100); if(secs<2&&dn===0) pct=6;
             var head=first?'Setting up your library for the first time':'Updating your library';
-            var sub=first?('We\u2019re fetching your channels, movies and series from '+(tot>1?(tot+' connections'):'your provider')+'. The first load can take a minute or two. After that it\u2019s much quicker.')
-                         :('Loading the latest channels, movies and series from '+(tot>1?(tot+' connections'):'your provider')+'. You can pick a profile as soon as it\u2019s ready.');
+            var sub=(first?('We\u2019re fetching your channels, movies and series from '+(tot>1?(tot+' connections'):'your provider')+'.')
+                         :('Loading the latest channels, movies and series from '+(tot>1?(tot+' connections'):'your provider')+'.'))+' You can pick a profile now. They will appear as they load.';
             box.className='pp-lib loading';
             box.innerHTML='<div class="pl-row"><span class="pl-spin"></span><div class="pl-txt"><b>'+head+'\u2026</b><span>'+sub+'</span></div></div>'+
                 '<div class="pl-bar"><i style="width:'+pct+'%"></i></div>'+
                 '<div class="pl-meta">'+(tot>1?(dn+' of '+tot+' connections loaded'):(dn?'Loaded':'Connecting'))+' \u00B7 '+secs+'s</div>'+
-                (secs>=60?'<button class="s-btn" id="pp-lib-skip" data-focusable="true" tabindex="0">Continue anyway</button>':'');
-            grid.classList.add('pp-locked');
-            var sk=$('pp-lib-skip'); if(sk&&!sk._w){ sk._w=1; sk.addEventListener('click',function(){ _ppLib.skip=true; ppLibRender(); var t=grid.querySelector('.profile-tile'); if(t) Nav.setFocus(t); }); }
+                '';
+            grid.classList.remove('pp-locked');
         } else {
             grid.classList.remove('pp-locked');
             if(_ppLib.t0 && !_ppLib.doneAt){ _ppLib.doneAt=Date.now();
@@ -5815,7 +5815,6 @@ var Pin=(function(){
     }
     window.__byoLibTick=function(){ try{ if(!S._libLoading&&!S._libFailed){ try{ localStorage.setItem('byo_lib_ok','1'); }catch(e){} } ppLibRender(); }catch(e){} };
     function chooseProfile(p){
-        if(ppLibActive()){ var bx=$('pp-lib'); if(bx){ bx.classList.remove('nudge'); void bx.offsetWidth; bx.classList.add('nudge'); } return; }
         var leavingKids=activeIsKids();
         function go(){ Store.setActive(p.id); applyProfileVisibility(); closeProfilePicker();
             // Open Home IMMEDIATELY (goTo('home') renders Home) so the switch feels instant, then render

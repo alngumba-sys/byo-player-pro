@@ -8,7 +8,7 @@
          until the providers are integrated (see byo-payments/supabase/functions).
        ============================================================================ */
     var BILLING_CONFIG={
-        trialDays:8,
+        trialDays:0,   // no automatic free trial: days come only from what BYO support sets (server: app_config.trial_days)
         // Free, legal free-to-air channels so a new install is never empty (Free-TV/IPTV, public list).
         freeChannels:{ name:'Free channels', url:'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8' },
         // Placeholder prices (edit, or serve real ones from byo.prices via device-start).
@@ -65,6 +65,7 @@
             return !!(st.subUntil && +new Date(st.subUntil)>Date.now()) || (st.state==='active') || (window.Pay&&Pay._state&&Pay._state().unlocked===true&&Pay._state().state==='active'); }
         function inTrial(){ return !subActive() && Date.now()<trialEndsAt(); }
         function locked(){ return !subActive() && Date.now()>=trialEndsAt(); }
+        function neverActive(){ var L=lic(); return !acc() && !(L.bonusDays>0) && !st.subUntil && trialEndsAt()<=L.started+60000; }
         function daysLeft(){ return Math.max(0, Math.ceil((trialEndsAt()-Date.now())/86400000)); }
         function hoursLeft(){ return Math.max(0, Math.ceil((trialEndsAt()-Date.now())/3600000)); }
 
@@ -175,11 +176,18 @@
         function homeBanner(){ if(isBlocked()){ var bb=document.createElement('div'); bb.className='pay-banner bl-banner exp'; bb.setAttribute('data-focusable','true'); bb.tabIndex=0;
                 bb.innerHTML='<div class="pb-ic">'+icon('i-lock')+'</div><div class="pb-text"><div class="pb-title">BYO Player is paused on this TV</div><div class="pb-sub">Contact '+esc(BILLING_CONFIG.supportEmail)+' or get remote help.</div></div><div class="pb-cta">Details'+icon('i-chev-r')+'</div>';
                 bb.addEventListener('click',function(){ openWall('blocked'); }); return bb; }
-            if(subActive()) return null; var exp=locked(); if(!exp && !inTrial()) return null;
+            var gu=grantedUntil();
+            if(gu&&gu<Infinity){   // enabled by support until a date: show the days support set
+                var gl=Math.max(0,Math.ceil((gu-Date.now())/86400000)), gh=Math.max(0,Math.ceil((gu-Date.now())/3600000));
+                var ge=document.createElement('div'); ge.className='pay-banner bl-banner'; ge.setAttribute('data-focusable','true'); ge.tabIndex=0;
+                ge.innerHTML='<div class="pb-ic">'+icon('i-clock')+'</div><div class="pb-text"><div class="pb-title">BYO Player is on · '+(gl>1?(gl+' days left'):(gh+' hour'+(gh===1?'':'s')+' left'))+'</div>'+
+                    '<div class="pb-sub">Enabled by BYO support until '+esc(new Date(gu).toLocaleDateString(undefined,{ day:'numeric', month:'short' }))+'. Subscribe any time to keep watching after that.</div></div><div class="pb-cta">Subscribe'+icon('i-chev-r')+'</div>';
+                ge.addEventListener('click',function(){ openWall('trial'); }); return ge; }
+            if(subActive()) return null; var exp=locked(); if(!exp && !inTrial()) return null; var na=exp&&neverActive();
             var el=document.createElement('div'); el.className='pay-banner bl-banner'+(exp?' exp':''); el.setAttribute('data-focusable','true'); el.tabIndex=0;
             var left=daysLeft(), hl=hoursLeft(); var when=left>1?(left+' days left'):(hl+' hour'+(hl===1?'':'s')+' left');
-            el.innerHTML='<div class="pb-ic">'+icon(exp?'i-lock':'i-clock')+'</div><div class="pb-text"><div class="pb-title">'+(exp?'Your free trial has ended':('Free trial · '+when))+'</div>'+
-                '<div class="pb-sub">'+(exp?'Subscribe to keep using BYO Player.':'Subscribe any time to keep using BYO Player after your trial.')+'</div></div><div class="pb-cta">Subscribe'+icon('i-chev-r')+'</div>';
+            el.innerHTML='<div class="pb-ic">'+icon(exp?'i-lock':'i-clock')+'</div><div class="pb-text"><div class="pb-title">'+(na?'BYO Player is not activated yet':(exp?'Your free trial has ended':('Free trial · '+when)))+'</div>'+
+                '<div class="pb-sub">'+(na?'Get remote help so BYO support can activate it, or subscribe.':(exp?'Subscribe to keep using BYO Player.':'Subscribe any time to keep using BYO Player after your trial.'))+'</div></div><div class="pb-cta">Subscribe'+icon('i-chev-r')+'</div>';
             el.addEventListener('click',function(){ openWall(exp?'expired':'trial'); }); return el; }
         function refreshBanner(){ var hv=$('view-home'); if(!hv||!hv.classList.contains('active-view')) return; var b=$('home-body'); var old=b&&b.querySelector('.bl-banner');
             var want=homeBanner(); if(old&&want){ old.replaceWith(want); } else if(old&&!want){ old.remove(); } else if(!old&&want&&b){ b.insertBefore(want,b.firstChild); } }
@@ -199,7 +207,8 @@
         function money(cur,amt){ var n=Number(amt); return cur+' '+(n%1?n.toFixed(2):n.toLocaleString()); }
         function wallEl(){ var w=$('billing-wall'); if(w) return w; w=document.createElement('div'); w.id='billing-wall'; w.className='bl-wall hidden'; w.innerHTML='<div class="bl-card"></div>'; document.body.appendChild(w); return w; }
         var plan=null;
-        function openWall(why){ if(isBlocked()) why='blocked'; var w=wallEl(); wallOpen=true; w.classList.remove('hidden'); w._why=why; try{ stopHeroPreview(); }catch(e){} screenPlans();
+        function wallHeldBack(){ try{ if(Store.settings&&Store.settings.firstRun) return true; var w=$('welcome'); if(w&&!w.classList.contains('hidden')) return true; if(document.body.classList.contains('sup-on')) return true; if(typeof Support!=='undefined'&&Support.active&&Support.active()) return true; }catch(e){} return false; }
+        function openWall(why){ if(wallHeldBack()) return; if(isBlocked()) why='blocked'; var w=wallEl(); wallOpen=true; w.classList.remove('hidden'); w._why=why; try{ stopHeroPreview(); }catch(e){} screenPlans();
             if(why!=='blocked') loadPay(function(){ var c0=card(); if(wallOpen&&!payReq&&!isBlocked()&&c0.querySelector('.bl-plans, .pk-plans')&&document.activeElement!==$('bl-phone')) screenPlans(); }); }
         function closeWall(){ var w=$('billing-wall'); if(w) w.classList.add('hidden'); wallOpen=false; stopPoll(); }
         function resume(){ if(payReq&&wallOpen&&!isBlocked()){
@@ -239,8 +248,8 @@
             c.querySelector('[data-a="settings"]').addEventListener('click',function(){ closeWall(); goTo('settings'); });
             focusFirst(); }
         function head(why){ var ended=(acc()&&acc().state==='ended');
-            return '<div class="bl-lock">'+icon(why==='expired'?'i-lock':'i-star')+'</div><div class="bl-h">'+(why==='expired'?(ended?'Your access has ended':'Your free trial has ended'):'Subscribe to BYO Player')+'</div>'+
-                '<div class="bl-hs">'+(why==='expired'?'Subscribe to keep using BYO Player with your playlist: TV guide, sports scores, profiles and more.':'Keep using BYO Player after your free trial. Choose a plan.')+'</div>'; }
+            return '<div class="bl-lock">'+icon(why==='expired'?'i-lock':'i-star')+'</div><div class="bl-h">'+(why==='expired'?(ended?'Your access has ended':(neverActive()?'Activate BYO Player':'Your free trial has ended')):'Subscribe to BYO Player')+'</div>'+
+                '<div class="bl-hs">'+(why==='expired'&&neverActive()?'Get remote help so BYO support can activate this device, or choose a plan to subscribe.':'')+(why==='expired'&&neverActive()?'':(why==='expired'?'Subscribe to keep using BYO Player with your playlist: TV guide, sports scores, profiles and more.':'Keep using BYO Player after your free trial. Choose a plan.'))+'</div>'; }
         function foot(){ return '<div class="bl-foot"><button class="wz-link" data-a="paid" data-focusable="true" tabindex="0">I have already paid</button>'+
                 (wallEl()._why==='expired'?'':'<button class="wz-link" data-a="later" data-focusable="true" tabindex="0">Not now</button>')+
                 '<button class="wz-link" data-a="settings" data-focusable="true" tabindex="0">Settings</button></div><div class="bl-help">Help: '+esc(BILLING_CONFIG.supportEmail)+'</div><div class="bl-msg hidden"></div>'; }
@@ -259,8 +268,8 @@
         function screenPick(why){ var c=card(), W=mm(), T=priceTable(), P=payCfg()||{}; payReq=null; stopPoll();
             c.classList.add('bl-pick');
             var to=P.number?local(P.number):'';
-            c.innerHTML='<div class="pk-head"><span class="pk-ic">'+icon(why==='expired'?'i-lock':'i-star')+'</span><div><div class="bl-h">'+(why==='expired'?((acc()&&acc().state==='ended')?'Your access has ended':'Your free trial has ended'):'Subscribe to BYO Player')+'</div>'+
-                    '<div class="bl-hs">Choose a plan and pay with '+(W.long||W.name)+'. BYO Player unlocks by itself.</div></div></div>'+
+            c.innerHTML='<div class="pk-head"><span class="pk-ic">'+icon(why==='expired'?'i-lock':'i-star')+'</span><div><div class="bl-h">'+(why==='expired'?((acc()&&acc().state==='ended')?'Your access has ended':(neverActive()?'Activate BYO Player':'Your free trial has ended')):'Subscribe to BYO Player')+'</div>'+
+                    '<div class="bl-hs">'+(why==='expired'&&neverActive()?'Ask BYO support to activate it (Settings, Get remote help), or choose':'Choose')+' a plan and pay with '+(W.long||W.name)+'. BYO Player unlocks by itself.</div></div></div>'+
                 '<div class="pk-plans" style="grid-template-columns:repeat('+Math.max(1,T.plans.length)+',minmax(0,1fr))"></div>'+
                 '<div class="pk-row"><div class="pk-ph"><label for="bl-phone">Your '+W.name+' number <span>(you pay from)</span></label>'+
                     '<input id="bl-phone" type="tel" inputmode="tel" placeholder="'+W.ex+'" autocomplete="tel" data-focusable="true" tabindex="0"/></div>'+

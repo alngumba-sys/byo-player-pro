@@ -9925,7 +9925,8 @@ var Pin=(function(){
         $('profile-picker').classList.add('hidden'); }
     function profilePickerOpen(){ return !$('profile-picker').classList.contains('hidden'); }
     /* ---- Library status on the profile screen: on start-up the app (re)loads every connection. Say so,
-       with progress, and only let a profile open once the library is in (or failed / user skips). ---- */
+       with progress. Profiles are never locked: the library keeps loading in the background (a slow or
+       broken connection must not keep anyone out of the app); Home shows it arriving. ---- */
     var _ppLib={ t0:0, timer:null, skip:false, doneAt:0 };
     function libFirstTime(){ try{ return !localStorage.getItem('byo_lib_ok'); }catch(e){ return false; } }
     function ppLibActive(){ return !!S._libLoading && !_ppLib.skip; }
@@ -9938,15 +9939,14 @@ var Pin=(function(){
             var first=libFirstTime(), tot=Math.max(1,L.total||1), dn=Math.min(tot,L.done||0);
             var pct=Math.round(((dn+0.35)/(tot+0.35))*100); if(secs<2&&dn===0) pct=6;
             var head=first?'Setting up your library for the first time':'Updating your library';
-            var sub=first?('We\u2019re fetching your channels, movies and series from '+(tot>1?(tot+' connections'):'your provider')+'. The first load can take a minute or two. After that it\u2019s much quicker.')
-                         :('Loading the latest channels, movies and series from '+(tot>1?(tot+' connections'):'your provider')+'. You can pick a profile as soon as it\u2019s ready.');
+            var sub=(first?('We\u2019re fetching your channels, movies and series from '+(tot>1?(tot+' connections'):'your provider')+'.')
+                         :('Loading the latest channels, movies and series from '+(tot>1?(tot+' connections'):'your provider')+'.'))+' You can pick a profile now. They will appear as they load.';
             box.className='pp-lib loading';
             box.innerHTML='<div class="pl-row"><span class="pl-spin"></span><div class="pl-txt"><b>'+head+'\u2026</b><span>'+sub+'</span></div></div>'+
                 '<div class="pl-bar"><i style="width:'+pct+'%"></i></div>'+
                 '<div class="pl-meta">'+(tot>1?(dn+' of '+tot+' connections loaded'):(dn?'Loaded':'Connecting'))+' \u00B7 '+secs+'s</div>'+
-                (secs>=60?'<button class="s-btn" id="pp-lib-skip" data-focusable="true" tabindex="0">Continue anyway</button>':'');
-            grid.classList.add('pp-locked');
-            var sk=$('pp-lib-skip'); if(sk&&!sk._w){ sk._w=1; sk.addEventListener('click',function(){ _ppLib.skip=true; ppLibRender(); var t=grid.querySelector('.profile-tile'); if(t) Nav.setFocus(t); }); }
+                '';
+            grid.classList.remove('pp-locked');
         } else {
             grid.classList.remove('pp-locked');
             if(_ppLib.t0 && !_ppLib.doneAt){ _ppLib.doneAt=Date.now();
@@ -9965,7 +9965,6 @@ var Pin=(function(){
     }
     window.__byoLibTick=function(){ try{ if(!S._libLoading&&!S._libFailed){ try{ localStorage.setItem('byo_lib_ok','1'); }catch(e){} } ppLibRender(); }catch(e){} };
     function chooseProfile(p){
-        if(ppLibActive()){ var bx=$('pp-lib'); if(bx){ bx.classList.remove('nudge'); void bx.offsetWidth; bx.classList.add('nudge'); } return; }
         var leavingKids=activeIsKids();
         function go(){ Store.setActive(p.id); applyProfileVisibility(); closeProfilePicker();
             // Open Home IMMEDIATELY (goTo('home') renders Home) so the switch feels instant, then render
@@ -12978,7 +12977,7 @@ var Pin=(function(){
          until the providers are integrated (see byo-payments/supabase/functions).
        ============================================================================ */
     var BILLING_CONFIG={
-        trialDays:8,
+        trialDays:0,   // no automatic free trial: days come only from what BYO support sets (server: app_config.trial_days)
         // Free, legal free-to-air channels so a new install is never empty (Free-TV/IPTV, public list).
         freeChannels:{ name:'Free channels', url:'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8' },
         // Placeholder prices (edit, or serve real ones from byo.prices via device-start).
@@ -13035,6 +13034,7 @@ var Pin=(function(){
             return !!(st.subUntil && +new Date(st.subUntil)>Date.now()) || (st.state==='active') || (window.Pay&&Pay._state&&Pay._state().unlocked===true&&Pay._state().state==='active'); }
         function inTrial(){ return !subActive() && Date.now()<trialEndsAt(); }
         function locked(){ return !subActive() && Date.now()>=trialEndsAt(); }
+        function neverActive(){ var L=lic(); return !acc() && !(L.bonusDays>0) && !st.subUntil && trialEndsAt()<=L.started+60000; }
         function daysLeft(){ return Math.max(0, Math.ceil((trialEndsAt()-Date.now())/86400000)); }
         function hoursLeft(){ return Math.max(0, Math.ceil((trialEndsAt()-Date.now())/3600000)); }
 
@@ -13145,11 +13145,18 @@ var Pin=(function(){
         function homeBanner(){ if(isBlocked()){ var bb=document.createElement('div'); bb.className='pay-banner bl-banner exp'; bb.setAttribute('data-focusable','true'); bb.tabIndex=0;
                 bb.innerHTML='<div class="pb-ic">'+icon('i-lock')+'</div><div class="pb-text"><div class="pb-title">BYO Player is paused on this TV</div><div class="pb-sub">Contact '+esc(BILLING_CONFIG.supportEmail)+' or get remote help.</div></div><div class="pb-cta">Details'+icon('i-chev-r')+'</div>';
                 bb.addEventListener('click',function(){ openWall('blocked'); }); return bb; }
-            if(subActive()) return null; var exp=locked(); if(!exp && !inTrial()) return null;
+            var gu=grantedUntil();
+            if(gu&&gu<Infinity){   // enabled by support until a date: show the days support set
+                var gl=Math.max(0,Math.ceil((gu-Date.now())/86400000)), gh=Math.max(0,Math.ceil((gu-Date.now())/3600000));
+                var ge=document.createElement('div'); ge.className='pay-banner bl-banner'; ge.setAttribute('data-focusable','true'); ge.tabIndex=0;
+                ge.innerHTML='<div class="pb-ic">'+icon('i-clock')+'</div><div class="pb-text"><div class="pb-title">BYO Player is on · '+(gl>1?(gl+' days left'):(gh+' hour'+(gh===1?'':'s')+' left'))+'</div>'+
+                    '<div class="pb-sub">Enabled by BYO support until '+esc(new Date(gu).toLocaleDateString(undefined,{ day:'numeric', month:'short' }))+'. Subscribe any time to keep watching after that.</div></div><div class="pb-cta">Subscribe'+icon('i-chev-r')+'</div>';
+                ge.addEventListener('click',function(){ openWall('trial'); }); return ge; }
+            if(subActive()) return null; var exp=locked(); if(!exp && !inTrial()) return null; var na=exp&&neverActive();
             var el=document.createElement('div'); el.className='pay-banner bl-banner'+(exp?' exp':''); el.setAttribute('data-focusable','true'); el.tabIndex=0;
             var left=daysLeft(), hl=hoursLeft(); var when=left>1?(left+' days left'):(hl+' hour'+(hl===1?'':'s')+' left');
-            el.innerHTML='<div class="pb-ic">'+icon(exp?'i-lock':'i-clock')+'</div><div class="pb-text"><div class="pb-title">'+(exp?'Your free trial has ended':('Free trial · '+when))+'</div>'+
-                '<div class="pb-sub">'+(exp?'Subscribe to keep using BYO Player.':'Subscribe any time to keep using BYO Player after your trial.')+'</div></div><div class="pb-cta">Subscribe'+icon('i-chev-r')+'</div>';
+            el.innerHTML='<div class="pb-ic">'+icon(exp?'i-lock':'i-clock')+'</div><div class="pb-text"><div class="pb-title">'+(na?'BYO Player is not activated yet':(exp?'Your free trial has ended':('Free trial · '+when)))+'</div>'+
+                '<div class="pb-sub">'+(na?'Get remote help so BYO support can activate it, or subscribe.':(exp?'Subscribe to keep using BYO Player.':'Subscribe any time to keep using BYO Player after your trial.'))+'</div></div><div class="pb-cta">Subscribe'+icon('i-chev-r')+'</div>';
             el.addEventListener('click',function(){ openWall(exp?'expired':'trial'); }); return el; }
         function refreshBanner(){ var hv=$('view-home'); if(!hv||!hv.classList.contains('active-view')) return; var b=$('home-body'); var old=b&&b.querySelector('.bl-banner');
             var want=homeBanner(); if(old&&want){ old.replaceWith(want); } else if(old&&!want){ old.remove(); } else if(!old&&want&&b){ b.insertBefore(want,b.firstChild); } }
@@ -13169,7 +13176,8 @@ var Pin=(function(){
         function money(cur,amt){ var n=Number(amt); return cur+' '+(n%1?n.toFixed(2):n.toLocaleString()); }
         function wallEl(){ var w=$('billing-wall'); if(w) return w; w=document.createElement('div'); w.id='billing-wall'; w.className='bl-wall hidden'; w.innerHTML='<div class="bl-card"></div>'; document.body.appendChild(w); return w; }
         var plan=null;
-        function openWall(why){ if(isBlocked()) why='blocked'; var w=wallEl(); wallOpen=true; w.classList.remove('hidden'); w._why=why; try{ stopHeroPreview(); }catch(e){} screenPlans();
+        function wallHeldBack(){ try{ if(Store.settings&&Store.settings.firstRun) return true; var w=$('welcome'); if(w&&!w.classList.contains('hidden')) return true; if(document.body.classList.contains('sup-on')) return true; if(typeof Support!=='undefined'&&Support.active&&Support.active()) return true; }catch(e){} return false; }
+        function openWall(why){ if(wallHeldBack()) return; if(isBlocked()) why='blocked'; var w=wallEl(); wallOpen=true; w.classList.remove('hidden'); w._why=why; try{ stopHeroPreview(); }catch(e){} screenPlans();
             if(why!=='blocked') loadPay(function(){ var c0=card(); if(wallOpen&&!payReq&&!isBlocked()&&c0.querySelector('.bl-plans, .pk-plans')&&document.activeElement!==$('bl-phone')) screenPlans(); }); }
         function closeWall(){ var w=$('billing-wall'); if(w) w.classList.add('hidden'); wallOpen=false; stopPoll(); }
         function resume(){ if(payReq&&wallOpen&&!isBlocked()){
@@ -13209,8 +13217,8 @@ var Pin=(function(){
             c.querySelector('[data-a="settings"]').addEventListener('click',function(){ closeWall(); goTo('settings'); });
             focusFirst(); }
         function head(why){ var ended=(acc()&&acc().state==='ended');
-            return '<div class="bl-lock">'+icon(why==='expired'?'i-lock':'i-star')+'</div><div class="bl-h">'+(why==='expired'?(ended?'Your access has ended':'Your free trial has ended'):'Subscribe to BYO Player')+'</div>'+
-                '<div class="bl-hs">'+(why==='expired'?'Subscribe to keep using BYO Player with your playlist: TV guide, sports scores, profiles and more.':'Keep using BYO Player after your free trial. Choose a plan.')+'</div>'; }
+            return '<div class="bl-lock">'+icon(why==='expired'?'i-lock':'i-star')+'</div><div class="bl-h">'+(why==='expired'?(ended?'Your access has ended':(neverActive()?'Activate BYO Player':'Your free trial has ended')):'Subscribe to BYO Player')+'</div>'+
+                '<div class="bl-hs">'+(why==='expired'&&neverActive()?'Get remote help so BYO support can activate this device, or choose a plan to subscribe.':'')+(why==='expired'&&neverActive()?'':(why==='expired'?'Subscribe to keep using BYO Player with your playlist: TV guide, sports scores, profiles and more.':'Keep using BYO Player after your free trial. Choose a plan.'))+'</div>'; }
         function foot(){ return '<div class="bl-foot"><button class="wz-link" data-a="paid" data-focusable="true" tabindex="0">I have already paid</button>'+
                 (wallEl()._why==='expired'?'':'<button class="wz-link" data-a="later" data-focusable="true" tabindex="0">Not now</button>')+
                 '<button class="wz-link" data-a="settings" data-focusable="true" tabindex="0">Settings</button></div><div class="bl-help">Help: '+esc(BILLING_CONFIG.supportEmail)+'</div><div class="bl-msg hidden"></div>'; }
@@ -13229,8 +13237,8 @@ var Pin=(function(){
         function screenPick(why){ var c=card(), W=mm(), T=priceTable(), P=payCfg()||{}; payReq=null; stopPoll();
             c.classList.add('bl-pick');
             var to=P.number?local(P.number):'';
-            c.innerHTML='<div class="pk-head"><span class="pk-ic">'+icon(why==='expired'?'i-lock':'i-star')+'</span><div><div class="bl-h">'+(why==='expired'?((acc()&&acc().state==='ended')?'Your access has ended':'Your free trial has ended'):'Subscribe to BYO Player')+'</div>'+
-                    '<div class="bl-hs">Choose a plan and pay with '+(W.long||W.name)+'. BYO Player unlocks by itself.</div></div></div>'+
+            c.innerHTML='<div class="pk-head"><span class="pk-ic">'+icon(why==='expired'?'i-lock':'i-star')+'</span><div><div class="bl-h">'+(why==='expired'?((acc()&&acc().state==='ended')?'Your access has ended':(neverActive()?'Activate BYO Player':'Your free trial has ended')):'Subscribe to BYO Player')+'</div>'+
+                    '<div class="bl-hs">'+(why==='expired'&&neverActive()?'Ask BYO support to activate it (Settings, Get remote help), or choose':'Choose')+' a plan and pay with '+(W.long||W.name)+'. BYO Player unlocks by itself.</div></div></div>'+
                 '<div class="pk-plans" style="grid-template-columns:repeat('+Math.max(1,T.plans.length)+',minmax(0,1fr))"></div>'+
                 '<div class="pk-row"><div class="pk-ph"><label for="bl-phone">Your '+W.name+' number <span>(you pay from)</span></label>'+
                     '<input id="bl-phone" type="tel" inputmode="tel" placeholder="'+W.ex+'" autocomplete="tel" data-focusable="true" tabindex="0"/></div>'+
@@ -17499,9 +17507,8 @@ var Pin=(function(){
             o=document.createElement('div'); o.id='support-ov'; o.className='support-ov hidden';
             o.innerHTML='<div class="sup-card"><div class="sup-head"><span class="sup-ic">'+icon('i-bell')+'</span><div><div class="sup-title">Remote help</div><div class="sup-sub" id="sup-sub"></div></div></div>'+
                 '<div class="sup-live hidden" id="sup-live"></div><div class="sup-code" id="sup-code"></div><div class="sup-timer" id="sup-timer"></div><div class="sup-status" id="sup-status"></div><div class="sup-log" id="sup-log"></div>'+
-                '<div class="sup-acts"><button class="s-btn danger" id="sup-end" data-focusable="true" tabindex="0">End help</button></div></div>';
+                '</div>';
             ($('stage')||document.body).appendChild(o);
-            $('sup-end').addEventListener('click', function(){ end(true); });
             return o; }
         // Where the remote was before a help screen opened. Focus goes back there a moment AFTER the
         // screen closes, so the OK press that closed it can't also press whatever is underneath
@@ -17511,7 +17518,7 @@ var Pin=(function(){
         function restore(el, fallback){ setTimeout(function(){ try{ if(usable(el)) Nav.setFocus(el); else if(fallback&&usable(fallback)) Nav.setFocus(fallback); else Nav.focusFirst(); }catch(e){} }, 300); }
         function syncWall(){ var on=isOpen()||msgOpen(); document.body.classList.toggle('sup-on', on);
             if(!on){ try{ if(!Billing.locked()&&Billing.isWallOpen()) Billing.closeWall(); }catch(e){} try{ if(Billing.locked()&&!Billing.isWallOpen()) setTimeout(function(){ if(!isOpen()&&!msgOpen()&&Billing.locked()) Billing.openWall('expired'); },350); }catch(e){} } }
-        function show(){ if(!isOpen()) backTo=Nav.current; document.body.classList.add('sup-on'); ov().classList.remove('hidden'); paint(); setTimeout(function(){ Nav.setFocus($('sup-end')); },30); }
+        function show(){ if(!isOpen()) backTo=Nav.current; document.body.classList.add('sup-on'); ov().classList.remove('hidden'); paint(); }   // no buttons: support ends the session; Back hides this screen
         function hide(){ var o=$('support-ov'); if(o) o.classList.add('hidden'); try{ renderCard(); }catch(e){} if(!msgOpen()) restore(backTo, $('btn-support')); syncWall(); }
         function isOpen(){ var o=$('support-ov'); return !!(o&&!o.classList.contains('hidden')); }
         function paint(){ if(!$('support-ov')) return;
@@ -17740,7 +17747,7 @@ var Pin=(function(){
             m._done=true; m.classList.remove('hidden'); document.body.classList.add('sup-on'); $('sup-msg-ok').addEventListener('click', closeMessage); setTimeout(function(){ Nav.setFocus($('sup-msg-ok')); },30); }
         function closeMessage(){ var m=$('support-msg'), done=!!(m&&m._done); if(m) m.classList.add('hidden');
             if(done&&isOpen()){ var o=$('support-ov'); if(o) o.classList.add('hidden'); try{ renderCard(); }catch(e){} restore(backTo, $('btn-support')); syncWall(); return; }
-            if(isOpen()) restore($('sup-end')); else restore(msgBackTo||backTo, $('btn-support')); syncWall(); }
+            if(isOpen()) { /* back on the help screen: nothing to focus */ } else restore(msgBackTo||backTo, $('btn-support')); syncWall(); }
         function msgOpen(){ var m=$('support-msg'); return !!(m&&!m.classList.contains('hidden')); }
         function scope(){ if(msgOpen()) return $('support-msg'); if(isOpen()) return $('support-ov'); return null; }
         function back(){ if(msgOpen()){ closeMessage(); return true; } if(isOpen()){ hide(); return true; } return false; }
