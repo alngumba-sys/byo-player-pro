@@ -1,6 +1,6 @@
 {
-  "versionCode": 212,
-  "versionName": "3.37.27",
+  "versionCode": 213,
+  "versionName": "3.37.28",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Fixes the TV restarting: very large M3U playlists are now trimmed to live channels before loading, and too-big ones show a clear message instead of closing the app."
+  "notes": "Fixes the TV restarting with very large playlists. Live channels load from the playlist, and movies and series come from the provider lists so they still appear."
 }

@@ -63,7 +63,8 @@
                 Snap.put({ v:1, sig:libSig(list), at:Date.now(), json:json }, function(ok){ libLog(ok?('saved copy '+mb+' MB in '+(Date.now()-t0)+'ms'):('saving copy FAILED ('+mb+' MB)')); });
             }catch(e){ libLog('saving copy threw '+(e&&e.message||e)); } }, 4000); }
         function srcMapFor(list){ var m={}; list.forEach(function(pl,i){ var k=keyOf(pl), sc={ idx:i, key:k, name:plName(pl), kind:kindOf(pl), api:null };
-            if(pl.mode==='xtream'){ try{ sc.api=xtreamApi(pl.server,pl.user,pl.pass); }catch(_e){} } m[k]=sc; }); return m; }
+            if(pl.mode==='xtream'){ try{ sc.api=xtreamApi(pl.server,pl.user,pl.pass); }catch(_e){} }
+            else if(pl.mode==='m3u'){ var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(sx){ try{ sc.api=xtreamApi(sx.server,sx.user,sx.pass); }catch(_e){} } } m[k]=sc; }); return m; }
         function revive(d, list){ var m=srcMapFor(list);
             function fix(it){ if(!it) return; if(typeof it._src==='string') it._src=m[it._src]; (it._alts||[]).forEach(fix); (it.seasons||[]).forEach(function(se){ (se&&se.episodes||[]).forEach(fix); }); }
             d.live.forEach(fix); d.movies.forEach(fix); d.series.forEach(fix);
@@ -147,6 +148,32 @@
             if(!started) Net.fetchText(url,function(txt){ phase(src.key,'read'); ok(txt); },bad);
         }
         var out_trim={};
+        // A trimmed M3U from an Xtream panel (get.php?username=..&password=..): its movies and series come from the
+        // provider's own lists instead. Those lists are far smaller (no episodes until a show is opened).
+        function nativeJSON(url, maxMB, ok, bad){
+            if(!(AB&&AB.fetchToFile&&window.__nativeFetch)) return Net.fetchJSON(url,ok,bad);
+            if(!window.__nativeFetch(url,function(st,detail,path){
+                if(st!=='ok'||!path) return bad(detail);
+                var sz=+((String(detail||'').match(/size:(\d+)/)||[])[1])||0;
+                if(sz>maxMB*1048576) return bad('too-big:'+(sz/1048576).toFixed(1));
+                var x=new XMLHttpRequest(); try{ x.open('GET',path,true); }catch(e){ return bad('read'); }
+                x.onload=function(){ var j=null; try{ j=JSON.parse(x.responseText); }catch(e){} x=null; if(j) ok(j); else bad('json'); };
+                x.onerror=function(){ bad('read'); }; x.send(); })) Net.fetchJSON(url,ok,bad); }
+        function vodViaXtream(pl, src, out, idx, done){
+            var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(!sx){ crumb(src.name+': movies and series left out (not an Xtream link)'); return done(); }
+            var api; try{ api=xtreamApi(sx.server,sx.user,sx.pass); }catch(e){ return done(); }
+            src.api=api; var lim=8; try{ lim=+AB.m3uLimitMb()||8; }catch(e){}
+            var left=3, xcats=null; crumb('loading movies and series for '+src.name+' from the provider lists');
+            function one(){ if(--left) return; if(xcats){ catApply(out.movies,xcats.vod); catApply(out.series,xcats.series); }
+                crumb(src.name+': '+out.movies.length+' movies, '+out.series.length+' series from the provider lists'); done(); }
+            xtreamCats(api, function(m){ xcats=m; one(); });
+            nativeJSON(api.vodStreams, lim*2, function(arr){ phase(src.key,'read'); if(Array.isArray(arr)) out.movies=tagItems(arr.map(function(o,i){ return {id:'movie-'+(o.stream_id||i),title:o.name||'Movie',genre:o.category_name||('Cat '+(o.category_id||'')),year:(o.year||''),rating:(o.rating||o.rating_5based||'–'),plot:o.plot||o.description||'',gi:i,order:i,streamId:o.stream_id,tmdb:(o.tmdb||o.tmdb_id||''),
+                    logo:(o.stream_icon||o.cover||o.cover_big||o.movie_image||''),url:api.vodUrl(o.stream_id,o.container_extension)}; }), idx, src); arr=null; one(); },
+                function(e){ crumb(src.name+': movies not loaded ('+e+')'); one(); });
+            nativeJSON(api.seriesList, lim*2, function(arr){ if(Array.isArray(arr)) out.series=tagItems(arr.map(function(o,i){ return {id:'series-'+(o.series_id||i),title:o.name||'Series',genre:o.category_name||('Cat '+(o.category_id||'')),year:(o.year||o.releaseDate||''),rating:(o.rating||'–'),plot:o.plot||'',gi:i,order:i,seasons:null,seriesId:o.series_id,tmdb:(o.tmdb||o.tmdb_id||''),
+                    logo:(o.cover||o.cover_big||o.series_image||'')}; }), idx, src); arr=null; one(); },
+                function(e){ crumb(src.name+': series not loaded ('+e+')'); one(); });
+        }
         function loadOne(pl, idx, cb){
             var src={ idx:idx, key:keyOf(pl), name:plName(pl), kind:kindOf(pl), api:null };
             var out={ ok:false, src:src, live:[], movies:[], series:[], err:'' };
@@ -166,7 +193,9 @@
                     out.movies=tagItems(cls.movies||[], idx, src);
                     out.series=tagItems(cls.series||[], idx, src);
                     if(idx) out.series.forEach(function(s){ (s.seasons||[]).forEach(function(se){ (se.episodes||[]).forEach(function(ep){ ep.id=String(ep.id)+'~'+idx; }); }); });
-                    out.ok=true; end();
+                    out.ok=true; txt=null;
+                    if(out_trim[src.key]) return vodViaXtream(pl, src, out, idx, end);
+                    end();
                 },function(err){ out.err=String(err||'Could not load'); end(); });
                 return; }
             if(pl.mode==='plex'){
@@ -372,7 +401,7 @@
             } }
 
         // ---------- per-item routing ----------
-        function useSourceOf(it){ if(!it||!it._src||!it._src.api) return; if(it._src.kind==='emby') S.emby=it._src.api; else if(it._src.kind==='xtream') S.xtream=it._src.api; }
+        function useSourceOf(it){ if(!it||!it._src||!it._src.api) return; if(it._src.kind==='emby') S.emby=it._src.api; else if(it._src.kind==='xtream'||it._src.api.seriesInfo) S.xtream=it._src.api; }
         function mergeSeasons(base, add, src){ base.seasons=base.seasons||[];
             (add||[]).forEach(function(se){ var bs=null; base.seasons.forEach(function(x){ if(x.n===se.n) bs=x; });
                 if(!bs){ bs={n:se.n, episodes:[]}; base.seasons.push(bs); }
