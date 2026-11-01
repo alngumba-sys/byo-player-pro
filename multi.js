@@ -277,6 +277,15 @@
             try{ if(kind==='movies'&&S.moviesGenre===genre&&typeof renderMovies==='function') renderMovies(); if(kind==='series'&&S.seriesGenre===genre&&typeof renderSeries==='function') renderSeries(); }catch(_e){}
             try{ setToast(n+' more '+(kind==='movies'?'movies':'series')+' in '+genre+'.'); }catch(_e){} }); };
         window.__byoDeepSearch=deepSearch;
+        // Pictures for the title screen, best first: [url, isWide]. Small list posters are asked for at full size.
+        window.__byoHeroArt=function(x){ var out=[]; if(!x) return out;
+            function big(u, w){ u=String(u||''); if(/image\.tmdb\.org\/t\/p\//.test(u)) return u.replace(/\/t\/p\/[^\/]+\//,'/t/p/'+w+'/'); if(/[?&]maxWidth=\d+/.test(u)) return u.replace(/maxWidth=\d+/,'maxWidth='+(w==='original'?1400:1920)); return u; }
+            var bd=x.backdrop; if(Array.isArray(bd)) bd=bd[0]; if(typeof bd==='string'&&/^https?:/.test(bd)) out.push([big(bd,'w1280'),true]);
+            if(x.logo&&/\/Items\/[^\/]+\/Images\/Primary/.test(x.logo)) out.push([x.logo.replace('/Images/Primary','/Images/Backdrop').replace(/maxWidth=\d+/,'maxWidth=1920').replace(/([?&])tag=[^&]*&?/,'$1'),true]);
+            try{ var ep=null; (x.seasons||[]).some(function(se){ return (se.episodes||[]).some(function(e){ if(e&&e.thumb&&e.thumb!==x.logo&&e.thumb!==e.art&&/image\.tmdb\.org/.test(e.thumb)){ ep=e; return true; } return false; }); });
+                if(ep) out.push([big(ep.thumb,'w1280'),true]); }catch(e){}
+            if(x.logo){ var bp=big(x.logo,'original'); if(bp!==x.logo) out.push([bp,false]); out.push([x.logo,false]); }
+            return out; };
         window.__byoLibLog=function(){ return (S._libLog||[]).slice(); };
         function vodViaXtream(pl, src, out, idx, done){
             var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(!sx){ crumb(src.name+': movies and series left out (not an Xtream link)'); return done(); }

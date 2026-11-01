@@ -563,6 +563,16 @@ _rep("(isSeries?'<span>'+((x.seasons&&x.seasons.length)||'?')+' seasons</span>'"
      "(isSeries?((x.seasons&&x.seasons.length)?'<span>'+x.seasons.length+' season'+(x.seasons.length===1?'':'s')+'</span>':'')", 'seasonsq2')
 _rep("""<div class="p-sub">'+esc(s.genre)+' · '+((s.seasons&&s.seasons.length)||'?')+' seasons</div>""",
      """<div class="p-sub">'+esc(s.genre)+((s.seasons&&s.seasons.length)?(' · '+s.seasons.length+' season'+(s.seasons.length===1?'':'s')):'')+'</div>""", 'seasonsq3')
+# Title screen picture: sharp, not a small poster stretched across the TV. Tries, in order: a wide backdrop
+# (TMDB, the provider's backdrop, Emby's backdrop image, an episode still) and only then the poster at full size.
+_rep("""        if(x._bd){ show(x._bd,true); }
+        else if(x.logo) show(x.logo,false);""",
+"""        (function(){ var c=window.__byoHeroArt?window.__byoHeroArt(x):[]; if(x._bd) c.unshift([x._bd,true]);
+            var i=0; (function next(){ if(i>=c.length) return; var it=c[i++]; if(!it||!it[0]) return next(); var pre=new Image();
+                pre.onload=function(){ if(pre.naturalWidth<(it[1]?500:200)||(it[1]&&pre.naturalWidth<pre.naturalHeight)) return next(); show(it[0],it[1]); }; pre.onerror=next; pre.src=it[0]; })(); })();""", 'heroart')
+_rep("""            s.seasons=seasons; s.epCount=seasons.reduce(function(a,x){return a+x.episodes.length;},0); cb(); },function(){ s.seasons=[]; cb(); }); }""",
+"""            s.seasons=seasons; s.epCount=seasons.reduce(function(a,x){return a+x.episodes.length;},0); cb();
+            try{ if(S.currentDetail&&S.currentDetail.data===s&&!$('view-detail').classList.contains('has-bd')) paintTitleBackdrop(s); }catch(_e){} },function(){ s.seasons=[]; cb(); }); }""", 'heroartrepaint')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
