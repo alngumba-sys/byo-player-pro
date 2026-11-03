@@ -319,6 +319,12 @@
                     rest(); }, rest);
                 return; }
             rest(); };
+        // Connections whose movies / series / live channels are switched off by the per-connection sections
+        // (set from the support console), so an empty screen can say why and switch them back on.
+        window.__byoSectionsOff=function(kind){ var k=kind==='movies'?'movies':(kind==='series'?'series':'live'), out=[];
+            (Store.savedPlaylists||[]).forEach(function(pl){ if(pl&&!pl.off&&pl.use&&pl.use[k]===false) out.push({ id:pl.id, name:plName(pl) }); }); return out; };
+        window.__byoSectionsOn=function(kind, cb){ var k=kind==='movies'?'movies':(kind==='series'?'series':'live');
+            (Store.savedPlaylists||[]).forEach(function(pl){ if(pl&&pl.use&&pl.use[k]===false) pl.use[k]=true; }); Store.save(); try{ rebuildForUse(); }catch(e){} try{ publish(); }catch(e){} if(cb) setTimeout(cb,300); };
         window.__byoLibLog=function(){ return (S._libLog||[]).slice(); };
         function vodViaXtream(pl, src, out, idx, done){
             var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(!sx){ crumb(src.name+': movies and series left out (not an Xtream link)'); return done(); }

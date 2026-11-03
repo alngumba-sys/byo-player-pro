@@ -596,6 +596,34 @@ s=s.replace("        render();\n        if(S._h2Rot){ clearInterval(S._h2Rot); S
  "        render();\n        try{ if(window.__byoFeatArt) window.__byoFeatArt(m,function(){ try{ paintBackdrop(); var tp=el.querySelector('.h2-feat-tagline'); if(tp&&m.plot&&!tp.textContent){ var d=h2Sentence(m.plot); if(d){ tp.textContent='\\u201c'+d+'\\u201d'; tp.style.display=''; } } }catch(_e){} }); }catch(_e){}\n        if(S._h2Rot){ clearInterval(S._h2Rot); S._h2Rot=null; }")
 _rep("        var m=top[Math.floor(Math.random()*top.length)]||top[0];",
      "        var _wb=top.filter(function(x){ return x._bd; }), _pk=_wb.length?_wb:top; var m=_pk[Math.floor(Math.random()*_pk.length)]||top[0];", 'featwide')
+# Movies / Series grid empty although the library has titles: never leave just "No movies matched". Say what hid
+# them and offer one button that clears the filter; a blank genre is treated as "All".
+_rep("    function renderMovies(){ var q=S.moviesQ.toLowerCase();",
+     "    function renderMovies(){ if(!S.moviesGenre) S.moviesGenre='All'; if(!S.moviesChannel) S.moviesChannel='All'; var q=String(S.moviesQ||'').toLowerCase();", 'movnorm')
+_rep("    function renderSeries(){ var q=S.seriesQ.toLowerCase();",
+     "    function renderSeries(){ if(!S.seriesGenre) S.seriesGenre='All'; if(!S.seriesChannel) S.seriesChannel='All'; var q=String(S.seriesQ||'').toLowerCase();", 'sernorm')
+_rep("        progressiveGrid(grid, list, moviePoster); }", "        progressiveGrid(grid, list, moviePoster); if(!total) __emptyHelp('movies'); }", 'movempty')
+_rep("        progressiveGrid(grid, list, seriesPoster); }", """        progressiveGrid(grid, list, seriesPoster); if(!total) __emptyHelp('series'); }
+    function __emptyHelp(kind){ try{ var isM=kind==='movies', all=isM?S.movies:S.series, el=$(kind+'-empty'); if(!el) return;
+        var off=window.__byoSectionsOff?window.__byoSectionsOff(kind):[];
+        if(off.length&&(!all||!all.length||!profFilter(all).length)){ var w=isM?'Movies':'Series';
+            el.innerHTML=esc(w+' from '+off.map(function(o){ return o.name; }).join(', ')+' are switched off on this TV (App sections, set by BYO support).')+'<br><button class="s-btn" data-focusable="true" tabindex="0" id="'+kind+'-secon" style="margin-top:18px">Show '+w.toLowerCase()+'</button>';
+            try{ if(window.ByoAndroid&&ByoAndroid.crumb) ByoAndroid.crumb(kind+' grid empty: switched off in App sections'); }catch(e){}
+            var sb=$(kind+'-secon'); if(sb) sb.addEventListener('click',function(){ sb.disabled=true; sb.textContent='Loading…'; window.__byoSectionsOn(kind,function(){ if(isM) renderMovies(); else renderSeries(); }); });
+            return; }
+        if(!all||!all.length) return;
+        var word=isM?'movies':'series', base=profFilter(all), why='', canReset=false;
+        if(!base.length){ var r=[]; try{ if(activeIsKids()) r.push('this is a Kids profile'); }catch(e){} try{ if(pcContentOn&&pcContentOn()) r.push('parental control is hiding some content'); }catch(e){}
+            try{ if(Object.keys((Store.settings&&Store.settings.hiddenCats)||{}).length) r.push('some categories are hidden in Settings'); }catch(e){} try{ if(langFilterOn()) r.push('"only my language" is on'); }catch(e){}
+            why='All '+all.length.toLocaleString()+' '+word+' are hidden on this profile'+(r.length?(' ('+r.join(', ')+')'):'')+'. Change it in Settings.'; }
+        else { var g=isM?S.moviesGenre:S.seriesGenre, ch=isM?S.moviesChannel:S.seriesChannel, fav=isM?S.moviesFav:S.seriesFav, gm=(isM?S.moviesGroupBy:S.seriesGroupBy)==='channel';
+            var what=fav?'your favourites':(gm?('the channel "'+ch+'"'):('the genre "'+g+'"'));
+            why='Nothing to show in '+what+'. You have '+base.length.toLocaleString()+' '+word+'.'; canReset=true; }
+        try{ if(window.ByoAndroid&&ByoAndroid.crumb) ByoAndroid.crumb(word+' grid empty: '+why); }catch(e){}
+        el.innerHTML=esc(why)+(canReset?'<br><button class="s-btn" data-focusable="true" tabindex="0" id="'+kind+'-showall" style="margin-top:18px">Show all '+word+'</button>':'');
+        var b=$(kind+'-showall'); if(b) b.addEventListener('click',function(){ if(isM){ S.moviesGenre='All'; S.moviesChannel='All'; S.moviesFav=false; S.moviesQ=''; } else { S.seriesGenre='All'; S.seriesChannel='All'; S.seriesFav=false; S.seriesQ=''; }
+            try{ renderCatBar(kind); }catch(e){} if(isM) renderMovies(); else renderSeries(); setTimeout(function(){ var f=document.querySelector('#'+kind+'-grid [data-focusable]'); if(f) Nav.setFocus(f); },60); });
+    }catch(e){} }""", 'serempty')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",

@@ -11,8 +11,8 @@ android {
         minSdk 21          // Android TV / Google TV baseline
         multiDexEnabled true
         targetSdk 34
-        versionCode 222
-        versionName "3.37.37"
+        versionCode 223
+        versionName "3.37.38"
     }
 
     buildTypes {
