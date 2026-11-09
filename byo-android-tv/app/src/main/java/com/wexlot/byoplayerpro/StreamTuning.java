@@ -44,7 +44,7 @@ public final class StreamTuning {
     static final int VOD_MAX_BUFFER_MS = 120_000;     // ...and keep going up to 120 s when memory allows
     static final int VOD_START_MS = 2_500;            // first frame after 2.5 s of media: starts quickly
     static final int VOD_RESUME_BASE_MS = 8_000;      // after a stall: rebuild at least 8 s before resuming
-    static final int VOD_RESUME_MAX_MS = 20_000;      // each further stall raises that up to 20 s
+    static final int VOD_RESUME_MAX_MS = 60_000;      // each further stall raises that, up to a minute (when memory allows)
     static final int VOD_BACK_BUFFER_MS = 15_000;     // keep the last 15 s so a short rewind needs no download
 
     // Live channels (the live edge limits how much can exist ahead of us)
@@ -103,7 +103,7 @@ public final class StreamTuning {
         void noteStall() {
             long now = System.currentTimeMillis();
             if (now - lastStallAt > 180_000) resumeMs = resumeBaseMs;           // first stall in a while: base bar
-            else resumeMs = Math.min(resumeMaxMs, resumeMs + 4_000);             // repeated stalls: raise the bar
+            else resumeMs = Math.min(resumeMaxMs, Math.max(resumeMs + 4_000, resumeMs * 3 / 2));   // repeated stalls: raise the bar (8, 12, 18, 27, 40, 60 s)
             lastStallAt = now;
         }
         /** Called after a long stretch of smooth playback, or on a new title/channel. */

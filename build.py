@@ -324,9 +324,9 @@ s=s.replace(_pc, """    function playContent(url,title,sub,opts){ opts=opts||{};
                 // keep up, instead of pausing to buffer. Bitrates are estimates from the name tags.
                 try{ if(opts.type==='movie'&&__mv&&!S.emby&&!P.qualities){
                     function __est(nm){ var t=String(nm||''); var b=4.5e6;
-                        if(/\b(2160p?|4k|uhd)\b/i.test(t)) b=16e6; else if(/\b(1080p?|fhd|full\s?hd)\b/i.test(t)) b=6.5e6; else if(/\b(720p?|hd)\b/i.test(t)) b=3.5e6; else if(/\b(480p?|sd|cam|ts)\b/i.test(t)) b=1.5e6;
+                        if(/\b(2160p?|4k|4kdv|4khdr|uhd)\b/i.test(t)) b=16e6; else if(/\b(1080p?|fhd|full\s?hd)\b/i.test(t)) b=6.5e6; else if(/\b(720p?|hd)\b/i.test(t)) b=3.5e6; else if(/\b(480p?|sd|cam|ts)\b/i.test(t)) b=1.5e6;
                         if(/\b(hevc|x265|h\.?265)\b/i.test(t)) b=Math.round(b*0.6); return b; }
-                    function __lab(nm){ var t=String(nm||''); if(/\b(2160p?|4k|uhd)\b/i.test(t)) return '4K'; if(/\b(1080p?|fhd|full\s?hd)\b/i.test(t)) return '1080p'; if(/\b(720p?|hd)\b/i.test(t)) return 'HD'; if(/\b(480p?|sd)\b/i.test(t)) return 'SD'; return 'Lighter copy'; }
+                    function __lab(nm){ var t=String(nm||''); if(/\b(2160p?|4k|4kdv|4khdr|uhd)\b/i.test(t)) return '4K'; if(/\b(1080p?|fhd|full\s?hd)\b/i.test(t)) return '1080p'; if(/\b(720p?|hd)\b/i.test(t)) return 'HD'; if(/\b(480p?|sd)\b/i.test(t)) return 'SD'; return 'Lighter copy'; }
                     var __ob=__est(__mv.title); P.origBitrate=__ob;
                     var __alts=(__mv.sources||[]).filter(function(sx){ return sx&&sx.url&&sx.url!==url; }).map(function(sx){ return { label:__lab(sx.name), url:sx.url, bitrate:__est(sx.name) }; })
                         .filter(function(q){ return q.bitrate<__ob; }).sort(function(a,b){ return b.bitrate-a.bitrate; });
@@ -632,6 +632,12 @@ _rep("    function armDetailAutoplay(btn, go){ cancelDetailAutoplay(); if(!btn) 
      "    function armDetailAutoplay(btn, go){ cancelDetailAutoplay(); if(!btn) return;\n        try{ var _cd=S.currentDetail&&S.currentDetail.data; if(_cd&&S._lastPlayItem===_cd&&Date.now()-(S._lastPlayAt||0)<4*3600000) return; if(S._nativeRouteTs&&Date.now()-S._nativeRouteTs<8000) return; }catch(_e){}", 'noreplay')
 _rep("    function playContent(url,title,sub,opts){ opts=opts||{};\n        window.__byoPlayWeb=playContent;",
      "    function playContent(url,title,sub,opts){ opts=opts||{};\n        try{ cancelDetailAutoplay(); if(S.currentDetail&&S.currentDetail.data){ S._lastPlayItem=S.currentDetail.data; S._lastPlayAt=Date.now(); } }catch(_e){}\n        window.__byoPlayWeb=playContent;", 'noreplay2')
+# Lighter copies of a live channel: "UK: Sky Sports Main Event UHD" belongs with "Sky Sports Main Event FHD / HD / SD",
+# so the country prefix is ignored when grouping, and "4KDV" / "4K:" style tags count as 4K.
+_rep("    function __lqKey(nm){ return String(nm||'').toLowerCase()",
+     "    function __lqKey(nm){ return String(nm||'').replace(/^\\s*[A-Za-z]{2,4}\\s*[:|]\\s*/,'').replace(/\\b4K(?:DV|HDR)?\\b\\s*:?/gi,' 4k ').toLowerCase()", 'lqprefix')
+_rep("        if(/\\b(2160p?|4k|8k|uhd)\\b/i.test(t)){ b=16e6; l='4K'; }",
+     "        if(/\\b(2160p?|4k|4kdv|4khdr|8k|uhd)\\b/i.test(t)){ b=16e6; l='4K'; }", 'lq4kdv')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",

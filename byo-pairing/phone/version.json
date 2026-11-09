@@ -1,6 +1,6 @@
 {
-  "versionCode": 224,
-  "versionName": "3.37.39",
+  "versionCode": 225,
+  "versionName": "3.37.40",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Back from a movie no longer starts it again. Phones and tablets get picture in picture: keep watching in a small window while using other apps."
+  "notes": "Live channels drop to a lighter copy (FHD, HD, SD) on slow internet for many more channels; videos with only one quality wait for a bigger head start so they stop less often."
 }

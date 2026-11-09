@@ -101,6 +101,7 @@ public class PlayerActivity extends Activity {
     private DefaultBandwidthMeter meter;
     private StreamTuning.ContinuityLoadControl loadCtl;
     private TextView favBtn; private boolean favOn = false, favChanged = false;   // ★ Favourite (movie, or the series of an episode)
+    private boolean slowNoteShown = false;
     private long lastStallAt = 0;              // last time playback stalled after it had started
     private boolean waitingNet = false;        // the internet dropped: waiting for it to come back
     private android.net.ConnectivityManager.NetworkCallback netCb;
@@ -283,6 +284,13 @@ public class PlayerActivity extends Activity {
                     h.removeCallbacks(stallCheck); h.postDelayed(stallCheck, 5000);
                     int recent = 0; for (long t : rebuffers) if (now - t < 120000) recent++;
                     if (recent >= 2) stepDown();
+                    // No lighter copy to switch to (most provider movies, episodes and many channels exist in one quality
+                    // only): say so once, and let the player wait for a bigger head start so it then plays for longer.
+                    if (recent >= 2 && !slowNoteShown && qualities.size() <= 1 && videoFormats().size() <= 1) {
+                        slowNoteShown = true;
+                        Toast.makeText(PlayerActivity.this, live ? "Your internet is slower than this channel needs. Waiting a little longer each time so it stops less often."
+                                : "Your internet is slower than this video needs and there is no lighter copy. Building a bigger head start so it plays longer without stopping.", Toast.LENGTH_LONG).show();
+                    }
                 }
             }
         }
@@ -566,7 +574,7 @@ public class PlayerActivity extends Activity {
         chIndex = idx; useBrowserUa = false; lastErr = "";
         Ch c = channels.get(chIndex);
         titleView.setText(c.title); subView.setText(c.sub); subView.setVisibility(c.sub.isEmpty() ? View.GONE : View.VISIBLE);
-        everPlayed = false; retries = 0; capBitrate = Long.MAX_VALUE; rebuffers.clear(); lastStallAt = 0; if (loadCtl != null) loadCtl.reset();
+        everPlayed = false; retries = 0; capBitrate = Long.MAX_VALUE; rebuffers.clear(); lastStallAt = 0; slowNoteShown = false; if (loadCtl != null) loadCtl.reset();
         selector.setParameters(selector.buildUponParameters().clearOverridesOfType(C.TRACK_TYPE_VIDEO).setMaxVideoBitrate(Integer.MAX_VALUE));
         qualities.clear(); qualities.add(new Q("Original", c.url, c.bitrate > 0 ? c.bitrate : Long.MAX_VALUE)); qIndex = 0;
         try { if (c.quals != null) for (int i = 0; i < c.quals.length(); i++) { JSONObject q = c.quals.getJSONObject(i);
