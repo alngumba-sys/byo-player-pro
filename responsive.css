@@ -3457,3 +3457,24 @@ html.is-playing #nav, html.is-playing .topbar, html.is-playing #ios-install-pill
 .pp-billing{ max-width:760px; margin:0 auto 22px; }
 .pp-billing:empty{ display:none; }
 .pp-billing .pay-banner{ margin:0; text-align:left; }
+
+/* ---- Phones: the player buttons and the Genre row always fit on one line ---- */
+@media (max-width: 899px){
+  .transport-btns{ gap:6px !important; width:100% !important; }
+  .transport-btns .tb{ flex:1 1 0 !important; min-width:0 !important; width:auto !important; max-width:58px !important; height:44px !important; }
+  .transport-btns .tb.primary{ flex:1.5 1 0 !important; max-width:76px !important; width:auto !important; min-width:0 !important; }
+  .transport-btns .tb .ic, .transport-btns .tb svg{ width:20px !important; height:20px !important; }
+
+  .filter-row > .genre-strip{ display:flex !important; flex-wrap:nowrap !important; overflow:hidden !important; gap:6px !important; }
+  .genre-strip .catmode-toggle{ flex:0 0 auto !important; }
+  .genre-strip .catmode-btn{ height:36px !important; padding:0 10px !important; font-size:13px !important; gap:5px !important; white-space:nowrap !important; }
+  .genre-strip .catmode-btn .ic, .genre-strip .catmode-btn svg{ width:16px !important; height:16px !important; }
+  /* Favourites: just the star */
+  .genre-strip .fav-btn{ font-size:0 !important; gap:0 !important; padding:0 10px !important; }
+  .genre-strip .fav-btn .ic, .genre-strip .fav-btn svg{ width:18px !important; height:18px !important; }
+  /* the genre button takes what is left and shortens its name if needed */
+  .genre-strip .cat-current{ flex:1 1 auto !important; min-width:0 !important; height:40px !important; padding:0 10px !important; font-size:13px !important; gap:6px !important; }
+  .genre-strip .cat-current > span:not(.cc-ic):not(.cc-chev){ overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important; min-width:0 !important; }
+  .genre-strip .cat-current .cc-ic{ width:16px !important; height:16px !important; flex:none !important; }
+  .genre-strip .cat-current .cc-chev{ flex:none !important; }
+}

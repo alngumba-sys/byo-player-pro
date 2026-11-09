@@ -1,6 +1,6 @@
 {
-  "versionCode": 229,
-  "versionName": "3.37.44",
+  "versionCode": 230,
+  "versionName": "3.37.45",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Subscription details moved from Home to your profile (tap your picture). A reminder appears once a day in the last 3 days."
+  "notes": "Phones: player buttons and the Genre row always fit on one line."
 }
