@@ -638,6 +638,9 @@ _rep("    function __lqKey(nm){ return String(nm||'').toLowerCase()",
      "    function __lqKey(nm){ return String(nm||'').replace(/^\\s*[A-Za-z]{2,4}\\s*[:|]\\s*/,'').replace(/\\b4K(?:DV|HDR)?\\b\\s*:?/gi,' 4k ').toLowerCase()", 'lqprefix')
 _rep("        if(/\\b(2160p?|4k|8k|uhd)\\b/i.test(t)){ b=16e6; l='4K'; }",
      "        if(/\\b(2160p?|4k|4kdv|4khdr|8k|uhd)\\b/i.test(t)){ b=16e6; l='4K'; }", 'lq4kdv')
+# Update download on a patchy line: show "connection dropped, carrying on" instead of failing.
+_rep("            else if(state==='cancelled'){ title.textContent='Update cancelled';",
+     "            else if(state==='retrying'){ bar.classList.toggle('indet',!(pct>=0)); if(pct>=0){ fill.style.width=pct+'%'; pctEl.textContent=pct+'%'; } mbEl.textContent=total?(mb(got)+' of '+mb(total)+' MB'):'';\n                title.textContent='Connection dropped, carrying on\\u2026'; note.textContent='The download picks up where it stopped. Nothing to do.'; aboutMsg('Connection dropped, resuming\\u2026'); }\n            else if(state==='cancelled'){ title.textContent='Update cancelled';", 'updretry')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",

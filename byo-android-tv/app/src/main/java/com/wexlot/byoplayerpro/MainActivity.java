@@ -1016,27 +1016,52 @@ public class MainActivity extends Activity {
             dir.mkdirs();
             java.io.File apk = new java.io.File(dir, "byoplayer-update.apk");
             if (apk.exists()) apk.delete();
-            java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
-            c.setInstanceFollowRedirects(true);
-            // Ask for the UNcompressed file: with gzip the size is unknown and no percentage can be shown.
-            c.setRequestProperty("Accept-Encoding", "identity");
-            c.setConnectTimeout(20000); c.setReadTimeout(60000);
-            c.connect();
-            int code = c.getResponseCode();
-            if (code / 100 != 2) { reportUpdate("error", code); return; }
-            long total = c.getContentLength();
-            reportUpdate("downloading", 0, 0L, total);
-            java.io.InputStream in = c.getInputStream();
-            java.io.FileOutputStream out = new java.io.FileOutputStream(apk);
-            byte[] buf = new byte[65536]; int n, lastPct = -1; long got = 0, lastMs = 0;
-            while ((n = in.read(buf)) > 0) {
-                out.write(buf, 0, n); got += n;
-                long now = System.currentTimeMillis();
-                if (total > 0) { int p = (int) (got * 100L / total); if (p != lastPct) { lastPct = p; reportUpdate("downloading", p, got, total); } }
-                else if (now - lastMs > 400) { lastMs = now; reportUpdate("downloading", -1, got, 0L); }
+            // Slow or patchy internet: a dropped connection no longer fails the update. The download picks up
+            // where it stopped (HTTP Range), retries with growing pauses, and switches to the backup copy on GitHub
+            // if the main server keeps failing. The finished file is checked before the installer opens.
+            String[] urls = { url, "https://github.com/alngumba-sys/byo-player-pro/raw/main/tv3247.apk" };
+            long total = -1, got = 0; int attempt = 0; boolean done = false; int lastCode = -1;
+            while (!done && attempt < 12) {
+                String u = urls[attempt < 7 ? 0 : 1];
+                if (attempt == 7) { got = 0; total = -1; if (apk.exists()) apk.delete(); }   // different server: start the file again
+                java.net.HttpURLConnection c = null;
+                try {
+                    c = (java.net.HttpURLConnection) new java.net.URL(u).openConnection();
+                    c.setInstanceFollowRedirects(true);
+                    c.setRequestProperty("Accept-Encoding", "identity");   // uncompressed, so the size (and %) is known
+                    if (got > 0) c.setRequestProperty("Range", "bytes=" + got + "-");
+                    c.setConnectTimeout(20000); c.setReadTimeout(45000);
+                    c.connect();
+                    int code = c.getResponseCode(); lastCode = code;
+                    if (code == 416 && total > 0 && got >= total) { done = true; break; }
+                    if (code / 100 != 2) throw new java.io.IOException("HTTP " + code);
+                    boolean resumed = (code == 206 && got > 0);
+                    if (!resumed) { got = 0; long cl = c.getContentLengthLong(); total = cl > 0 ? cl : -1; }
+                    else if (total <= 0) { String cr = c.getHeaderField("Content-Range"); if (cr != null && cr.contains("/")) try { total = Long.parseLong(cr.substring(cr.lastIndexOf('/') + 1).trim()); } catch (Exception ignored) {} }
+                    reportUpdate("downloading", total > 0 ? (int) (got * 100L / total) : -1, got, Math.max(total, 0));
+                    java.io.InputStream in = c.getInputStream();
+                    java.io.FileOutputStream out = new java.io.FileOutputStream(apk, resumed);
+                    byte[] buf = new byte[65536]; int n, lastPct = -1; long lastMs = 0;
+                    try {
+                        while ((n = in.read(buf)) > 0) {
+                            out.write(buf, 0, n); got += n;
+                            long now = System.currentTimeMillis();
+                            if (total > 0) { int pc = (int) (got * 100L / total); if (pc != lastPct) { lastPct = pc; reportUpdate("downloading", pc, got, total); } }
+                            else if (now - lastMs > 400) { lastMs = now; reportUpdate("downloading", -1, got, 0L); }
+                        }
+                    } finally { try { out.flush(); out.close(); } catch (Exception ignored) {} try { in.close(); } catch (Exception ignored) {} }
+                    if (total <= 0 || got >= total) done = true;
+                } catch (Exception e) {
+                    // fall through to retry
+                } finally { if (c != null) try { c.disconnect(); } catch (Exception ignored) {} }
+                if (!done) { attempt++; reportUpdate("retrying", total > 0 ? (int) (got * 100L / total) : -1, got, Math.max(total, 0));
+                    try { Thread.sleep(Math.min(20000, 1500L * attempt)); } catch (InterruptedException ignored) {} }
             }
+            if (!done) { reportUpdate("error", lastCode > 0 ? lastCode : -1); return; }
             reportUpdate("downloading", 100, got, total > 0 ? total : got);
-            out.flush(); out.close(); in.close(); c.disconnect();
+            // Check the file really is a complete app package before handing it to the installer.
+            try { android.content.pm.PackageInfo pi = getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), 0);
+                if (pi == null || !getPackageName().equals(pi.packageName)) { apk.delete(); reportUpdate("error", -2); return; } } catch (Exception ignored) {}
             reportUpdate("installing", 100);
             // Launch the package installer. Uses a FileProvider content:// URI (required on API 24+).
             android.net.Uri uri = androidx.core.content.FileProvider.getUriForFile(
