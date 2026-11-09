@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
 
         // Remember the last crash (any thread) so Settings > About can show it; then let Android handle it.
         installCrashLogger(this);
+        startCacheSweeper();
         root = new android.widget.FrameLayout(this);
         setContentView(root);
         // Relaunched by our own update (installer callback or package-replaced): reopen straight to Home.
@@ -1004,6 +1005,39 @@ public class MainActivity extends Activity {
         }
         int[] a = new int[out.size()]; for (int i = 0; i < a.length; i++) a[i] = out.get(i); return a;
     }
+    // Downloaded playlists and provider lists are read into the page straight after they arrive, but the files
+    // stayed behind: with big providers that is tens of MB on every refresh, which filled small TVs until
+    // nothing else (not even an update) could be downloaded. Sweep them now and every 10 minutes.
+    private final android.os.Handler sweepH = new android.os.Handler(android.os.Looper.getMainLooper());
+    private void startCacheSweeper() {
+        final Runnable[] r = new Runnable[1];
+        r[0] = new Runnable() { public void run() {
+            new Thread(new Runnable() { public void run() { sweepCache(5 * 60 * 1000L); } }).start();
+            sweepH.postDelayed(r[0], 10 * 60 * 1000L); } };
+        new Thread(new Runnable() { public void run() { sweepCache(0); } }).start();   // at start nothing is in use yet
+        sweepH.postDelayed(r[0], 10 * 60 * 1000L);
+    }
+    private void sweepCache(long olderThanMs) {
+        try {
+            long now = System.currentTimeMillis(), freed = 0; int n = 0;
+            java.io.File[] fs = getCacheDir().listFiles();
+            if (fs != null) for (java.io.File f : fs) {
+                String nm = f.getName();
+                if (!f.isFile() || !(nm.startsWith("fetch_") || nm.startsWith("slim_") || nm.startsWith("xs_") || nm.startsWith("sf_"))) continue;
+                if (olderThanMs > 0 && now - f.lastModified() < olderThanMs) continue;
+                long len = f.length(); if (f.delete()) { freed += len; n++; }
+            }
+            if (n > 0) crumbNative("cleared " + n + " old download files (" + (freed / 1048576) + " MB)");
+        } catch (Throwable ignored) {}
+    }
+    private void crumbNative(String m) {
+        try { android.content.SharedPreferences dp = getSharedPreferences("byo_diag", MODE_PRIVATE);
+            String c = dp.getString("crumbs", ""); String line = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()) + " " + m;
+            String[] parts = (c.isEmpty() ? line : c + "\n" + line).split("\n"); StringBuilder b = new StringBuilder();
+            for (int i = Math.max(0, parts.length - 8); i < parts.length; i++) { if (b.length() > 0) b.append("\n"); b.append(parts[i]); }
+            dp.edit().putString("crumbs", b.toString()).apply(); } catch (Exception ignored) {}
+    }
+
     private void reportUpdate(final String state, final int pct) { reportUpdate(state, pct, 0L, 0L); }
     private void reportUpdate(final String state, final int pct, final long got, final long total) {
         final String js = "window.__byoUpdate&&window.__byoUpdate('" + state + "'," + pct + "," + got + "," + total + ")";

@@ -1,6 +1,6 @@
 {
-  "versionCode": 226,
-  "versionName": "3.37.41",
+  "versionCode": 227,
+  "versionName": "3.37.42",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Updates now download reliably on slow or patchy internet: they resume where they stopped instead of failing."
+  "notes": "Frees storage: old downloaded playlist files are cleared automatically, so the TV no longer fills up. Updates resume on patchy internet."
 }
