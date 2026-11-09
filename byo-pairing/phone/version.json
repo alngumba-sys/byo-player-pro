@@ -1,6 +1,6 @@
 {
-  "versionCode": 228,
-  "versionName": "3.37.43",
+  "versionCode": 229,
+  "versionName": "3.37.44",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Channels that are not working are left out of Live instead of showing \"Not available\"."
+  "notes": "Subscription details moved from Home to your profile (tap your picture). A reminder appears once a day in the last 3 days."
 }

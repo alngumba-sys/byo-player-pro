@@ -654,6 +654,12 @@ _rep("if(name==='detail'){ try{ $('view-detail').scrollTop=0; }catch(_e){} }",
 # Channels found not to work are left out of the lists instead of shown as "Not available right now".
 _rep("            if(bad&&card.classList.contains('spchan-card')&&!card.classList.contains('focused')) card.classList.add('ch-hide'); }",
      "            if(bad&&!card.classList.contains('focused')&&card!==document.activeElement) card.classList.add('ch-hide'); else if(!bad) card.classList.remove('ch-hide'); }", 'hidebad')
+# Subscription lives on the profile screen (tap your picture): days left, Subscribe / Renew.
+_rep("""                    <p class="pp-sub" id="pp-sub">Select a profile to start watching</p>""",
+     """                    <p class="pp-sub" id="pp-sub">Select a profile to start watching</p>
+                    <div class="pp-billing" id="pp-billing"></div>""", 'ppbillmark')
+_rep("    function openProfilePicker(firstRun){ pickerManaging=false;",
+     "    function openProfilePicker(firstRun){ try{ var _pb=$('pp-billing'); if(_pb){ _pb.innerHTML=''; var _bn=(!firstRun&&typeof Billing!=='undefined'&&Billing.statusBanner)?Billing.statusBanner():null; if(_bn) _pb.appendChild(_bn); } }catch(_e){} pickerManaging=false;", 'ppbill')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",

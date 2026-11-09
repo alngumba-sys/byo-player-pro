@@ -146,7 +146,8 @@
         function boot(){ lic(); purgeDemo(); try{ Pay.refresh(); }catch(e){}
             sync(function(){ if(locked()){ openWall('expired'); return; } refreshBanner(); });
             if(locked()) setTimeout(function(){ if(locked()) openWall('expired'); },400);
-            setInterval(function(){ if(locked()&&!wallOpen&&!document.hidden) openWall('expired'); refreshBanner(); },60000);
+            setInterval(function(){ if(locked()&&!wallOpen&&!document.hidden) openWall('expired'); refreshBanner(); if(!document.hidden) remind(); },60000);
+            setTimeout(remind, 8000);
             paintNav(); setInterval(paintNav, 1500);
             // a click on a greyed-out tab explains itself instead of doing nothing
             document.addEventListener('click',function(e){ var t=e.target&&e.target.closest&&e.target.closest('.nav-dis'); if(!t) return; e.preventDefault(); e.stopPropagation(); allow(viewOf(t)==='profile'?'mytv':viewOf(t)); }, true); }
@@ -173,7 +174,10 @@
         function canPlay(){ if(!locked()) return true; openWall('expired'); return false; }
 
         // ---- Home banner: quiet countdown during the trial, firm prompt after ----
-        function homeBanner(){ if(isBlocked()){ var bb=document.createElement('div'); bb.className='pay-banner bl-banner exp'; bb.setAttribute('data-focusable','true'); bb.tabIndex=0;
+        // Home stays clean: only "paused" (not a subscription matter) is shown there. Days left, trial and
+        // Subscribe live on the profile screen (statusBanner), plus a daily reminder in the last 3 days.
+        function homeBanner(){ return isBlocked()?statusBanner():null; }
+        function statusBanner(){ if(isBlocked()){ var bb=document.createElement('div'); bb.className='pay-banner bl-banner exp'; bb.setAttribute('data-focusable','true'); bb.tabIndex=0;
                 bb.innerHTML='<div class="pb-ic">'+icon('i-lock')+'</div><div class="pb-text"><div class="pb-title">BYO Player is paused on this TV</div><div class="pb-sub">Contact '+esc(BILLING_CONFIG.supportEmail)+' or get remote help.</div></div><div class="pb-cta">Details'+icon('i-chev-r')+'</div>';
                 bb.addEventListener('click',function(){ openWall('blocked'); }); return bb; }
             var gu=grantedUntil();
@@ -183,12 +187,36 @@
                 ge.innerHTML='<div class="pb-ic">'+icon('i-clock')+'</div><div class="pb-text"><div class="pb-title">BYO Player is on · '+(gl>1?(gl+' days left'):(gh+' hour'+(gh===1?'':'s')+' left'))+'</div>'+
                     '<div class="pb-sub">Enabled by BYO support until '+esc(new Date(gu).toLocaleDateString(undefined,{ day:'numeric', month:'short' }))+'. Subscribe any time to keep watching after that.</div></div><div class="pb-cta">Subscribe'+icon('i-chev-r')+'</div>';
                 ge.addEventListener('click',function(){ openWall('trial'); }); return ge; }
-            if(subActive()) return null; var exp=locked(); if(!exp && !inTrial()) return null; var na=exp&&neverActive();
+            if(subActive()){ if(!st.subUntil) return null; var su=+new Date(st.subUntil), sl=Math.max(0,Math.ceil((su-Date.now())/86400000));
+                var se=document.createElement('div'); se.className='pay-banner bl-banner'; se.setAttribute('data-focusable','true'); se.tabIndex=0;
+                se.innerHTML='<div class="pb-ic">'+icon('i-clock')+'</div><div class="pb-text"><div class="pb-title">Subscribed · '+sl+' day'+(sl===1?'':'s')+' left</div><div class="pb-sub">Your subscription runs until '+esc(new Date(su).toLocaleDateString(undefined,{ day:'numeric', month:'short', year:'numeric' }))+'.</div></div><div class="pb-cta">Renew'+icon('i-chev-right')+'</div>';
+                se.addEventListener('click',function(){ openWall('trial'); }); return se; }
+            var exp=locked(); if(!exp && !inTrial()) return null; var na=exp&&neverActive();
             var el=document.createElement('div'); el.className='pay-banner bl-banner'+(exp?' exp':''); el.setAttribute('data-focusable','true'); el.tabIndex=0;
             var left=daysLeft(), hl=hoursLeft(); var when=left>1?(left+' days left'):(hl+' hour'+(hl===1?'':'s')+' left');
             el.innerHTML='<div class="pb-ic">'+icon(exp?'i-lock':'i-clock')+'</div><div class="pb-text"><div class="pb-title">'+(na?'BYO Player is not activated yet':(exp?'Your free trial has ended':('Free trial · '+when)))+'</div>'+
                 '<div class="pb-sub">'+(na?'Get remote help so BYO support can activate it, or subscribe.':(exp?'Subscribe to keep using BYO Player.':'Subscribe any time to keep using BYO Player after your trial.'))+'</div></div><div class="pb-cta">Subscribe'+icon('i-chev-r')+'</div>';
             el.addEventListener('click',function(){ openWall(exp?'expired':'trial'); }); return el; }
+        // Time left on whatever keeps BYO Player on (support days, subscription or trial); null when it does not end.
+        function leftMs(){ if(isBlocked()) return null; var gu=grantedUntil(); if(gu&&gu<Infinity) return gu-Date.now();
+            if(subActive()){ return st.subUntil?(+new Date(st.subUntil)-Date.now()):null; }
+            if(inTrial()) return trialEndsAt()-Date.now(); return null; }
+        // In the last 3 days: a reminder once a day (not over playback, setup or remote help).
+        function remind(){ try{ var ms=leftMs(); if(ms==null||ms<=0||ms>3*86400000) return;
+            var day=new Date().toDateString(); if(localStorage.getItem('byo_sub_remind')===day) return;
+            if(wallOpen||wallHeldBack()) return;
+            try{ if($('view-player').classList.contains('active-view')||$('view-mvplay').classList.contains('active-view')||S._inNative) return; }catch(e){}
+            localStorage.setItem('byo_sub_remind', day); screenRemind(ms); }catch(e){} }
+        function screenRemind(ms){ var w=wallEl(); wallOpen=true; w.classList.remove('hidden'); w._why='trial'; var c=card();
+            var d=Math.floor(ms/86400000), h=Math.ceil(ms/3600000), end=new Date(Date.now()+ms);
+            var when=d>=2?(d+' days'):(d===1?'1 day':(h>1?(h+' hours'):'less than an hour'));
+            c.innerHTML='<div class="bp-top"><div class="bp-ic">'+icon('i-clock')+'</div><div class="bp-tt"><div class="bl-h">BYO Player ends in '+esc(when)+'</div>'+
+                '<div class="bl-hs">It stays on until '+esc(end.toLocaleDateString(undefined,{ weekday:'long', day:'numeric', month:'short' }))+'. Subscribe now so watching carries on without a break.</div></div></div>'+
+                '<div class="bp-acts"></div>';
+            var a=c.querySelector('.bp-acts');
+            a.appendChild(btn('Subscribe','bl-m card',function(){ screenPlans(); }));
+            a.appendChild(btn('Remind me tomorrow','bl-m bp-sec',function(){ closeWall(); }));
+            focusFirst(); }
         function refreshBanner(){ var hv=$('view-home'); if(!hv||!hv.classList.contains('active-view')) return; var b=$('home-body'); var old=b&&b.querySelector('.bl-banner');
             var want=homeBanner(); if(old&&want){ old.replaceWith(want); } else if(old&&!want){ old.remove(); } else if(!old&&want&&b){ b.insertBefore(want,b.firstChild); } }
 
@@ -361,6 +389,7 @@
             try{ Pay.applyLocks(); }catch(e){} refreshBanner(); focusFirst(); }
 
         return { boot:boot, begin:begin, renderTrialStep:renderTrialStep, allow:allow, canPlay:canPlay, locked:locked, inTrial:inTrial, daysLeft:daysLeft,
-                 homeBanner:homeBanner, openWall:openWall, closeWall:closeWall, isWallOpen:function(){ return wallOpen; }, status:status,
+                 homeBanner:homeBanner, statusBanner:statusBanner, remind:remind, leftMs:leftMs, openWall:openWall, closeWall:closeWall, isWallOpen:function(){ return wallOpen; }, status:status,
                  trialEndsAt:trialEndsAt, subActive:subActive, deviceId:deviceId, sync:sync, addBonusDays:addBonusDays, setAccess:setAccess, access:acc, isBlocked:isBlocked, grantedUntil:grantedUntil, paintNav:paintNav, navOk:function(n){ return navOk(n); }, _st:function(){ return st; } };
     })();
+    try{ window.Billing=Billing; }catch(_e){}

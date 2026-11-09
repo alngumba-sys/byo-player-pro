@@ -3453,3 +3453,7 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 /* Playing: no menu bar over the picture. */
 html.is-playing #nav, html.is-playing .topbar, html.is-playing #ios-install-pill{ display:none !important; }
 .web-loading{ opacity:.7; }
+/* Subscription status on the profile screen */
+.pp-billing{ max-width:760px; margin:0 auto 22px; }
+.pp-billing:empty{ display:none; }
+.pp-billing .pay-banner{ margin:0; text-align:left; }
