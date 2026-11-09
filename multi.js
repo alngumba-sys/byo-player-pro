@@ -69,7 +69,7 @@
                     if(k==='desc'&&typeof v==='string'&&/^(Live channel|Channel) from /.test(v)) return undefined;
                     return v; });
                 var mb=(json.length/1048576).toFixed(1);
-                var part={}; Object.keys(PARTIAL).forEach(function(k){ var P=PARTIAL[k]; if(!P) return; part[k]={ cats:P.cats||null, lim:P.lim,
+                var part={}; Object.keys(PARTIAL).forEach(function(k){ var P=PARTIAL[k]; if(!P) return; part[k]={ cats:P.cats||null, lim:P.lim, web:!!P.web,
                     movies:P.movies?{ full:P.movies.full, kept:P.movies.kept, total:P.movies.total }:null, series:P.series?{ full:P.series.full, kept:P.series.kept, total:P.series.total }:null }; });
                 Snap.put({ v:2, sig:libSig(list), at:Date.now(), pre:pre, keys:keys, part:part, json:json }, function(ok){ libLog(ok?('saved copy '+mb+' MB in '+(Date.now()-t0)+'ms'):('saving copy FAILED ('+mb+' MB)')); });
                 json=null;
@@ -87,7 +87,7 @@
             // titles that were cut at load time stay reachable after a restart (genre loading and full search)
             PARTIAL={}; Object.keys(part||{}).forEach(function(k){ var p=part[k], sc=m[k]; if(!p||!sc||!sc.api) return;
                 var out={ movies:d.movies.filter(function(x){ return x._src===sc; }), series:d.series.filter(function(x){ return x._src===sc; }) };
-                PARTIAL[k]={ api:sc.api, src:sc, idx:sc.idx, out:out, lim:p.lim||8, cats:p.cats||null,
+                PARTIAL[k]={ api:sc.api, src:sc, idx:sc.idx, out:out, lim:p.lim||8, cats:p.cats||null, web:!!p.web,
                     movies:p.movies?{ full:p.movies.full, kept:p.movies.kept, total:p.movies.total, done:{}, searched:{} }:null,
                     series:p.series?{ full:p.series.full, kept:p.series.kept, total:p.series.total, done:{}, searched:{} }:null }; });
             var fx=null; list.forEach(function(pl){ if(pl.mode==='xtream'&&!fx){ var sc=m[keyOf(pl)]; fx=sc&&sc.api; } }); return fx; }
@@ -229,10 +229,42 @@
         var PARTIAL={};
         function partials(kind){ var a=[]; Object.keys(PARTIAL).forEach(function(k){ var P=PARTIAL[k]; if(P&&P[kind]&&!(P.src&&isOffKey(k))) a.push(P); }); return a; }
         function isOffKey(k){ var off=false; (Store.savedPlaylists||[]).forEach(function(pl){ if(keyOf(pl)===k&&pl.off) off=true; }); return off; }
+        // ---------- web version (iPhone and browsers) ----------
+        // No Android side here: nothing can be trimmed or kept on disk, and a phone browser cannot hold a provider's
+        // 100,000-title lists. Live channels load at once (as HLS, which iPhone plays); movies and series load one
+        // genre at a time when it is opened. On iPhone, titles in formats Safari cannot play (MKV, AVI) are left out.
+        var WEB=!(AB&&AB.fetchToFile), IOS=/iP(hone|od|ad)/.test(navigator.userAgent||'')||(/Macintosh/.test(navigator.userAgent||'')&&('ontouchend' in document));
+        window.__byoIsIOSWeb=WEB&&IOS;
+        function iosPlayable(u){ return !/\.(mkv|avi|mpg|mpeg|wmv|flv|divx|xvid|ts)(\?|$)/i.test(String(u||'')); }
+        window.__byoIosPlayable=iosPlayable;
+        function webXtream(sx, pl, src, out, idx, end, fallback){
+            var api; try{ api=xtreamApi(sx.server,sx.user,sx.pass); }catch(e){ return fallback(); }
+            src.api=api; var base=sx.server.replace(/\/+$/,'');
+            function lurl(id){ return base+'/live/'+encodeURIComponent(sx.user)+'/'+encodeURIComponent(sx.pass)+'/'+id+'.m3u8'; }
+            var left=2, xcats=null, live=null, failed='';
+            crumb('loading '+src.name+' (web) through the provider lists');
+            function one(){ if(--left) return;
+                if(!live){ crumb(src.name+': provider lists did not answer ('+failed+')'); src.api=null; return fallback(); }
+                if(xcats) catApply(live, xcats.live);
+                out.live=live; out.movies=[]; out.series=[]; out.ok=true;
+                PARTIAL[src.key]={ api:api, src:src, idx:idx, out:out, lim:8, cats:xcats, web:true,
+                    movies:{ full:null, kept:0, total:1, done:{}, searched:{} }, series:{ full:null, kept:0, total:1, done:{}, searched:{} } };
+                end(); }
+            xtreamCats(api, function(m){ xcats=m; one(); });
+            Net.fetchJSON(api.liveStreams, function(arr){
+                    if(!Array.isArray(arr)){ failed='not a list'; return one(); }
+                    live=tagItems(arr.map(function(o0,i){ var o=cx(o0); return {id:'live-'+(o.i||i),name:o.n||'Channel',genre:'Cat '+(o.c||''),logo:o.l,url:lurl(o.i),streamId:o.i,tvgId:o.e,epgGenre:null,order:i,desc:'Live channel from '+src.name+'.'}; }), idx, src);
+                    arr=null; one(); },
+                function(e){ failed=String(e||'error'); one(); });
+        }
+        window.__byoWebLazy=function(kind){ return partials(kind).some(function(P){ return P.web; }); };
         function addFound(P, kind, arr){ var listOut=P.out[kind], have={}, idf=kind==='movies'?'streamId':'seriesId', added=[];
             for(var i=0;i<listOut.length;i++) have[String(listOut[i][idf])]=1;
             var base=listOut.length;
-            arr.forEach(function(o0,i){ var it=mapX(kind,P.api,o0,base+i); if(have[String(it[idf])]) return; have[String(it[idf])]=1; added.push(it); });
+            var skipped=0;
+            arr.forEach(function(o0,i){ var it=mapX(kind,P.api,o0,base+i); if(have[String(it[idf])]) return; have[String(it[idf])]=1;
+                if(IOS&&WEB&&kind==='movies'&&!iosPlayable(it.url)){ skipped++; return; } added.push(it); });
+            if(skipped){ P._skipped=(P._skipped||0)+skipped; try{ setToast(skipped+' '+(skipped===1?'movie is':'movies are')+' in a format iPhone cannot play (MKV) and '+(skipped===1?'is':'are')+' left out. They play on the TV and Android app.'); }catch(_e){} }
             if(!added.length) return 0;
             tagItems(added, P.idx, P.src);
             if(P.cats) catApply(added, kind==='movies'?P.cats.vod:P.cats.series);
@@ -377,7 +409,9 @@
             try{
             if(pl.mode==='m3u'){
                 if(AB&&AB.slimXtream&&window.__splitXtream&&window.__splitXtream(pl.url||'')) return xtreamFromM3U(pl, src, out, idx, end, doM3U);
+                if(WEB&&window.__splitXtream){ var _sx=window.__splitXtream(pl.url||''); if(_sx) return webXtream(_sx, pl, src, out, idx, end, doM3U); }
                 return doM3U(); }
+            if(pl.mode==='xtream'&&WEB&&IOS) return webXtream({ server:pl.server, user:pl.user, pass:pl.pass }, pl, src, out, idx, end, function(){ out.err='Could not load the provider lists.'; end(); });
             function doM3U(){
                 m3uText(pl.url,src,function(txt){
                     if(String(txt).indexOf('#EXTINF')===-1){ out.err='Not an M3U playlist'; return end(); }

@@ -7,3 +7,9 @@
 /support/*
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-cache
+/app/
+  Cache-Control: no-cache
+/app/index.html
+  Cache-Control: no-cache
+/app/manifest.webmanifest
+  Content-Type: application/manifest+json

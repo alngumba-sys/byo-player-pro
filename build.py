@@ -611,6 +611,9 @@ _rep("        progressiveGrid(grid, list, seriesPoster); }", """        progress
             try{ if(window.ByoAndroid&&ByoAndroid.crumb) ByoAndroid.crumb(kind+' grid empty: switched off in App sections'); }catch(e){}
             var sb=$(kind+'-secon'); if(sb) sb.addEventListener('click',function(){ sb.disabled=true; sb.textContent='Loading…'; window.__byoSectionsOn(kind,function(){ if(isM) renderMovies(); else renderSeries(); }); });
             return; }
+        if(window.__byoWebLazy&&window.__byoWebLazy(kind)&&(!all||!all.length||(isM?S.moviesGenre:S.seriesGenre)==='All')&&!(isM?S.moviesFav:S.seriesFav)){
+            el.innerHTML=esc('Choose a genre to load its '+(isM?'movies':'series')+'.'+(window.__byoIsIOSWeb&&isM?' On iPhone only movies in a format it can play (MP4) are shown.':''))+'<br><button class="s-btn" data-focusable="true" tabindex="0" id="'+kind+'-pickg" style="margin-top:18px">Choose genre</button>';
+            var pg=$(kind+'-pickg'); if(pg) pg.addEventListener('click',function(){ try{ openCatPicker(kind); }catch(e){} }); return; }
         if(!all||!all.length) return;
         var word=isM?'movies':'series', base=profFilter(all), why='', canReset=false;
         if(!base.length){ var r=[]; try{ if(activeIsKids()) r.push('this is a Kids profile'); }catch(e){} try{ if(pcContentOn&&pcContentOn()) r.push('parental control is hiding some content'); }catch(e){}
@@ -641,6 +644,9 @@ _rep("        if(/\\b(2160p?|4k|8k|uhd)\\b/i.test(t)){ b=16e6; l='4K'; }",
 # Update download on a patchy line: show "connection dropped, carrying on" instead of failing.
 _rep("            else if(state==='cancelled'){ title.textContent='Update cancelled';",
      "            else if(state==='retrying'){ bar.classList.toggle('indet',!(pct>=0)); if(pct>=0){ fill.style.width=pct+'%'; pctEl.textContent=pct+'%'; } mbEl.textContent=total?(mb(got)+' of '+mb(total)+' MB'):'';\n                title.textContent='Connection dropped, carrying on\\u2026'; note.textContent='The download picks up where it stopped. Nothing to do.'; aboutMsg('Connection dropped, resuming\\u2026'); }\n            else if(state==='cancelled'){ title.textContent='Update cancelled';", 'updretry')
+# iPhone (web version): Safari cannot play MKV / AVI files; say so instead of a black screen.
+_rep("    function playContent(url,title,sub,opts){ opts=opts||{};\n        try{ cancelDetailAutoplay();",
+     "    function playContent(url,title,sub,opts){ opts=opts||{};\n        try{ if(window.__byoIsIOSWeb&&opts.type!=='live'&&window.__byoIosPlayable&&!window.__byoIosPlayable(url)){ setToast('This '+(opts.type==='episode'?'episode':'title')+' is an MKV file, which iPhone cannot play. Watch it in the BYO Player TV or Android app.'); return; } }catch(_e){}\n        try{ cancelDetailAutoplay();", 'iosmkv')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
