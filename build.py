@@ -612,8 +612,9 @@ _rep("        progressiveGrid(grid, list, seriesPoster); }", """        progress
             var sb=$(kind+'-secon'); if(sb) sb.addEventListener('click',function(){ sb.disabled=true; sb.textContent='Loading…'; window.__byoSectionsOn(kind,function(){ if(isM) renderMovies(); else renderSeries(); }); });
             return; }
         if(window.__byoWebLazy&&window.__byoWebLazy(kind)&&(!all||!all.length||(isM?S.moviesGenre:S.seriesGenre)==='All')&&!(isM?S.moviesFav:S.seriesFav)){
-            el.innerHTML=esc('Choose a genre to load its '+(isM?'movies':'series')+'.'+(window.__byoIsIOSWeb&&isM?' On iPhone only movies in a format it can play (MP4) are shown.':''))+'<br><button class="s-btn" data-focusable="true" tabindex="0" id="'+kind+'-pickg" style="margin-top:18px">Choose genre</button>';
-            var pg=$(kind+'-pickg'); if(pg) pg.addEventListener('click',function(){ try{ openCatPicker(kind); }catch(e){} }); return; }
+            el.innerHTML='<span class="web-loading">Loading '+(isM?'movies':'series')+'\u2026</span>';
+            if(window.__byoAutoFill) window.__byoAutoFill(kind, function(n){ if(!n){ el.innerHTML=esc('No '+(isM?'movies':'series')+' here yet. Pick a genre above to look for more.'); } });
+            return; }
         if(!all||!all.length) return;
         var word=isM?'movies':'series', base=profFilter(all), why='', canReset=false;
         if(!base.length){ var r=[]; try{ if(activeIsKids()) r.push('this is a Kids profile'); }catch(e){} try{ if(pcContentOn&&pcContentOn()) r.push('parental control is hiding some content'); }catch(e){}
@@ -647,6 +648,12 @@ _rep("            else if(state==='cancelled'){ title.textContent='Update cancel
 # iPhone (web version): Safari cannot play MKV / AVI files; say so instead of a black screen.
 _rep("    function playContent(url,title,sub,opts){ opts=opts||{};\n        try{ cancelDetailAutoplay();",
      "    function playContent(url,title,sub,opts){ opts=opts||{};\n        try{ if(window.__byoIsIOSWeb&&opts.type!=='live'&&window.__byoIosPlayable&&!window.__byoIosPlayable(url)){ setToast('This '+(opts.type==='episode'?'episode':'title')+' is an MKV file, which iPhone cannot play. Watch it in the BYO Player TV or Android app.'); return; } }catch(_e){}\n        try{ cancelDetailAutoplay();", 'iosmkv')
+# While something plays, the menu bar stays out of the picture (portrait and landscape).
+_rep("if(name==='detail'){ try{ $('view-detail').scrollTop=0; }catch(_e){} }",
+     "try{ document.documentElement.classList.toggle('is-playing', name==='player'||name==='mvplay'); }catch(_e){} if(name==='detail'){ try{ $('view-detail').scrollTop=0; }catch(_e){} }", 'navplay')
+# Channels found not to work are left out of the lists instead of shown as "Not available right now".
+_rep("            if(bad&&card.classList.contains('spchan-card')&&!card.classList.contains('focused')) card.classList.add('ch-hide'); }",
+     "            if(bad&&!card.classList.contains('focused')&&card!==document.activeElement) card.classList.add('ch-hide'); else if(!bad) card.classList.remove('ch-hide'); }", 'hidebad')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",

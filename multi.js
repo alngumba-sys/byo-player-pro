@@ -257,6 +257,19 @@
                     arr=null; one(); },
                 function(e){ failed=String(e||'error'); one(); });
         }
+        // Web: open Movies / Series and titles simply appear. Genres load one after another in the background
+        // until there are enough to browse (on iPhone only the playable ones count).
+        var autoBusy={};
+        window.__byoAutoFill=function(kind, done){ if(autoBusy[kind]) return; autoBusy[kind]=1;
+            var queue=[]; partials(kind).forEach(function(P){ var m=catNamesOf(P,kind); Object.keys(m).forEach(function(id){ if(!P[kind].done[id]) queue.push({P:P,id:id}); }); });
+            var tried=0;
+            (function next(){ var have=(kind==='movies'?S.movies:S.series).length;
+                if(!queue.length||have>=240||tried>=40){ autoBusy[kind]=0; try{ if(kind==='movies') renderMovies(); else renderSeries(); }catch(_e){} if(done) done(have); return; }
+                var j=queue.shift(); tried++; j.P[kind].done[j.id]=1;
+                var url=(kind==='movies'?j.P.api.vodStreams:j.P.api.seriesList)+'&category_id='+encodeURIComponent(j.id);
+                listViaNative(url, kind==='movies'?'movie':'series', j.P.lim, j.P.src, function(arr){ var n=addFound(j.P,kind,arr); arr=null;
+                    if(n){ clearTimeout(autoBusy['t'+kind]); autoBusy['t'+kind]=setTimeout(function(){ try{ if(kind==='movies'&&typeof renderMovies==='function') renderMovies(); if(kind==='series'&&typeof renderSeries==='function') renderSeries(); }catch(_e){} },250); }
+                    next(); }, function(){ j.P[kind].done[j.id]=0; next(); }); })(); };
         window.__byoWebLazy=function(kind){ return partials(kind).some(function(P){ return P.web; }); };
         function addFound(P, kind, arr){ var listOut=P.out[kind], have={}, idf=kind==='movies'?'streamId':'seriesId', added=[];
             for(var i=0;i<listOut.length;i++) have[String(listOut[i][idf])]=1;
@@ -264,7 +277,7 @@
             var skipped=0;
             arr.forEach(function(o0,i){ var it=mapX(kind,P.api,o0,base+i); if(have[String(it[idf])]) return; have[String(it[idf])]=1;
                 if(IOS&&WEB&&kind==='movies'&&!iosPlayable(it.url)){ skipped++; return; } added.push(it); });
-            if(skipped){ P._skipped=(P._skipped||0)+skipped; try{ setToast(skipped+' '+(skipped===1?'movie is':'movies are')+' in a format iPhone cannot play (MKV) and '+(skipped===1?'is':'are')+' left out. They play on the TV and Android app.'); }catch(_e){} }
+            if(skipped){ P._skipped=(P._skipped||0)+skipped; if(!WEB) try{ setToast(skipped+' '+(skipped===1?'movie is':'movies are')+' in a format iPhone cannot play (MKV) and '+(skipped===1?'is':'are')+' left out. They play on the TV and Android app.'); }catch(_e){} }
             if(!added.length) return 0;
             tagItems(added, P.idx, P.src);
             if(P.cats) catApply(added, kind==='movies'?P.cats.vod:P.cats.series);
@@ -284,7 +297,7 @@
                     var hit=false; try{ hit=(typeof matchGenre==='function')?matchGenre({genre:nm},genre):(nm.toLowerCase()===String(genre).toLowerCase()); }catch(e){ hit=nm.toLowerCase()===String(genre).toLowerCase(); }
                     if(hit) jobs.push({P:P,id:id,name:nm}); }); });
             if(!jobs.length) return cb(0);
-            var total=0, left=jobs.length; try{ setToast('Loading all '+(kind==='movies'?'movies':'series')+' in '+genre+'…'); }catch(_e){}
+            var total=0, left=jobs.length; if(!WEB) try{ setToast('Loading all '+(kind==='movies'?'movies':'series')+' in '+genre+'…'); }catch(_e){}
             jobs.forEach(function(j){ j.P[kind].done[j.id]=1;
                 var url=(kind==='movies'?j.P.api.vodStreams:j.P.api.seriesList)+'&category_id='+encodeURIComponent(j.id);
                 listViaNative(url, kind==='movies'?'movie':'series', j.P.lim, j.P.src, function(arr){ total+=addFound(j.P,kind,arr); arr=null; fin(); },
@@ -307,7 +320,7 @@
         window.__byoExtraGenres=extraGenres;
         window.__byoFillGenre=function(kind, genre){ fillGenre(kind, genre, function(n){ if(!n) return;
             try{ if(kind==='movies'&&S.moviesGenre===genre&&typeof renderMovies==='function') renderMovies(); if(kind==='series'&&S.seriesGenre===genre&&typeof renderSeries==='function') renderSeries(); }catch(_e){}
-            try{ setToast(n+' more '+(kind==='movies'?'movies':'series')+' in '+genre+'.'); }catch(_e){} }); };
+            if(!WEB) try{ setToast(n+' more '+(kind==='movies'?'movies':'series')+' in '+genre+'.'); }catch(_e){} }); };
         window.__byoDeepSearch=deepSearch;
         // Pictures for the title screen, best first: [url, isWide]. Small list posters are asked for at full size.
         window.__byoHeroArt=function(x){ var out=[]; if(!x) return out;
@@ -357,6 +370,7 @@
             (Store.savedPlaylists||[]).forEach(function(pl){ if(pl&&!pl.off&&pl.use&&pl.use[k]===false) out.push({ id:pl.id, name:plName(pl) }); }); return out; };
         window.__byoSectionsOn=function(kind, cb){ var k=kind==='movies'?'movies':(kind==='series'?'series':'live');
             (Store.savedPlaylists||[]).forEach(function(pl){ if(pl&&pl.use&&pl.use[k]===false) pl.use[k]=true; }); Store.save(); try{ rebuildForUse(); }catch(e){} try{ publish(); }catch(e){} if(cb) setTimeout(cb,300); };
+        window.__byoCounts=function(){ return { live:(S.live||[]).length, movies:(S.movies||[]).length, series:(S.series||[]).length, mg:S.moviesGenre, sg:S.seriesGenre, pm:profFilter(S.movies||[]).length }; };
         window.__byoLibLog=function(){ return (S._libLog||[]).slice(); };
         function vodViaXtream(pl, src, out, idx, done){
             var sx=window.__splitXtream&&window.__splitXtream(pl.url||''); if(!sx){ crumb(src.name+': movies and series left out (not an Xtream link)'); return done(); }

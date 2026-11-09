@@ -1,6 +1,6 @@
 {
-  "versionCode": 227,
-  "versionName": "3.37.42",
+  "versionCode": 228,
+  "versionName": "3.37.43",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Frees storage: old downloaded playlist files are cleared automatically, so the TV no longer fills up. Updates resume on patchy internet."
+  "notes": "Channels that are not working are left out of Live instead of showing \"Not available\"."
 }

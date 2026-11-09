@@ -87,6 +87,7 @@ SHEET = r'''<style id="ios-install-css">
 #ios-install .ii-n{ flex:0 0 34px; height:34px; border-radius:50%; background:#13363d; color:#2fd4e8; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:15px; }
 #ios-install .ii-t{ font-weight:700; font-size:16px; display:flex; align-items:center; gap:10px; }
 #ios-install .ii-ic{ display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:30px; padding:0 6px; border-radius:8px; background:#1d2733; color:#e8eef6; font-weight:700; font-size:15px; }
+#ios-install .ii-or{ color:#7f8b99; font-weight:500; font-size:13px; margin:0 -4px; }
 #ios-install .ii-d{ color:#a9b4c2; font-size:14px; margin-top:4px; line-height:1.4; }
 #ios-install .ii-note{ background:#2a2410; color:#f3dfa6; border-radius:12px; padding:12px 14px; font-size:14px; line-height:1.4; margin-top:4px; }
 #ios-install .ii-later{ display:block; width:100%; margin-top:16px; padding:14px; border:1px solid #2b3846; border-radius:12px; background:transparent; color:#cfd8e3; font-size:15px; font-weight:600; }
@@ -102,8 +103,8 @@ SHEET = r'''<style id="ios-install-css">
     <h2 id="ii-h">Add BYO Player to your Home Screen</h2>
     <p class="ii-lead">Safari installs apps from the share menu. It takes three taps, and then BYO Player opens full screen like any other app.</p>
     <ol>
-      <li><span class="ii-n">1</span><div><div class="ii-t"><span class="ii-ic"><svg width="18" height="20" viewBox="0 0 18 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 13V2M5 5.5 9 2l4 3.5"/><path d="M6 8H3.5A1.5 1.5 0 0 0 2 9.5v7A1.5 1.5 0 0 0 3.5 18h11a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 14.5 8H12"/></svg></span>Tap Share</div>
-        <div class="ii-d">On newer iPhones, first tap the <b>&bull;&bull;&bull;</b> button at the bottom right of Safari, then Share. On older ones, Share (the square with an arrow) is in the bottom bar.</div></div></li>
+      <li><span class="ii-n">1</span><div><div class="ii-t"><span class="ii-ic"><svg width="18" height="20" viewBox="0 0 18 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 13V2M5 5.5 9 2l4 3.5"/><path d="M6 8H3.5A1.5 1.5 0 0 0 2 9.5v7A1.5 1.5 0 0 0 3.5 18h11a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 14.5 8H12"/></svg></span><span class="ii-or">or</span><span class="ii-ic">&bull;&bull;&bull;</span>Tap Share</div>
+        <div class="ii-d">Share is the square with an arrow. On newer iPhones it sits behind the three dots <b>&bull;&bull;&bull;</b> at the bottom right of Safari: tap the dots, then Share.</div></div></li>
       <li><span class="ii-n">2</span><div><div class="ii-t"><span class="ii-ic">+</span>Choose Add to Home Screen</div>
         <div class="ii-d">Scroll down the list to find it. If you only see a few actions, tap <b>View More</b> first.</div></div></li>
       <li><span class="ii-n">3</span><div><div class="ii-t"><span class="ii-ic">Add</span>Tap Add</div>

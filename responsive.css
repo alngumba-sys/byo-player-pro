@@ -3448,3 +3448,8 @@ html.light .fav-btn:not(.on) .ic, html.light .fav-btn:not(.on) svg{ color:#c2851
 .live-card.ch-off .lc-logo, .live-card.ch-off .lc-logo-ph{ filter:grayscale(1); }
 .ch-off-chip{ display:inline-block; font-size:var(--rp-fs-micro,12px); color:#ffb4bb; border:1px solid rgba(255,100,115,.5); border-radius:999px; padding:2px 9px; margin-left:6px; white-space:nowrap; }
 .spchan-card.ch-hide{ display:none !important; }
+/* Channels that do not work are left out of the lists. */
+.ch-hide{ display:none !important; }
+/* Playing: no menu bar over the picture. */
+html.is-playing #nav, html.is-playing .topbar, html.is-playing #ios-install-pill{ display:none !important; }
+.web-loading{ opacity:.7; }
