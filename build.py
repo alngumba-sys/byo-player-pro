@@ -624,6 +624,14 @@ _rep("        progressiveGrid(grid, list, seriesPoster); }", """        progress
         var b=$(kind+'-showall'); if(b) b.addEventListener('click',function(){ if(isM){ S.moviesGenre='All'; S.moviesChannel='All'; S.moviesFav=false; S.moviesQ=''; } else { S.seriesGenre='All'; S.seriesChannel='All'; S.seriesFav=false; S.seriesQ=''; }
             try{ renderCatBar(kind); }catch(e){} if(isM) renderMovies(); else renderSeries(); setTimeout(function(){ var f=document.querySelector('#'+kind+'-grid [data-focusable]'); if(f) Nav.setFocus(f); },60); });
     }catch(e){} }""", 'serempty')
+# Coming back from the player to a title you just watched must not start it again: the title screen's
+# "plays on its own after a few seconds" is only for a title you have just picked, not one you just left.
+_rep("        if(directPlay()){ cancelDetailAutoplay(); setTimeout(function(){ play.click(); },0); } else armDetailAutoplay(play, function(){ play.click(); }); }",
+     "        var _back=(S._lastPlayItem===m&&Date.now()-(S._lastPlayAt||0)<4*3600000)||(S._nativeRouteTs&&Date.now()-S._nativeRouteTs<8000)||(S._webPlayerLeftAt&&Date.now()-S._webPlayerLeftAt<8000);\n        if(_back){ cancelDetailAutoplay(); } else if(directPlay()){ cancelDetailAutoplay(); setTimeout(function(){ play.click(); },0); } else armDetailAutoplay(play, function(){ play.click(); }); }", 'noreplay3')
+_rep("    function armDetailAutoplay(btn, go){ cancelDetailAutoplay(); if(!btn) return;",
+     "    function armDetailAutoplay(btn, go){ cancelDetailAutoplay(); if(!btn) return;\n        try{ var _cd=S.currentDetail&&S.currentDetail.data; if(_cd&&S._lastPlayItem===_cd&&Date.now()-(S._lastPlayAt||0)<4*3600000) return; if(S._nativeRouteTs&&Date.now()-S._nativeRouteTs<8000) return; }catch(_e){}", 'noreplay')
+_rep("    function playContent(url,title,sub,opts){ opts=opts||{};\n        window.__byoPlayWeb=playContent;",
+     "    function playContent(url,title,sub,opts){ opts=opts||{};\n        try{ cancelDetailAutoplay(); if(S.currentDetail&&S.currentDetail.data){ S._lastPlayItem=S.currentDetail.data; S._lastPlayAt=Date.now(); } }catch(_e){}\n        window.__byoPlayWeb=playContent;", 'noreplay2')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",

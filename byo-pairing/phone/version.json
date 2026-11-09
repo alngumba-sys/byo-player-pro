@@ -1,6 +1,6 @@
 {
-  "versionCode": 223,
-  "versionName": "3.37.38",
+  "versionCode": 224,
+  "versionName": "3.37.39",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Sharper pictures everywhere: Home Featured, movie and series screens use wide backdrops or full-size posters. TV Guide shows real programmes, and the TV reports its health to BYO support."
+  "notes": "Back from a movie no longer starts it again. Phones and tablets get picture in picture: keep watching in a small window while using other apps."
 }

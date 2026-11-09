@@ -676,6 +676,13 @@ public class PlayerActivity extends Activity {
         bar.addView(qualityBtn, new LinearLayout.LayoutParams(-2, -2));
         // Favourite: a single star icon on the far right, not a wide text pill - saved when the
         // player closes, so it shows under Favourites in Movies / Series.
+        // Picture in picture (phones and tablets): keep watching in a small window over other apps.
+        if (pipSupported()) {
+            TextView pipBtn = pill("⧉", 20, v -> enterPip(), false);
+            pipBtn.setContentDescription("Picture in picture");
+            pipBtn.setPadding(dp(10), 0, dp(10), 0);
+            bar.addView(pipBtn, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        }
         favBtn = pill("☆", 20, v -> toggleFav(), false);
         favBtn.setPadding(dp(10), 0, dp(10), 0);
         favBtn.setVisibility(meta != null && meta.optString("favKind").length() > 0 ? View.VISIBLE : View.GONE);
@@ -1222,8 +1229,56 @@ public class PlayerActivity extends Activity {
         return super.onKeyDown(keyCode, event);
     }
 
-    @Override protected void onPause() { if (current() == this) currentRef = null; super.onPause(); if (player != null) player.pause(); }
-    @Override protected void onResume() { super.onResume(); currentRef = new java.lang.ref.WeakReference<>(this); hideSystemUi(); if (player != null && everPlayed) player.play(); }
+    // ---- Picture in picture (phones and tablets only; TVs keep the full-screen player) ----
+    private boolean inPip = false;
+    private boolean isTvDevice() {
+        try { android.app.UiModeManager um = (android.app.UiModeManager) getSystemService(UI_MODE_SERVICE);
+            if (um != null && um.getCurrentModeType() == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) return true; } catch (Exception ignored) {}
+        try { if (getPackageManager().hasSystemFeature("android.software.leanback")) return true; } catch (Exception ignored) {}
+        return false;
+    }
+    private boolean pipSupported() {
+        if (Build.VERSION.SDK_INT < 26 || isTvDevice()) return false;
+        try { return getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE); } catch (Exception e) { return false; }
+    }
+    private android.app.PictureInPictureParams pipParams() {
+        android.app.PictureInPictureParams.Builder b = new android.app.PictureInPictureParams.Builder();
+        int w = 16, hh = 9;
+        try { if (player != null && player.getVideoSize().width > 0 && player.getVideoSize().height > 0) { w = player.getVideoSize().width; hh = player.getVideoSize().height; } } catch (Exception ignored) {}
+        float r = (float) w / hh; if (r > 2.39f) { w = 239; hh = 100; } else if (r < 0.42f) { w = 42; hh = 100; }
+        b.setAspectRatio(new android.util.Rational(w, hh));
+        if (Build.VERSION.SDK_INT >= 31) { b.setSeamlessResizeEnabled(true); b.setAutoEnterEnabled(everPlayed && player != null && player.getPlayWhenReady()); }
+        return b.build();
+    }
+    private void enterPip() {
+        if (!pipSupported() || finishing) return;
+        try { if (view != null) view.hideController(); enterPictureInPictureMode(pipParams()); }
+        catch (Exception e) { Toast.makeText(this, "Picture in picture is not available on this device", Toast.LENGTH_SHORT).show(); }
+    }
+    // Home button or switching apps while something plays: carry on in a small window.
+    @Override protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (pipSupported() && Build.VERSION.SDK_INT < 31 && player != null && player.isPlaying() && !finishing) enterPip();
+    }
+    @Override public void onPictureInPictureModeChanged(boolean isInPip, android.content.res.Configuration cfg) {
+        super.onPictureInPictureModeChanged(isInPip, cfg);
+        inPip = isInPip;
+        if (view != null) { view.setUseController(!isInPip); if (isInPip) view.hideController(); }
+        if (topBar != null) topBar.setVisibility(isInPip ? View.GONE : View.VISIBLE);
+        if (!isInPip) hideSystemUi();
+    }
+    @Override protected void onStop() {
+        super.onStop();
+        // The small window was closed (swiped away or X): stop and hand back to the app.
+        if (inPip && !isChangingConfigurations() && !finishing) finishWith("ok");
+    }
+
+    @Override protected void onPause() { if (current() == this) currentRef = null; super.onPause();
+        boolean pip = Build.VERSION.SDK_INT >= 24 && isInPictureInPictureMode();
+        if (player != null && !pip) player.pause();
+        if (Build.VERSION.SDK_INT >= 31 && pipSupported() && !pip) { try { setPictureInPictureParams(pipParams()); } catch (Exception ignored) {} } }
+    @Override protected void onResume() { super.onResume(); currentRef = new java.lang.ref.WeakReference<>(this); hideSystemUi(); if (player != null && everPlayed) player.play();
+        if (Build.VERSION.SDK_INT >= 31 && pipSupported()) h.postDelayed(() -> { try { if (!finishing) setPictureInPictureParams(pipParams()); } catch (Exception ignored) {} }, 4000); }
     @Override protected void onDestroy() { if (current() == this) currentRef = null; h.removeCallbacksAndMessages(null); StreamTuning.saveBandwidth(this, meter); unwatchNetwork(); if (player != null) { player.release(); player = null; } super.onDestroy(); }
 
     private void hideSystemUi() {
