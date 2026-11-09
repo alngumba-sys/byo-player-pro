@@ -1,6 +1,6 @@
 {
-  "versionCode": 230,
-  "versionName": "3.37.45",
+  "versionCode": 231,
+  "versionName": "3.37.46",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Phones: player buttons and the Genre row always fit on one line."
+  "notes": "Fixes programmes not starting on provider accounts with a connection limit: the app no longer uses connections in the background."
 }

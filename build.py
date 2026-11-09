@@ -660,6 +660,16 @@ _rep("""                    <p class="pp-sub" id="pp-sub">Select a profile to st
                     <div class="pp-billing" id="pp-billing"></div>""", 'ppbillmark')
 _rep("    function openProfilePicker(firstRun){ pickerManaging=false;",
      "    function openProfilePicker(firstRun){ try{ var _pb=$('pp-billing'); if(_pb){ _pb.innerHTML=''; var _bn=(!firstRun&&typeof Billing!=='undefined'&&Billing.statusBanner)?Billing.statusBanner():null; if(_bn) _pb.appendChild(_bn); } }catch(_e){} pickerManaging=false;", 'ppbill')
+# Provider accounts (Xtream panels) allow only a few streams at once (often 1 to 3, shared by every TV and phone
+# on the account). Testing channels in the background and the silent Home preview each took one of those, so the
+# programme people actually chose was refused. Neither runs for those accounts any more, and old test results
+# for them are ignored, so no channel is hidden because of them.
+_rep("        function probe(c, cb){ var k=key(c); if(!k){ cb&&cb(null); return; }",
+     "        function probe(c, cb){ var k=key(c); if(!k||__limited(c)){ cb&&cb(null); return; }", 'probelimit')
+_rep("        function state(c){ var k=key(c); if(!k) return null;",
+     "        function __limited(c){ try{ if(c&&c._src&&c._src.api) return true; return /\\/(live|movie|series)\\/[^\\/]+\\/[^\\/]+\\/\\d+\\.[a-z0-9]+(\\?|$)/i.test(String(c&&c.url||'')); }catch(e){ return false; } }\n        function state(c){ var k=key(c); if(!k||__limited(c)) return null;", 'statelimit')
+_rep("    function startHeroPreview(url){",
+     "    function startHeroPreview(url){\n        if(/\\/(live|movie|series)\\/[^\\/]+\\/[^\\/]+\\/\\d+\\.[a-z0-9]+(\\?|$)/i.test(String(url||''))){ try{ heroLog('skip: provider stream (connection limit)'); }catch(_e){} return; }", 'herolimit')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
