@@ -8802,6 +8802,7 @@ var Player={ v:null,hls:null,cb:{},resumeKey:null,resumeMeta:null,current:null,
             this.hls.on(window.Hls.Events.MANIFEST_PARSED,ready);
             this._recoverTries=0; var self=this;
             this.hls.on(window.Hls.Events.ERROR,function(e,d){ if(!d) return;
+                if(d.fatal&&(d.details==='bufferAddCodecError'||d.details==='bufferIncompatibleCodecsError'||/HEVC|codec/i.test(String(d.reason||(d.error&&d.error.message)||'')))){ s.cb.onError&&s.cb.onError('This channel is in H.265 (HEVC) video, which this browser cannot play. Try Chrome or Safari on a Mac, Microsoft Edge, or the Android app.'); return; }
                 if(d.fatal){
                     // Try hls.js's OWN recovery first — this handles most network/media blips without a
                     // visible reconnect. Only escalate to the app's Smart Recovery if that fails repeatedly.

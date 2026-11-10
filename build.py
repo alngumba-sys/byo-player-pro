@@ -670,6 +670,9 @@ _rep("        function state(c){ var k=key(c); if(!k) return null;",
      "        function __limited(c){ try{ if(c&&c._src&&c._src.api) return true; return /\\/(live|movie|series)\\/[^\\/]+\\/[^\\/]+\\/\\d+\\.[a-z0-9]+(\\?|$)/i.test(String(c&&c.url||'')); }catch(e){ return false; } }\n        function state(c){ var k=key(c); if(!k||__limited(c)) return null;", 'statelimit')
 _rep("    function startHeroPreview(url){",
      "    function startHeroPreview(url){\n        if(/\\/(live|movie|series)\\/[^\\/]+\\/[^\\/]+\\/\\d+\\.[a-z0-9]+(\\?|$)/i.test(String(url||''))){ try{ heroLog('skip: provider stream (connection limit)'); }catch(_e){} return; }", 'herolimit')
+# Web player: a channel whose video this browser cannot decode (H.265/HEVC on most Windows PCs and Firefox) says so at once.
+_rep("            this.hls.on(window.Hls.Events.ERROR,function(e,d){ if(!d) return;\n                if(d.fatal){",
+     "            this.hls.on(window.Hls.Events.ERROR,function(e,d){ if(!d) return;\n                if(d.fatal&&(d.details==='bufferAddCodecError'||d.details==='bufferIncompatibleCodecsError'||/HEVC|codec/i.test(String(d.reason||(d.error&&d.error.message)||'')))){ s.cb.onError&&s.cb.onError('This channel is in H.265 (HEVC) video, which this browser cannot play. Try Chrome or Safari on a Mac, Microsoft Edge, or the Android app.'); return; }\n                if(d.fatal){", 'hevcmsg')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
