@@ -8821,7 +8821,7 @@ var Player={ v:null,hls:null,cb:{},resumeKey:null,resumeMeta:null,current:null,
             this.hls.on(window.Hls.Events.MANIFEST_PARSED,ready);
             this._recoverTries=0; var self=this;
             this.hls.on(window.Hls.Events.ERROR,function(e,d){ if(!d) return;
-                if(d.fatal&&(d.details==='bufferAddCodecError'||d.details==='bufferIncompatibleCodecsError'||/HEVC|codec/i.test(String(d.reason||(d.error&&d.error.message)||'')))){ s.cb.onError&&s.cb.onError('This channel is in H.265 (HEVC) video, which this browser cannot play. Try Chrome or Safari on a Mac, Microsoft Edge, or the Android app.'); return; }
+                if(d.fatal&&(d.details==='bufferAddCodecError'||d.details==='bufferIncompatibleCodecsError'||/HEVC|codec/i.test(String(d.reason||(d.error&&d.error.message)||'')))){ s.cb.onError&&s.cb.onError('UNPLAYABLE:This channel is in H.265 (HEVC) video, which this browser cannot play. Try Chrome or Safari on a Mac, Microsoft Edge, or the Android app.'); return; }
                 if(d.fatal){
                     // Try hls.js's OWN recovery first — this handles most network/media blips without a
                     // visible reconnect. Only escalate to the app's Smart Recovery if that fails repeatedly.
@@ -8858,7 +8858,8 @@ var Player={ v:null,hls:null,cb:{},resumeKey:null,resumeMeta:null,current:null,
             // Native 'error' while playing is usually a transient network drop. Try a couple of
             // silent in-place reloads (resume at the last position) before surfacing anything — the
             // app-level Recovery watchdog remains the final backstop for a genuine outage.
-            this._onNativeErr=function(){ if(self2.current&&self2.current.url!==url) return; if(atEnd()){ if(self2.cb.onEnded&&!self2._ended){ self2._ended=true; self2.cb.onEnded(); } return; }
+            this._onNativeErr=function(){ if(self2.current&&self2.current.url!==url) return;
+                try{ if(v.error&&v.error.code===4&&!(v.currentTime>0)){ s.cb.onError&&s.cb.onError('UNPLAYABLE:'+(/\.(mkv|avi|mpg|mpeg|wmv|flv)(\?|$)/i.test(url)?'This title is in a file format (often MKV with Dolby audio) that web browsers cannot play. It plays in the BYO Player Android app on your TV or phone.':'This web browser cannot play this stream. It plays in the BYO Player Android app on your TV or phone.')); return; } }catch(_e){} if(atEnd()){ if(self2.cb.onEnded&&!self2._ended){ self2._ended=true; self2.cb.onEnded(); } return; }
                 // Ignore a spurious 'error' that fires while the stream is actually still playing — on
                 // Tizen the native player sometimes emits one on a decoder glitch without stopping. Only
                 // act when playback is genuinely not advancing.
@@ -9021,6 +9022,7 @@ var Recovery=(function(){
 
     // Entry from the player's onError.
     function onError(msg){
+        if(/^UNPLAYABLE:/.test(String(msg||''))){ msg=String(msg).slice(11); if(!ctx){ if(cfg.finalFail) cfg.finalFail({ message:msg, canFailover:false }); return; } return finalFail(msg); }
         if(!ctx){ if(cfg.finalFail) cfg.finalFail({ message:friendly(msg), canFailover:false }); return; }
         if(!on()){ return finalFail(msg); }
         if(state===ST.RECOVERING||state===ST.FAILOVER){ attemptFailed(msg); return; } // the in-flight attempt failed
