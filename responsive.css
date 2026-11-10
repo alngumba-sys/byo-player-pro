@@ -3478,3 +3478,15 @@ html.is-playing #nav, html.is-playing .topbar, html.is-playing #ios-install-pill
   .genre-strip .cat-current .cc-ic{ width:16px !important; height:16px !important; flex:none !important; }
   .genre-strip .cat-current .cc-chev{ flex:none !important; }
 }
+
+/* ---- Activation code screen on laptops and TVs: the code always fits its card ---- */
+html:not(.android-app) #welcome .welcome-grid.one-col{ display:flex !important; flex-direction:column !important; gap:16px !important; width:100% !important; max-width:600px !important; overflow:visible !important; }
+html:not(.android-app) #welcome .welcome-grid.one-col .activation-card{ width:100% !important; box-sizing:border-box !important; padding:40px 36px 32px !important; }
+html:not(.android-app) #welcome .act-code-label{ white-space:nowrap; }
+html:not(.android-app) #welcome .act-code{ font-size:clamp(64px, 7vw, 108px) !important; letter-spacing:.2em !important; padding-left:.2em !important; white-space:nowrap !important; }
+html:not(.android-app) #welcome .act-status{ display:flex !important; align-items:center !important; justify-content:center !important; gap:10px !important; white-space:nowrap !important; }
+html:not(.android-app) #welcome #act-regen.setup-card{ width:100% !important; box-sizing:border-box !important; min-height:0 !important; height:auto !important; display:flex !important; flex-direction:row !important; align-items:center !important; gap:18px !important; padding:18px 24px !important; text-align:left !important; }
+html:not(.android-app) #welcome #act-regen .sc-ic{ flex:none !important; margin:0 !important; }
+html:not(.android-app) #welcome #act-regen .sc-text{ display:flex !important; flex-direction:column !important; gap:2px !important; }
+html:not(.android-app) #welcome #act-regen .sc-title{ font-size:clamp(18px, 1.45vw, 28px) !important; }
+html:not(.android-app) #welcome #act-regen .sc-desc{ font-size:clamp(13px, 1vw, 19px) !important; }

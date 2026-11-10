@@ -1,6 +1,6 @@
 {
-  "versionCode": 231,
-  "versionName": "3.37.46",
+  "versionCode": 232,
+  "versionName": "3.37.47",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Fixes programmes not starting on provider accounts with a connection limit: the app no longer uses connections in the background."
+  "notes": "Activation screen: the code always fits, on laptops and TVs."
 }
