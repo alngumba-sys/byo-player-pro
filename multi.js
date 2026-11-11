@@ -325,17 +325,24 @@
         // Pictures for the title screen, best first: [url, isWide]. Small list posters are asked for at full size.
         window.__byoHeroArt=function(x){ var out=[]; if(!x) return out;
             function big(u, w){ u=String(u||''); if(/image\.tmdb\.org\/t\/p\//.test(u)) return u.replace(/\/t\/p\/[^\/]+\//,'/t/p/'+w+'/'); if(/[?&]maxWidth=\d+/.test(u)) return u.replace(/maxWidth=\d+/,'maxWidth='+(w==='original'?1400:1920)); return u; }
-            var bd=x.backdrop; if(Array.isArray(bd)) bd=bd[0]; if(typeof bd==='string'&&/^https?:/.test(bd)) out.push([big(bd,'w1280'),true]);
+            var bd=x.backdrop; if(Array.isArray(bd)) bd=bd[0]; if(typeof bd==='string'&&/^https?:/.test(bd)) out.push([big(bd,(window.innerWidth>1100?'original':'w1280')),true]);
             if(x.logo&&/\/Items\/[^\/]+\/Images\/Primary/.test(x.logo)) out.push([x.logo.replace('/Images/Primary','/Images/Backdrop').replace(/maxWidth=\d+/,'maxWidth=1920').replace(/([?&])tag=[^&]*&?/,'$1'),true]);
             try{ var ep=null; (x.seasons||[]).some(function(se){ return (se.episodes||[]).some(function(e){ if(e&&e.thumb&&e.thumb!==x.logo&&e.thumb!==e.art&&/image\.tmdb\.org/.test(e.thumb)){ ep=e; return true; } return false; }); });
                 if(ep) out.push([big(ep.thumb,'w1280'),true]); }catch(e){}
             if(x.logo){ var bp=big(x.logo,'original'); if(bp!==x.logo) out.push([bp,false]); out.push([x.logo,false]); }
             return out; };
+
+        // Home banner picture: a wide backdrop fills the banner; a poster is never stretched. It is shown at its real
+        // size (never larger) in front of a blurred copy of itself, so nothing is ever pixelated.
+        window.__byoHeroHTML=function(src,wide){ if(!src) return ''; var e=function(x){ return String(x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); };
+            if(wide) return '<img class="h2-feat-img wide" src="'+e(src)+'" alt="" onload="this.classList.add(\'ok\')" onerror="this.remove()"/>';
+            return '<img class="h2-feat-bgblur" src="'+e(src)+'" alt="" onload="this.classList.add(\'ok\')" onerror="this.remove()"/>'
+                +'<img class="h2-feat-fg" src="'+e(src)+'" alt="" onload="var h=this.naturalHeight||0,w=this.naturalWidth||0; if(h&&h<260||w&&w<170){ this.parentNode.classList.add(\'tiny\'); } this.style.maxHeight=Math.max(120,h)+\'px\'; this.classList.add(\'ok\')" onerror="this.remove()"/>'; };
         // Featured title on Home: find its sharpest picture. Provider movies are asked for their details (wide
         // backdrop, plot) first; otherwise the title-screen list is tried (Emby backdrop, full-size poster).
         window.__byoFeatArt=function(m, done){ if(!m) return;
             function tryList(list){ var i=0; (function next(){ if(i>=list.length) return; var it=list[i++]; if(!it||!it[0]) return next(); var pre=new Image();
-                pre.onload=function(){ if(pre.naturalWidth<(it[1]?640:300)||(it[1]&&pre.naturalWidth<pre.naturalHeight)) return next(); if(it[1]) m._bd=it[0]; else m._bigPoster=it[0]; done(); };
+                pre.onload=function(){ if(pre.naturalWidth<(it[1]?1000:300)||(it[1]&&pre.naturalWidth<pre.naturalHeight*1.3)) return next(); if(it[1]) m._bd=it[0]; else m._bigPoster=it[0]; done(); };
                 pre.onerror=next; pre.src=it[0]; })(); }
             function rest(){ var c=(window.__byoHeroArt?window.__byoHeroArt(m):[]).filter(function(x){ return x[0]!==m.logo; }); tryList(c); if(!m.backdrop) setTimeout(probe, 1500); }
             // This title has no wide picture: look for top-rated titles that do, and show one of them instead

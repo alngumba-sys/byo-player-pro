@@ -769,6 +769,11 @@ _rep("        progressiveGrid(grid, list, moviePoster); if(!total) __emptyHelp('
      "        try{ __cwSlot('movies',grid,_allView&&!q&&!S.moviesFav); }catch(_cw){}\n        progressiveGrid(grid, list, moviePoster); if(!total) __emptyHelp('movies'); }", 'cwmovies')
 _rep("        progressiveGrid(grid, list, seriesPoster); if(!total) __emptyHelp('series');",
      "        try{ __cwSlot('series',grid,_allView&&!q&&!S.seriesFav); }catch(_cw){}\n        progressiveGrid(grid, list, seriesPoster); if(!total) __emptyHelp('series');", 'cwseries')
+# Home banner picture is always sharp: a wide backdrop, or a poster at its real size on a blurred copy of itself.
+_pb_old = '                (src?\'<img class="h2-feat-img\'+(wide?\' wide\':\'\')+\'" src="\'+esc(src)+\'" alt="" loading="lazy" onload="this.classList.add(\\\'ok\\\')" onerror="this.remove()"/>\':\'\'); }'
+_pb_new = "                (window.__byoHeroHTML?window.__byoHeroHTML(src,wide):''); }"
+assert s.count(_pb_old)==2, 'herohtml'
+s=s.replace(_pb_old,_pb_new)
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",

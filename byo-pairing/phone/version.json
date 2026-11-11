@@ -1,6 +1,6 @@
 {
-  "versionCode": 233,
-  "versionName": "3.37.48",
+  "versionCode": 234,
+  "versionName": "3.37.49",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Continue watching: movies and series you left halfway now show on Home, Movies and Series."
+  "notes": "Sharper Home banner: posters are shown at their real size over a soft blurred background, never stretched."
 }
