@@ -13774,6 +13774,25 @@ var Pin=(function(){
         for(var i=0;i<ranked.length && out.length<(n||12);i++){ var k=tkey(ranked[i]); if(used[k]) continue; used[k]=1; Store.noteShown(ranked[i].id); out.push(ranked[i]); } return out; }
     function pushRow(rows, weight, iconId, label, cards){ if(cards&&cards.length>=4) rows.push({ w:weight, el:(function(){ var frag=document.createDocumentFragment(); frag.appendChild(rowTitle(iconId,label)); frag.appendChild(carousel(cards)); return frag; })() }); }
 
+    function __cwItems(kind){ var out=[]; var R=Store.resume||{};
+        Object.keys(R).forEach(function(k){ var r=R[k]; if(!r||r._demo||!r.url||!r.pos||!r.dur) return; if(r.type==='live') return; if(r.pos<20||r.pos>=r.dur*0.95) return;
+            if(kind==='movies'&&r.type!=='movie') return; if(kind==='series'&&r.type!=='episode'&&r.type!=='series') return;
+            r._key=k; out.push(r); });
+        return out.sort(function(a,b){ return (b.ts||0)-(a.ts||0); }).slice(0,14); }
+    function __cwRow(kind,from){ var items=__cwItems(kind); if(!items.length) return null;
+        var wrap=document.createElement('div'); wrap.className='carousel-wrap cw-row';
+        var head=document.createElement('div'); head.className='row-title'; head.textContent='Continue watching'; wrap.appendChild(head);
+        var car=document.createElement('div'); car.className='carousel';
+        items.forEach(function(r){ var pct=Math.max(2,Math.round((r.pos/r.dur)*100)), remain=Math.max(1,Math.round((r.dur-r.pos)/60));
+            var bg=r.frame||r.poster||''; if(!/^(https?:|data:|\/)/.test(bg)){ try{ var _id=String(r._key||'').replace(/^(movie|ep|episode|series):/,'').split(':')[0], _L=(r.type==='movie')?(S.movies||[]):(S.series||[]), _f=null; for(var _i=0;_i<_L.length;_i++){ if(String(_L[_i].id)===_id||(r.type!=='movie'&&r.sub&&_L[_i].title===r.sub)){ _f=_L[_i]; break; } } if(_f&&_f.logo) bg=_f.logo; }catch(_e){} } var isUrl=/^(https?:|data:|\/)/.test(bg);
+            var card=document.createElement('div'); card.className='poster-card'; card.setAttribute('data-focusable','true'); card.tabIndex=0;
+            card.innerHTML='<div class="poster" style="'+(isUrl?'background:#10161f url(\''+esc(bg)+'\') center/cover no-repeat':'background:'+(bg||'linear-gradient(160deg,#1b2a3d,#0c121b)'))+'">'+(isUrl?'':esc(r.title))+'<div class="resume"><i style="width:'+pct+'%"></i></div></div><div class="meta"><div class="p-title">'+esc(r.title)+'</div><div class="p-sub">'+(r.sub?esc(r.sub)+' · ':'')+remain+' min left</div></div>';
+            card.addEventListener('click',function(){ S.playerFrom=from; playContent(r.url,r.title,r.sub||'',{type:r.type,key:r._key,poster:r.poster,startAt:r.pos,from:from}); });
+            car.appendChild(card); });
+        wrap.appendChild(car); return wrap; }
+    function __cwSlot(kind,grid,show){ var id='cw-'+kind, old=document.getElementById(id); if(old) old.remove(); if(!show) return;
+        var row=__cwRow(kind,kind); if(!row) return; row.id=id; grid.parentNode.insertBefore(row,grid); }
+    window.__cwRefresh=function(){ try{ var h=$('home-body'); if(h&&$('view-home').classList.contains('active-view')) renderHome(); }catch(e){} };
     function renderHome(){
         stopHeroPreview(); S._heroTries=0;
         var body=$('home-body'); body.innerHTML='';
@@ -13800,6 +13819,7 @@ var Pin=(function(){
                 var a2=$('le-help'); if(a2) a2.addEventListener('click',function(){ goTo('settings'); setTimeout(function(){ try{ Support.open(); }catch(_e){} },300); }); },0);
             return; }
         homeV2(body);
+        try{ var _cw=__cwRow('all','home'); if(_cw){ var _hero=body.querySelector('.h2-hero'); while(_hero&&_hero.parentNode&&_hero.parentNode!==body) _hero=_hero.parentNode; if(_hero&&_hero.parentNode===body) body.insertBefore(_cw,_hero.nextSibling); else body.insertBefore(_cw,body.firstChild); } }catch(_cw){}
     }
 
     /* ---------- Home v2: Featured today + What's on now, Top picks, Trending (below the trial strip) ---------- */
@@ -14920,6 +14940,7 @@ var Pin=(function(){
         if(S.moviesFav){ var fsm=favSet('movies'); list=list.filter(function(m){ return fsm.has(m); }); }
         vodSortInit(); list=sortList(list,S.moviesSort,S.moviesDir);   // the chosen sort applies everywhere, "All" included
         var grid=$('movies-grid'); grid.innerHTML=''; var total=list.length; $('movies-count').textContent=total+' movies'; $('movies-empty').classList.toggle('hidden',total>0); $('movies-empty').textContent=S.moviesFav?'No favourite movies yet. Open one and choose Add to favorites.':'No movies matched.';
+        try{ __cwSlot('movies',grid,_allView&&!q&&!S.moviesFav); }catch(_cw){}
         progressiveGrid(grid, list, moviePoster); if(!total) __emptyHelp('movies'); }
 
     /* ---- SERIES ---- */
@@ -14933,6 +14954,7 @@ var Pin=(function(){
         if(S.seriesFav){ var fss=favSet('series'); list=list.filter(function(m){ return fss.has(m); }); }
         vodSortInit(); list=sortList(list,S.seriesSort,S.seriesDir);
         var grid=$('series-grid'); grid.innerHTML=''; var total=list.length; $('series-count').textContent=total+' series'; $('series-empty').classList.toggle('hidden',total>0); $('series-empty').textContent=S.seriesFav?'No favourite series yet. Open one and choose Add to favorites.':'No series matched.';
+        try{ __cwSlot('series',grid,_allView&&!q&&!S.seriesFav); }catch(_cw){}
         progressiveGrid(grid, list, seriesPoster); if(!total) __emptyHelp('series'); }
     function __emptyHelp(kind){ try{ var isM=kind==='movies', all=isM?S.movies:S.series, el=$(kind+'-empty'); if(!el) return;
         var off=window.__byoSectionsOff?window.__byoSectionsOff(kind):[];

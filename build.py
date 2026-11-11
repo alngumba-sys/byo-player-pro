@@ -740,6 +740,35 @@ _rep("var Recovery=(function(){",
     Object.defineProperty(v,'seekable',{ configurable:true, get:function(){ return (D.on&&D.dur>0)?{ length:1, start:function(){ return 0; }, end:function(){ return D.dur; } }:se.get.call(v); } });
     return D; }
 var Recovery=(function(){""", 'dskshim')
+# ---- Continue watching: a row on Home, Movies and Series so a half-watched title is easy to find ----
+_rep("    function renderHome(){\n",
+r"""    function __cwItems(kind){ var out=[]; var R=Store.resume||{};
+        Object.keys(R).forEach(function(k){ var r=R[k]; if(!r||r._demo||!r.url||!r.pos||!r.dur) return; if(r.type==='live') return; if(r.pos<20||r.pos>=r.dur*0.95) return;
+            if(kind==='movies'&&r.type!=='movie') return; if(kind==='series'&&r.type!=='episode'&&r.type!=='series') return;
+            r._key=k; out.push(r); });
+        return out.sort(function(a,b){ return (b.ts||0)-(a.ts||0); }).slice(0,14); }
+    function __cwRow(kind,from){ var items=__cwItems(kind); if(!items.length) return null;
+        var wrap=document.createElement('div'); wrap.className='carousel-wrap cw-row';
+        var head=document.createElement('div'); head.className='row-title'; head.textContent='Continue watching'; wrap.appendChild(head);
+        var car=document.createElement('div'); car.className='carousel';
+        items.forEach(function(r){ var pct=Math.max(2,Math.round((r.pos/r.dur)*100)), remain=Math.max(1,Math.round((r.dur-r.pos)/60));
+            var bg=r.frame||r.poster||''; if(!/^(https?:|data:|\/)/.test(bg)){ try{ var _id=String(r._key||'').replace(/^(movie|ep|episode|series):/,'').split(':')[0], _L=(r.type==='movie')?(S.movies||[]):(S.series||[]), _f=null; for(var _i=0;_i<_L.length;_i++){ if(String(_L[_i].id)===_id||(r.type!=='movie'&&r.sub&&_L[_i].title===r.sub)){ _f=_L[_i]; break; } } if(_f&&_f.logo) bg=_f.logo; }catch(_e){} } var isUrl=/^(https?:|data:|\/)/.test(bg);
+            var card=document.createElement('div'); card.className='poster-card'; card.setAttribute('data-focusable','true'); card.tabIndex=0;
+            card.innerHTML='<div class="poster" style="'+(isUrl?'background:#10161f url(\''+esc(bg)+'\') center/cover no-repeat':'background:'+(bg||'linear-gradient(160deg,#1b2a3d,#0c121b)'))+'">'+(isUrl?'':esc(r.title))+'<div class="resume"><i style="width:'+pct+'%"></i></div></div><div class="meta"><div class="p-title">'+esc(r.title)+'</div><div class="p-sub">'+(r.sub?esc(r.sub)+' · ':'')+remain+' min left</div></div>';
+            card.addEventListener('click',function(){ S.playerFrom=from; playContent(r.url,r.title,r.sub||'',{type:r.type,key:r._key,poster:r.poster,startAt:r.pos,from:from}); });
+            car.appendChild(card); });
+        wrap.appendChild(car); return wrap; }
+    function __cwSlot(kind,grid,show){ var id='cw-'+kind, old=document.getElementById(id); if(old) old.remove(); if(!show) return;
+        var row=__cwRow(kind,kind); if(!row) return; row.id=id; grid.parentNode.insertBefore(row,grid); }
+    window.__cwRefresh=function(){ try{ var h=$('home-body'); if(h&&$('view-home').classList.contains('active-view')) renderHome(); }catch(e){} };
+    function renderHome(){
+""", 'cwfn')
+_rep("        homeV2(body);\n    }",
+     "        homeV2(body);\n        try{ var _cw=__cwRow('all','home'); if(_cw){ var _hero=body.querySelector('.h2-hero'); while(_hero&&_hero.parentNode&&_hero.parentNode!==body) _hero=_hero.parentNode; if(_hero&&_hero.parentNode===body) body.insertBefore(_cw,_hero.nextSibling); else body.insertBefore(_cw,body.firstChild); } }catch(_cw){}\n    }", 'cwhome')
+_rep("        progressiveGrid(grid, list, moviePoster); if(!total) __emptyHelp('movies'); }",
+     "        try{ __cwSlot('movies',grid,_allView&&!q&&!S.moviesFav); }catch(_cw){}\n        progressiveGrid(grid, list, moviePoster); if(!total) __emptyHelp('movies'); }", 'cwmovies')
+_rep("        progressiveGrid(grid, list, seriesPoster); if(!total) __emptyHelp('series');",
+     "        try{ __cwSlot('series',grid,_allView&&!q&&!S.seriesFav); }catch(_cw){}\n        progressiveGrid(grid, list, seriesPoster); if(!total) __emptyHelp('series');", 'cwseries')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
