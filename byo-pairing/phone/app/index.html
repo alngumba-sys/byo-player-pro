@@ -19787,7 +19787,7 @@ new MutationObserver(function(ms){ for(var k=0;k<ms.length;k++){ var a=ms[k].add
 #ios-install .ii-note{ background:#2a2410; color:#f3dfa6; border-radius:12px; padding:12px 14px; font-size:14px; line-height:1.4; margin-top:4px; }
 #ios-install .ii-later{ display:block; width:100%; margin-top:16px; padding:14px; border:1px solid #2b3846; border-radius:12px; background:transparent; color:#cfd8e3; font-size:15px; font-weight:600; }
 #ios-install-pill{ position:fixed; right:12px; bottom:calc(92px + env(safe-area-inset-bottom)); z-index:99999; display:none;
-  border:0; color:rgba(200,212,226,.5); background:transparent; padding:6px 8px; font-weight:500; font-size:13px; font-family:inherit; }
+  border:0; color:rgba(200,212,226,.5); background:transparent; opacity:.5; padding:6px 8px; font-weight:500; font-size:13px; font-family:inherit; }
 #ios-install-pill b{ display:inline-block; margin-left:8px; font-weight:400; color:rgba(200,212,226,.4); }
 #ios-install-pill.on{ display:block; }
 </style>
@@ -19830,8 +19830,8 @@ new MutationObserver(function(ms){ for(var k=0;k<ms.length;k++){ var a=ms[k].add
   if(seen){ if(!hid) pill.classList.add('on'); } else setTimeout(open, 600);
 }catch(e){} })();</script>
 <style id="web-install-css">
-#web-install{ position:fixed; right:16px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:99998; display:none; border:0; background:transparent; color:rgba(200,212,226,.45); font:500 13px/1 Inter,system-ui,sans-serif; padding:8px 10px; cursor:pointer; border-radius:8px; transition:color .2s; }
-#web-install:hover{ color:rgba(220,232,244,.85); }
+#web-install{ position:fixed; right:16px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:99998; display:none; border:0; background:transparent; color:rgba(200,212,226,.45); font:500 13px/1 Inter,system-ui,sans-serif; padding:8px 10px; cursor:pointer; border-radius:8px; opacity:.5; transition:color .2s, opacity .2s; }
+#web-install:hover{ color:rgba(220,232,244,.85); opacity:1; }
 #web-install.on{ display:inline-flex; align-items:center; gap:6px; }
 #web-install svg{ width:14px; height:14px; }
 html.is-playing #web-install{ display:none !important; }
