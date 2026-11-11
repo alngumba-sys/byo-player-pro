@@ -16130,6 +16130,7 @@ var Pin=(function(){
         var _drm=StreamOpts.drmInfo(url);
         if(_drm&&!StreamOpts.playable(_drm)){ try{ setToast((_drm.type==='widevine'?'Widevine':(_drm.type==='playready'?'PlayReady':'DRM'))+'-protected channel. BYO Player cannot play protected streams like this one.'); }catch(_e){} return; }
         if(_drm&&!(window.ByoAndroid&&ByoAndroid.playNativeAll)){ try{ setToast('This protected channel plays in the Android app only.'); }catch(_e){} return; } if(Stalker.isStalker(url)){ var _so={}; for(var _k in opts) _so[_k]=opts[_k]; try{ setToast('Getting the channel from your portal…'); }catch(_e){} Stalker.resolve(url,function(_e2,_real){ if(_e2){ try{ setToast(_e2); }catch(_e){} return; } playContent(_real,title,sub,_so); }); return; }
+        try{ var _av=document.querySelector('.view.active-view'); if(_av&&_av.id&&_av.id!=='view-player') S._viewBeforePlay=_av.id.replace(/^view-/,''); }catch(_vb){}
         try{ if(window.__byoIsIOSWeb&&opts.type!=='live'&&window.__byoIosPlayable&&!window.__byoIosPlayable(url)){ setToast('This '+(opts.type==='episode'?'episode':'title')+' is an MKV file, which iPhone cannot play. Watch it in the BYO Player TV or Android app.'); return; } }catch(_e){}
         try{ cancelDetailAutoplay(); if(S.currentDetail&&S.currentDetail.data){ S._lastPlayItem=S.currentDetail.data; S._lastPlayAt=Date.now(); } }catch(_e){}
         window.__byoPlayWeb=playContent;
@@ -16569,7 +16570,7 @@ var Pin=(function(){
         S._playToken=(S._playToken||0)+1;   // invalidate any pending Emby resolvePlayback callback
         Recovery.stop(); Player.stop(); hideNextToast(); hidePlayerMsg(); $('paused-banner').classList.add('hidden'); $('recovery-banner').classList.add('hidden'); if(S.connTimer){ clearInterval(S.connTimer); S.connTimer=null; }
         if(S.sportsContext){ S.sportsContext=false; renderSports(); showView('sports'); setTimeout(function(){ Nav.focusFirst(); },30); return; }
-        if(S.playerFrom==='live'){ showView('detail'); setTimeout(function(){ Nav.focusFirst(); },30); }
+        if(S.playerFrom==='live'){ var _bv=S._viewBeforePlay; if(!_bv||!document.getElementById('view-'+_bv)) _bv=(S.currentDetail&&S.currentDetail.data)?'detail':'live'; showView(_bv); setTimeout(function(){ Nav.focusFirst(); },30); }
         else if(S.playerFrom==='replay'){ showView('detail'); setTimeout(function(){ Nav.focusFirst(); },30); }
         else if(S.playerFrom==='home'){ renderHome(); showView('home'); setTimeout(function(){ Nav.focusFirst(); },30); }
         else if(S.playerFrom==='mytv'){ renderMyTV(); showView('mytv'); setTimeout(function(){ Nav.focusFirst(); },30); }

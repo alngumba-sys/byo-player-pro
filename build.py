@@ -678,6 +678,12 @@ _rep("            this._onNativeErr=function(){ if(self2.current&&self2.current.
      "            this._onNativeErr=function(){ if(self2.current&&self2.current.url!==url) return;\n                try{ if(v.error&&v.error.code===4&&!(v.currentTime>0)){ s.cb.onError&&s.cb.onError('UNPLAYABLE:'+(/\\.(mkv|avi|mpg|mpeg|wmv|flv)(\\?|$)/i.test(url)?'This title is in a file format (often MKV with Dolby audio) that web browsers cannot play. It plays in the BYO Player Android app on your TV or phone.':'This web browser cannot play this stream. It plays in the BYO Player Android app on your TV or phone.')); return; } }catch(_e){}", 'fmtfatal')
 _rep("    function onError(msg){\n        if(!ctx){",
      "    function onError(msg){\n        if(/^UNPLAYABLE:/.test(String(msg||''))){ msg=String(msg).slice(11); if(!ctx){ if(cfg.finalFail) cfg.finalFail({ message:msg, canFailover:false }); return; } return finalFail(msg); }\n        if(!ctx){", 'fmtfatal2')
+# Back from the player returns to the screen the title was opened from (a channel opened from the Live list goes back
+# to the Live list, not to an empty channel page).
+_rep("    function playContent(url,title,sub,opts){ opts=opts||{};\n",
+     "    function playContent(url,title,sub,opts){ opts=opts||{};\n        try{ var _av=document.querySelector('.view.active-view'); if(_av&&_av.id&&_av.id!=='view-player') S._viewBeforePlay=_av.id.replace(/^view-/,''); }catch(_vb){}\n", 'backorigin')
+_rep("        if(S.playerFrom==='live'){ showView('detail'); setTimeout(function(){ Nav.focusFirst(); },30); }",
+     "        if(S.playerFrom==='live'){ var _bv=S._viewBeforePlay; if(!_bv||!document.getElementById('view-'+_bv)) _bv=(S.currentDetail&&S.currentDetail.data)?'detail':'live'; showView(_bv); setTimeout(function(){ Nav.focusFirst(); },30); }", 'backorigin2')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
