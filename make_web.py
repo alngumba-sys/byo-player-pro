@@ -135,6 +135,28 @@ SHEET = r'''<style id="ios-install-css">
   if(seen){ if(!hid) pill.classList.add('on'); } else setTimeout(open, 600);
 }catch(e){} })();</script>
 '''
+# A Back button on the player for mouse and touch users (there is no remote in a browser). It does what Esc does.
+SHEET += r"""<style id="web-back-css">
+#web-back{ position:fixed; top:18px; left:18px; z-index:2147483000; display:none; align-items:center; gap:8px; padding:10px 18px 10px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(8,12,20,.72); color:#fff; font:600 16px/1 Inter,system-ui,sans-serif; cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:opacity .25s; }
+#web-back:hover{ background:rgba(30,40,58,.9); }
+#web-back svg{ width:20px; height:20px; }
+html.web-back-on #web-back{ display:inline-flex; }
+html.web-back-on.web-back-idle #web-back{ opacity:0; pointer-events:none; }
+</style>
+<button id="web-back" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Back</button>
+<script>(function(){ try{
+  var b=document.getElementById('web-back'), R=document.documentElement, idle=null;
+  function esc(){ ['keydown','keyup'].forEach(function(t){ var e=new KeyboardEvent(t,{key:'Escape',code:'Escape',bubbles:true,cancelable:true}); try{ Object.defineProperty(e,'keyCode',{get:function(){return 27;}}); Object.defineProperty(e,'which',{get:function(){return 27;}}); }catch(_e){} document.dispatchEvent(e); }); }
+  b.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); esc(); });
+  function wake(){ R.classList.remove('web-back-idle'); clearTimeout(idle); idle=setTimeout(function(){ R.classList.add('web-back-idle'); },4000); }
+  ['mousemove','touchstart','keydown'].forEach(function(t){ document.addEventListener(t,wake,{passive:true}); });
+  setInterval(function(){ try{ var pv=document.getElementById('view-player'), mv=document.getElementById('view-multiview');
+    var on=!!((pv&&pv.classList.contains('active-view'))||(mv&&mv.classList.contains('active-view')));
+    if(on!==R.classList.contains('web-back-on')){ R.classList.toggle('web-back-on',on); if(on) wake(); }
+    var h=document.querySelectorAll('.player-hint,.mvp-hint'); for(var i=0;i<h.length;i++){ if(/BACK/.test(h[i].textContent)) h[i].textContent=h[i].textContent.replace(/BACK/g,'Esc').replace(/UP\/DOWN/g,'↑/↓').replace(/OK/g,'Enter').replace(/D-pad/g,'Arrow keys'); }
+  }catch(e){} },400);
+}catch(e){} })();</script>
+"""
 i = s.rfind('</body>')
 s = (s[:i] + SHEET + s[i:]) if i >= 0 else (s + SHEET)
 open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(s)
