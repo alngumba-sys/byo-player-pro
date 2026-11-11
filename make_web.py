@@ -92,8 +92,8 @@ SHEET = r'''<style id="ios-install-css">
 #ios-install .ii-note{ background:#2a2410; color:#f3dfa6; border-radius:12px; padding:12px 14px; font-size:14px; line-height:1.4; margin-top:4px; }
 #ios-install .ii-later{ display:block; width:100%; margin-top:16px; padding:14px; border:1px solid #2b3846; border-radius:12px; background:transparent; color:#cfd8e3; font-size:15px; font-weight:600; }
 #ios-install-pill{ position:fixed; right:12px; bottom:calc(92px + env(safe-area-inset-bottom)); z-index:99999; display:none;
-  border:1px solid #2fd4e8; color:#2fd4e8; background:rgba(5,7,13,.94); border-radius:999px; padding:9px 14px; font-weight:700; font-size:14px; font-family:inherit; box-shadow:0 6px 20px rgba(0,0,0,.4); }
-#ios-install-pill b{ display:inline-block; margin-left:10px; padding-left:10px; border-left:1px solid rgba(47,212,232,.35); font-weight:400; color:#9fb0c0; }
+  border:0; color:rgba(200,212,226,.5); background:transparent; padding:6px 8px; font-weight:500; font-size:13px; font-family:inherit; }
+#ios-install-pill b{ display:inline-block; margin-left:8px; font-weight:400; color:rgba(200,212,226,.4); }
 #ios-install-pill.on{ display:block; }
 </style>
 <div id="ios-install" role="dialog" aria-modal="true" aria-labelledby="ii-h">
@@ -135,6 +135,43 @@ SHEET = r'''<style id="ios-install-css">
   if(seen){ if(!hid) pill.classList.add('on'); } else setTimeout(open, 600);
 }catch(e){} })();</script>
 '''
+# Install app for laptops and Android: the browser's own install prompt where it offers one, short help otherwise.
+SHEET += r"""<style id="web-install-css">
+#web-install{ position:fixed; right:16px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:99998; display:none; border:0; background:transparent; color:rgba(200,212,226,.45); font:500 13px/1 Inter,system-ui,sans-serif; padding:8px 10px; cursor:pointer; border-radius:8px; transition:color .2s; }
+#web-install:hover{ color:rgba(220,232,244,.85); }
+#web-install.on{ display:inline-flex; align-items:center; gap:6px; }
+#web-install svg{ width:14px; height:14px; }
+html.is-playing #web-install{ display:none !important; }
+html.android-app #web-install{ bottom:calc(92px + env(safe-area-inset-bottom)); }
+html.android-app #wi-help{ bottom:calc(128px + env(safe-area-inset-bottom)); left:16px; max-width:none; }
+#wi-help{ position:fixed; right:16px; bottom:48px; z-index:99999; display:none; max-width:320px; background:#121a24; color:#dbe4ee; border:1px solid #233142; border-radius:14px; padding:16px 18px; font:400 14px/1.45 Inter,system-ui,sans-serif; box-shadow:0 12px 40px rgba(0,0,0,.5); }
+#wi-help.on{ display:block; }
+#wi-help b{ color:#fff; }
+#wi-help a{ color:#2fd4e8; }
+#wi-help .wi-x{ float:right; margin:-6px -8px 0 8px; background:transparent; border:0; color:#9fb0c0; font-size:20px; cursor:pointer; }
+</style>
+<button id="web-install" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Install app</button>
+<div id="wi-help" role="dialog"><button class="wi-x" aria-label="Close">&times;</button><div id="wi-text"></div></div>
+<script>(function(){ try{
+  var d=document.documentElement; if(d.classList.contains('ios-web')||d.classList.contains('web-standalone')) return;
+  if(window.matchMedia&&matchMedia('(display-mode: standalone)').matches) return;
+  try{ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(e){}
+  var btn=document.getElementById('web-install'), help=document.getElementById('wi-help'), txt=document.getElementById('wi-text'), ev=null;
+  var ua=navigator.userAgent||'', android=/Android/i.test(ua), safari=/Safari/.test(ua)&&!/Chrome|Chromium|Edg|OPR/.test(ua), firefox=/Firefox/.test(ua);
+  window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); ev=e; });
+  window.addEventListener('appinstalled',function(){ btn.classList.remove('on'); help.classList.remove('on'); });
+  btn.classList.add('on');
+  help.querySelector('.wi-x').addEventListener('click',function(){ help.classList.remove('on'); });
+  btn.addEventListener('click',function(){
+    if(ev){ var e=ev; ev=null; e.prompt(); if(e.userChoice) e.userChoice.then(function(r){ if(r&&r.outcome==='accepted') btn.classList.remove('on'); }); return; }
+    var apk='<a href="https://byoplayer-pair.netlify.app/tv3247.apk">download the Android app</a>';
+    txt.innerHTML = android ? 'In Chrome, tap the <b>three dots</b> at the top right, then <b>Add to Home screen</b> or <b>Install app</b>.<br><br>For the best playback (all movie formats), '+apk+' instead.'
+      : safari ? 'In Safari on a Mac, open the <b>File</b> menu (or the Share button) and choose <b>Add to Dock</b>.'
+      : firefox ? 'Firefox cannot install apps. Open this page in <b>Chrome</b> or <b>Microsoft Edge</b> and click <b>Install app</b> again.'
+      : 'Click the <b>install icon</b> at the right end of the address bar, or open the browser menu (three dots) and choose <b>Cast, save and share</b> then <b>Install page as app</b>.';
+    help.classList.toggle('on'); });
+}catch(e){} })();</script>
+"""
 # A Back button on the player for mouse and touch users (there is no remote in a browser). It does what Esc does.
 SHEET += r"""<style id="web-back-css">
 #web-back{ position:fixed; top:18px; left:18px; z-index:2147483000; display:none; align-items:center; gap:8px; padding:10px 18px 10px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(8,12,20,.72); color:#fff; font:600 16px/1 Inter,system-ui,sans-serif; cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:opacity .25s; }
@@ -160,6 +197,7 @@ html.web-back-on.web-back-idle #web-back{ opacity:0; pointer-events:none; }
 i = s.rfind('</body>')
 s = (s[:i] + SHEET + s[i:]) if i >= 0 else (s + SHEET)
 open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(s)
+open(os.path.join(OUT, 'sw.js'), 'w').write("// BYO Player: lets the browser install the app. Nothing is cached; every request goes to the network.\nself.addEventListener('install',function(){ self.skipWaiting(); });\nself.addEventListener('activate',function(e){ e.waitUntil(self.clients.claim()); });\nself.addEventListener('fetch',function(){});\n")
 
 shutil.copy(os.path.join(ASSETS, 'hls.min.js'), os.path.join(OUT, 'hls.min.js'))
 if os.path.isdir(os.path.join(OUT, 'logos')):
