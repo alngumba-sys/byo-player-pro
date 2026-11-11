@@ -8873,6 +8873,7 @@ var Player={ v:null,hls:null,cb:{},resumeKey:null,resumeMeta:null,current:null,
             v.addEventListener('error',this._onNativeErr);
             v.addEventListener('playing',this._onNativePlay);
             v.src=url; v.addEventListener('loadedmetadata',ready,{once:true}); v.play().catch(function(){ s.cb.onError&&s.cb.onError('Could not start playback.'); });
+            try{ clearTimeout(self2._noStartT); if(self2.resumeMeta&&!(window.ByoAndroid&&window.ByoAndroid.fetchToFile)){ self2._noStartT=setTimeout(function(){ try{ if(self2.current&&self2.current.url===url&&v.readyState===0&&!(v.currentTime>0)&&navigator.onLine!==false){ s.cb.onError&&s.cb.onError('UNPLAYABLE:This movie cannot be played in a web browser (its file format or the provider\'s server is not supported by browsers). It plays in the BYO Player Android app on your TV or phone.'); } }catch(_e){} },20000); } }catch(_ns){}
         } else { s.cb.onError&&s.cb.onError('HLS unsupported here; AVPlay handles it on the TV.'); } },
     _tick:function(){ if(this.cb.onTime) this.cb.onTime(this.v.currentTime,this.v.duration,this._bufferedEnd());
         if(!this.resumeKey||!this.resumeMeta) return; var v=this.v;

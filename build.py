@@ -713,6 +713,10 @@ _rep("    function playLiveByChannel(c){",
             playing:function(){ if(tm){ clearTimeout(tm); tm=null; var d=Date.now()-t0; if(d>2500&&live()){ var now=Date.now(); stalls.push(now); stalls=stalls.filter(function(x){ return now-x<120000; }); if(stalls.length>=3) lighter(); } } },
             reset:function(){ if(tm){ clearTimeout(tm); tm=null; } stalls=[]; } }; })();
     function playLiveByChannel(c){ try{ __weakNet.reset(); }catch(_w){}""", 'wnmod')
+# A movie or episode the browser never starts (blocked insecure server or a format it silently refuses) says so after 20 s
+# instead of reconnecting forever.
+_rep("            v.src=url; v.addEventListener('loadedmetadata',ready,{once:true}); v.play().catch(function(){ s.cb.onError&&s.cb.onError('Could not start playback.'); });",
+     "            v.src=url; v.addEventListener('loadedmetadata',ready,{once:true}); v.play().catch(function(){ s.cb.onError&&s.cb.onError('Could not start playback.'); });\n            try{ clearTimeout(self2._noStartT); if(self2.resumeMeta&&!(window.ByoAndroid&&window.ByoAndroid.fetchToFile)){ self2._noStartT=setTimeout(function(){ try{ if(self2.current&&self2.current.url===url&&v.readyState===0&&!(v.currentTime>0)&&navigator.onLine!==false){ s.cb.onError&&s.cb.onError('UNPLAYABLE:This movie cannot be played in a web browser (its file format or the provider\\'s server is not supported by browsers). It plays in the BYO Player Android app on your TV or phone.'); } }catch(_e){} },20000); } }catch(_ns){}", 'nostart')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
