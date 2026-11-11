@@ -1,6 +1,6 @@
 {
-  "versionCode": 232,
-  "versionName": "3.37.47",
+  "versionCode": 233,
+  "versionName": "3.37.48",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Activation screen: the code always fits, on laptops and TVs."
+  "notes": "Continue watching: movies and series you left halfway now show on Home, Movies and Series."
 }
