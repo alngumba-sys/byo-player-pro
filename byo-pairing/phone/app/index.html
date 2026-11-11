@@ -8792,7 +8792,14 @@ var Player={ v:null,hls:null,cb:{},resumeKey:null,resumeMeta:null,current:null,
         // does NOT try to reconnect a stream that is legitimately over — that spurious reconnect was
         // the "connection changes at the end of a series" problem. (d)
         this.v.addEventListener('ended',function(){ s._ended=true; s.cb.onEnded&&s.cb.onEnded(); }); },
-    play:function(url,key,meta,startAt){ var v=this.v,s=this; this.resumeKey=key||null; this.resumeMeta=meta||null; this.current={url:url}; this._ended=false; this._subId=-1; this._audId=0; this._qId=-1; this.cb.onBuffering&&this.cb.onBuffering(); this._down();
+    play:function(url,key,meta,startAt){ var v=this.v,s=this;
+        try{ var _D=__dskShim(v); _D.on=false;
+            if(window.ByoDesktop&&window.ByoDesktop.base&&meta&&!/\.m3u8(\?|$)/i.test(url)&&!/^http:\/\/127\.0\.0\.1/.test(url)){
+                var _src=url, _t=(startAt&&isFinite(startAt)&&startAt>0)?startAt:0;
+                _D.mk=function(t){ return window.ByoDesktop.base+'/stream?u='+encodeURIComponent(_src)+'&t='+Math.floor(t); };
+                _D.on=true; _D.off=_t; _D.orig=_src; if(_D.durFor!==_src){ _D.dur=0; _D.durFor=_src; }
+                fetch(window.ByoDesktop.base+'/probe?u='+encodeURIComponent(_src)).then(function(r){ return r.json(); }).then(function(i){ if(_D.orig===_src&&i&&i.duration>0){ _D.dur=i.duration; try{ v.dispatchEvent(new Event('durationchange')); }catch(_e){} } }).catch(function(){});
+                url=_D.mk(_t); } }catch(_dk){} this.resumeKey=key||null; this.resumeMeta=meta||null; this.current={url:url}; this._ended=false; this._subId=-1; this._audId=0; this._qId=-1; this.cb.onBuffering&&this.cb.onBuffering(); this._down();
         var isHls=/\.m3u8(\?|$)/i.test(url);
         function ready(){ if(startAt&&isFinite(startAt)&&startAt>0){ try{ v.currentTime=startAt; }catch(e){} } v.play().then(function(){ s.cb.onPlaying&&s.cb.onPlaying(); }).catch(function(){}); }
         if(isHls&&window.Hls&&window.Hls.isSupported()){
@@ -8860,7 +8867,7 @@ var Player={ v:null,hls:null,cb:{},resumeKey:null,resumeMeta:null,current:null,
             // silent in-place reloads (resume at the last position) before surfacing anything — the
             // app-level Recovery watchdog remains the final backstop for a genuine outage.
             this._onNativeErr=function(){ if(self2.current&&self2.current.url!==url) return;
-                try{ if(v.error&&v.error.code===4&&!(v.currentTime>0)){ s.cb.onError&&s.cb.onError('UNPLAYABLE:'+(/\.(mkv|avi|mpg|mpeg|wmv|flv)(\?|$)/i.test(url)?'This title is in a file format (often MKV with Dolby audio) that web browsers cannot play. It plays in the BYO Player Android app on your TV or phone.':'This web browser cannot play this stream. It plays in the BYO Player Android app on your TV or phone.')); return; } }catch(_e){} if(atEnd()){ if(self2.cb.onEnded&&!self2._ended){ self2._ended=true; self2.cb.onEnded(); } return; }
+                try{ if(!window.ByoDesktop&&v.error&&v.error.code===4&&!(v.currentTime>0)){ s.cb.onError&&s.cb.onError('UNPLAYABLE:'+(/\.(mkv|avi|mpg|mpeg|wmv|flv)(\?|$)/i.test(url)?'This title is in a file format (often MKV with Dolby audio) that web browsers cannot play. It plays in the BYO Player Android app on your TV or phone.':'This web browser cannot play this stream. It plays in the BYO Player Android app on your TV or phone.')); return; } }catch(_e){} if(atEnd()){ if(self2.cb.onEnded&&!self2._ended){ self2._ended=true; self2.cb.onEnded(); } return; }
                 // Ignore a spurious 'error' that fires while the stream is actually still playing — on
                 // Tizen the native player sometimes emits one on a decoder glitch without stopping. Only
                 // act when playback is genuinely not advancing.
@@ -8873,7 +8880,7 @@ var Player={ v:null,hls:null,cb:{},resumeKey:null,resumeMeta:null,current:null,
             v.addEventListener('error',this._onNativeErr);
             v.addEventListener('playing',this._onNativePlay);
             v.src=url; v.addEventListener('loadedmetadata',ready,{once:true}); v.play().catch(function(){ s.cb.onError&&s.cb.onError('Could not start playback.'); });
-            try{ clearTimeout(self2._noStartT); if(self2.resumeMeta&&!(window.ByoAndroid&&window.ByoAndroid.fetchToFile)){ self2._noStartT=setTimeout(function(){ try{ if(self2.current&&self2.current.url===url&&v.readyState===0&&!(v.currentTime>0)&&navigator.onLine!==false){ s.cb.onError&&s.cb.onError('UNPLAYABLE:This movie cannot be played in a web browser (its file format or the provider\'s server is not supported by browsers). It plays in the BYO Player Android app on your TV or phone.'); } }catch(_e){} },20000); } }catch(_ns){}
+            try{ clearTimeout(self2._noStartT); if(self2.resumeMeta&&!window.ByoDesktop&&!(window.ByoAndroid&&window.ByoAndroid.fetchToFile)){ self2._noStartT=setTimeout(function(){ try{ if(self2.current&&self2.current.url===url&&v.readyState===0&&!(v.currentTime>0)&&navigator.onLine!==false){ s.cb.onError&&s.cb.onError('UNPLAYABLE:This movie cannot be played in a web browser (its file format or the provider\'s server is not supported by browsers). It plays in the BYO Player Android app on your TV or phone.'); } }catch(_e){} },20000); } }catch(_ns){}
         } else { s.cb.onError&&s.cb.onError('HLS unsupported here; AVPlay handles it on the TV.'); } },
     _tick:function(){ if(this.cb.onTime) this.cb.onTime(this.v.currentTime,this.v.duration,this._bufferedEnd());
         if(!this.resumeKey||!this.resumeMeta) return; var v=this.v;
@@ -8980,6 +8987,17 @@ var Player={ v:null,hls:null,cb:{},resumeKey:null,resumeMeta:null,current:null,
    backoff) → fail over to another authorised source for the SAME content → only then ask the user.
    Preserves position (VOD) / live point, keeps channel + EPG identity, and classifies
    network-wide vs source-specific failures. App closures are injected via init(). */
+function __dskShim(v){ if(v.__dsk) return v.__dsk; var D=v.__dsk={on:false,off:0,dur:0,mk:null}; if(!window.ByoDesktop) return D;
+    var P=HTMLMediaElement.prototype, ct=Object.getOwnPropertyDescriptor(P,'currentTime'), du=Object.getOwnPropertyDescriptor(P,'duration'), bu=Object.getOwnPropertyDescriptor(P,'buffered'), se=Object.getOwnPropertyDescriptor(P,'seekable');
+    function shift(b){ return { length:b.length, start:function(i){ return b.start(i)+D.off; }, end:function(i){ return b.end(i)+D.off; } }; }
+    Object.defineProperty(v,'currentTime',{ configurable:true, get:function(){ var n=ct.get.call(v)||0; return D.on?D.off+n:n; },
+        set:function(x){ if(!D.on){ ct.set.call(v,x); return; } x=Math.max(0,+x||0); if(D.dur>0) x=Math.min(x,Math.max(0,D.dur-2)); var rel=x-D.off, cur=D.off+(ct.get.call(v)||0); if(Math.abs(x-cur)<1.5) return;
+            var b=bu.get.call(v); for(var i=0;i<b.length;i++){ if(rel>=b.start(i)&&rel<=b.end(i)-0.5){ ct.set.call(v,rel); return; } }
+            var wasPaused=v.paused; D.off=x; v.src=D.mk(x); try{ v.load(); }catch(_e){} if(!wasPaused){ var p=v.play(); if(p&&p.catch) p.catch(function(){}); } } });
+    Object.defineProperty(v,'duration',{ configurable:true, get:function(){ return (D.on&&D.dur>0)?D.dur:du.get.call(v); } });
+    Object.defineProperty(v,'buffered',{ configurable:true, get:function(){ var b=bu.get.call(v); return D.on?shift(b):b; } });
+    Object.defineProperty(v,'seekable',{ configurable:true, get:function(){ return (D.on&&D.dur>0)?{ length:1, start:function(){ return 0; }, end:function(){ return D.dur; } }:se.get.call(v); } });
+    return D; }
 var Recovery=(function(){
     var ST={ IDLE:'idle', PLAYING:'playing', RECOVERING:'recovering', FAILOVER:'failover', FAILED:'failed' };
     var state=ST.IDLE, ctx=null, attempt=0, srcIdx=0, sources=[], timer=null, watchdog=null;
@@ -19849,6 +19867,7 @@ html.android-app #wi-help{ bottom:calc(128px + env(safe-area-inset-bottom)); lef
 <script>(function(){ try{
   var d=document.documentElement; if(d.classList.contains('ios-web')||d.classList.contains('web-standalone')) return;
   if(window.matchMedia&&matchMedia('(display-mode: standalone)').matches) return;
+  if(window.ByoDesktop||/BYODesktop\//.test(navigator.userAgent||'')) return;
   try{ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(e){}
   var btn=document.getElementById('web-install'), help=document.getElementById('wi-help'), txt=document.getElementById('wi-text'), ev=null;
   var ua=navigator.userAgent||'', android=/Android/i.test(ua), safari=/Safari/.test(ua)&&!/Chrome|Chromium|Edg|OPR/.test(ua), firefox=/Firefox/.test(ua);

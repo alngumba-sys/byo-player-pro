@@ -675,7 +675,7 @@ _rep("            this.hls.on(window.Hls.Events.ERROR,function(e,d){ if(!d) retu
      "            this.hls.on(window.Hls.Events.ERROR,function(e,d){ if(!d) return;\n                if(d.fatal&&(d.details==='bufferAddCodecError'||d.details==='bufferIncompatibleCodecsError'||/HEVC|codec/i.test(String(d.reason||(d.error&&d.error.message)||'')))){ s.cb.onError&&s.cb.onError('UNPLAYABLE:This channel is in H.265 (HEVC) video, which this browser cannot play. Try Chrome or Safari on a Mac, Microsoft Edge, or the Android app.'); return; }\n                if(d.fatal){", 'hevcmsg')
 # A file the browser itself refuses (code 4: format/codec not supported) never comes good by retrying: say so at once.
 _rep("            this._onNativeErr=function(){ if(self2.current&&self2.current.url!==url) return;",
-     "            this._onNativeErr=function(){ if(self2.current&&self2.current.url!==url) return;\n                try{ if(v.error&&v.error.code===4&&!(v.currentTime>0)){ s.cb.onError&&s.cb.onError('UNPLAYABLE:'+(/\\.(mkv|avi|mpg|mpeg|wmv|flv)(\\?|$)/i.test(url)?'This title is in a file format (often MKV with Dolby audio) that web browsers cannot play. It plays in the BYO Player Android app on your TV or phone.':'This web browser cannot play this stream. It plays in the BYO Player Android app on your TV or phone.')); return; } }catch(_e){}", 'fmtfatal')
+     "            this._onNativeErr=function(){ if(self2.current&&self2.current.url!==url) return;\n                try{ if(!window.ByoDesktop&&v.error&&v.error.code===4&&!(v.currentTime>0)){ s.cb.onError&&s.cb.onError('UNPLAYABLE:'+(/\\.(mkv|avi|mpg|mpeg|wmv|flv)(\\?|$)/i.test(url)?'This title is in a file format (often MKV with Dolby audio) that web browsers cannot play. It plays in the BYO Player Android app on your TV or phone.':'This web browser cannot play this stream. It plays in the BYO Player Android app on your TV or phone.')); return; } }catch(_e){}", 'fmtfatal')
 _rep("    function onError(msg){\n        if(!ctx){",
      "    function onError(msg){\n        if(/^UNPLAYABLE:/.test(String(msg||''))){ msg=String(msg).slice(11); if(!ctx){ if(cfg.finalFail) cfg.finalFail({ message:msg, canFailover:false }); return; } return finalFail(msg); }\n        if(!ctx){", 'fmtfatal2')
 # Back from the player returns to the screen the title was opened from (a channel opened from the Live list goes back
@@ -716,7 +716,30 @@ _rep("    function playLiveByChannel(c){",
 # A movie or episode the browser never starts (blocked insecure server or a format it silently refuses) says so after 20 s
 # instead of reconnecting forever.
 _rep("            v.src=url; v.addEventListener('loadedmetadata',ready,{once:true}); v.play().catch(function(){ s.cb.onError&&s.cb.onError('Could not start playback.'); });",
-     "            v.src=url; v.addEventListener('loadedmetadata',ready,{once:true}); v.play().catch(function(){ s.cb.onError&&s.cb.onError('Could not start playback.'); });\n            try{ clearTimeout(self2._noStartT); if(self2.resumeMeta&&!(window.ByoAndroid&&window.ByoAndroid.fetchToFile)){ self2._noStartT=setTimeout(function(){ try{ if(self2.current&&self2.current.url===url&&v.readyState===0&&!(v.currentTime>0)&&navigator.onLine!==false){ s.cb.onError&&s.cb.onError('UNPLAYABLE:This movie cannot be played in a web browser (its file format or the provider\\'s server is not supported by browsers). It plays in the BYO Player Android app on your TV or phone.'); } }catch(_e){} },20000); } }catch(_ns){}", 'nostart')
+     "            v.src=url; v.addEventListener('loadedmetadata',ready,{once:true}); v.play().catch(function(){ s.cb.onError&&s.cb.onError('Could not start playback.'); });\n            try{ clearTimeout(self2._noStartT); if(self2.resumeMeta&&!window.ByoDesktop&&!(window.ByoAndroid&&window.ByoAndroid.fetchToFile)){ self2._noStartT=setTimeout(function(){ try{ if(self2.current&&self2.current.url===url&&v.readyState===0&&!(v.currentTime>0)&&navigator.onLine!==false){ s.cb.onError&&s.cb.onError('UNPLAYABLE:This movie cannot be played in a web browser (its file format or the provider\\'s server is not supported by browsers). It plays in the BYO Player Android app on your TV or phone.'); } }catch(_e){} },20000); } }catch(_ns){}", 'nostart')
+# ---- Mac desktop app: movies and episodes play through the app's own engine (MKV, Dolby audio, http providers) ----
+_rep("    play:function(url,key,meta,startAt){ var v=this.v,s=this;",
+     r"""    play:function(url,key,meta,startAt){ var v=this.v,s=this;
+        try{ var _D=__dskShim(v); _D.on=false;
+            if(window.ByoDesktop&&window.ByoDesktop.base&&meta&&!/\.m3u8(\?|$)/i.test(url)&&!/^http:\/\/127\.0\.0\.1/.test(url)){
+                var _src=url, _t=(startAt&&isFinite(startAt)&&startAt>0)?startAt:0;
+                _D.mk=function(t){ return window.ByoDesktop.base+'/stream?u='+encodeURIComponent(_src)+'&t='+Math.floor(t); };
+                _D.on=true; _D.off=_t; _D.orig=_src; if(_D.durFor!==_src){ _D.dur=0; _D.durFor=_src; }
+                fetch(window.ByoDesktop.base+'/probe?u='+encodeURIComponent(_src)).then(function(r){ return r.json(); }).then(function(i){ if(_D.orig===_src&&i&&i.duration>0){ _D.dur=i.duration; try{ v.dispatchEvent(new Event('durationchange')); }catch(_e){} } }).catch(function(){});
+                url=_D.mk(_t); } }catch(_dk){}""", 'dskplay')
+_rep("var Recovery=(function(){",
+     r"""function __dskShim(v){ if(v.__dsk) return v.__dsk; var D=v.__dsk={on:false,off:0,dur:0,mk:null}; if(!window.ByoDesktop) return D;
+    var P=HTMLMediaElement.prototype, ct=Object.getOwnPropertyDescriptor(P,'currentTime'), du=Object.getOwnPropertyDescriptor(P,'duration'), bu=Object.getOwnPropertyDescriptor(P,'buffered'), se=Object.getOwnPropertyDescriptor(P,'seekable');
+    function shift(b){ return { length:b.length, start:function(i){ return b.start(i)+D.off; }, end:function(i){ return b.end(i)+D.off; } }; }
+    Object.defineProperty(v,'currentTime',{ configurable:true, get:function(){ var n=ct.get.call(v)||0; return D.on?D.off+n:n; },
+        set:function(x){ if(!D.on){ ct.set.call(v,x); return; } x=Math.max(0,+x||0); if(D.dur>0) x=Math.min(x,Math.max(0,D.dur-2)); var rel=x-D.off, cur=D.off+(ct.get.call(v)||0); if(Math.abs(x-cur)<1.5) return;
+            var b=bu.get.call(v); for(var i=0;i<b.length;i++){ if(rel>=b.start(i)&&rel<=b.end(i)-0.5){ ct.set.call(v,rel); return; } }
+            var wasPaused=v.paused; D.off=x; v.src=D.mk(x); try{ v.load(); }catch(_e){} if(!wasPaused){ var p=v.play(); if(p&&p.catch) p.catch(function(){}); } } });
+    Object.defineProperty(v,'duration',{ configurable:true, get:function(){ return (D.on&&D.dur>0)?D.dur:du.get.call(v); } });
+    Object.defineProperty(v,'buffered',{ configurable:true, get:function(){ var b=bu.get.call(v); return D.on?shift(b):b; } });
+    Object.defineProperty(v,'seekable',{ configurable:true, get:function(){ return (D.on&&D.dur>0)?{ length:1, start:function(){ return 0; }, end:function(){ return D.dur; } }:se.get.call(v); } });
+    return D; }
+var Recovery=(function(){""", 'dskshim')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",

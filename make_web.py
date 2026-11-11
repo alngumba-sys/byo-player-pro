@@ -155,6 +155,7 @@ html.android-app #wi-help{ bottom:calc(128px + env(safe-area-inset-bottom)); lef
 <script>(function(){ try{
   var d=document.documentElement; if(d.classList.contains('ios-web')||d.classList.contains('web-standalone')) return;
   if(window.matchMedia&&matchMedia('(display-mode: standalone)').matches) return;
+  if(window.ByoDesktop||/BYODesktop\//.test(navigator.userAgent||'')) return;
   try{ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(e){}
   var btn=document.getElementById('web-install'), help=document.getElementById('wi-help'), txt=document.getElementById('wi-text'), ev=null;
   var ua=navigator.userAgent||'', android=/Android/i.test(ua), safari=/Safari/.test(ua)&&!/Chrome|Chromium|Edg|OPR/.test(ua), firefox=/Firefox/.test(ua);
