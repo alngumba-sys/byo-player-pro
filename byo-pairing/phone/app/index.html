@@ -8809,6 +8809,7 @@ var Player={ v:null,hls:null,cb:{},resumeKey:null,resumeMeta:null,current:null,
                 nudgeOffset:0.2,
                 maxFragLookUpTolerance:0.5,
                 lowLatencyMode:false,               // VOD/standard live: favour stability over latency
+                liveSyncDurationCount:6, liveMaxLatencyDurationCount:11, maxLiveSyncPlaybackRate:1,
                 // Adaptive bitrate: start sensibly and switch smoothly rather than flapping.
                 startLevel:-1, abrEwmaDefaultEstimate:5000000, abrBandWidthFactor:0.9, abrBandWidthUpFactor:0.7,
                 // Be patient + retry transient network errors in-place (don't bail to the app on first hiccup).
@@ -8983,7 +8984,7 @@ var Recovery=(function(){
     var state=ST.IDLE, ctx=null, attempt=0, srcIdx=0, sources=[], timer=null, watchdog=null;
     var lastPos=-1, lastProgressTs=0, recentFails=[], cfg={}, diag={}, netIssue=false;
     var awaiting=false, attTimer=null;   // an attempt is in flight
-    var BACKOFF=[0,2000,5000];          // reconnect delays before failover
+    var BACKOFF=[0,2000,5000,8000,12000,20000,30000,30000];   // weak internet: keep trying for a few minutes
     // Patient stall detection: the player now buffers a big runway and hls.js self-heals small blips,
     // so a reconnect should only fire after a genuinely long freeze — not a normal buffering pause.
     var STALL_MS=20000;                  // 20s of zero progress (buffer truly empty) before we act
@@ -9035,7 +9036,7 @@ var Recovery=(function(){
         if(attempt<=BACKOFF.length){ diag.recoveries++; pushDiag(); showBanner(netIssue?'netlost':'reconnect');
             timer=setTimeout(reconnect, BACKOFF[attempt-1]);
         } else { doFailover(); } }
-    function reconnect(){ if(!ctx) return; state=ST.RECOVERING; diag.status=netIssue?'Connection lost':'Reconnecting'; pushDiag(); launch(sources[srcIdx]||ctx.url); }
+    function reconnect(){ if(!ctx) return; try{ if(navigator.onLine===false){ netIssue=true; showBanner('netlost'); timer=setTimeout(reconnect,3000); return; } }catch(_o){} state=ST.RECOVERING; diag.status=netIssue?'Connection lost':'Reconnecting'; pushDiag(); launch(sources[srcIdx]||ctx.url); }
     function doFailover(){
         if(!failoverOn() || srcIdx+1>=sources.length){ return finalFail(diag.error||'Stream unavailable.'); }
         srcIdx++; diag.failovers++; state=ST.FAILOVER; diag.status='Switching stream'; diag.source='Backup '+srcIdx; pushDiag();
@@ -16134,7 +16135,17 @@ var Pin=(function(){
         out.sort(function(a,b){ return b.bitrate-a.bitrate; });
         return { orig:me.b, list:out.slice(0,3) };
     }catch(e){ return null; } }
-    function playLiveByChannel(c){ var _ev=chanEventInfo(c); if(_ev&&_ev.status!=='live'){ eventNotLive(c,_ev); return; }
+    var __weakNet=(function(){ var t0=0, tm=null, stalls=[], lastSwitch=0;
+        function cur(){ var u=S.lastPlayUrl||(S.lastPlay&&S.lastPlay.url); var L=S.live||[]; for(var i=0;i<L.length;i++){ if(L[i].url===u) return L[i]; } return S.playOpts&&S.playOpts.channelId?chanById(S.playOpts.channelId):null; }
+        function live(){ try{ return isLiveContent()&&$('view-player').classList.contains('active-view'); }catch(e){ return false; } }
+        function lighter(){ if(Date.now()-lastSwitch<20000) return; var c=cur(), q=c&&__liveLighter(c); if(!q||!q.list||!q.list.length) return;
+            var n=q.list[0]; lastSwitch=Date.now(); stalls=[]; if(tm){ clearTimeout(tm); tm=null; }
+            try{ var _m='Weak internet: switched to '+n.label+' to keep playing'; setToast(_m); var _t=$('app-toast'); if(_t){ _t.style.zIndex='2147483001'; _t.style.position='fixed'; } if(S.toastTimer) clearTimeout(S.toastTimer); S.toastTimer=setTimeout(function(){ if(_t) _t.style.opacity='0'; },6000); [].forEach.call(document.querySelectorAll('.rpc-msg'),function(x){ x.textContent='Weak internet: switching to '+n.label+'…'; }); }catch(e){}
+            try{ recoveryReplay(n.url,0); }catch(e){} }
+        return { buffering:function(){ if(!live()||tm) return; t0=Date.now(); tm=setTimeout(function(){ tm=null; if(live()) lighter(); },9000); },
+            playing:function(){ if(tm){ clearTimeout(tm); tm=null; var d=Date.now()-t0; if(d>2500&&live()){ var now=Date.now(); stalls.push(now); stalls=stalls.filter(function(x){ return now-x<120000; }); if(stalls.length>=3) lighter(); } } },
+            reset:function(){ if(tm){ clearTimeout(tm); tm=null; } stalls=[]; } }; })();
+    function playLiveByChannel(c){ try{ __weakNet.reset(); }catch(_w){} var _ev=chanEventInfo(c); if(_ev&&_ev.status!=='live'){ eventNotLive(c,_ev); return; }
         var idx=computeLiveView().indexOf(c); if(idx<0){ S.liveView=[c]; idx=0; } S.currentLiveIndex=idx; S.playerFrom='live';
         var e=c.epgGenre?epgFor(c.epgGenre):null; playContent(c.url,c.name,c.genre,{type:'live',from:'live',epg:e,channelId:c.id,genre:c.genre}); }
     // ★ Favourite in the player: the movie, or the whole series when an episode is playing.
@@ -16505,8 +16516,10 @@ var Pin=(function(){
     function recoveryAltSources(c){ var o=c.opts||{}, out=[], cur=c.url;
         function add(u){ if(u&&u!==cur&&!/^stalker:/.test(u)&&out.indexOf(u)<0&&out.length<4) out.push(u); }
         try{ Multi.altUrls(c).forEach(add); }catch(_e){}
-        if(o.type==='live'){ var nm=liveMatchKey(c.title);
-            (S.live||[]).forEach(function(ch){ if(ch.url&&ch.url!==cur&&liveMatchKey(ch.name)===nm) add(ch.url); }); }
+        if(o.type==='live'){ var nm=liveMatchKey(c.title), _me=__lqWeight(c.title).b, _al=[];
+            (S.live||[]).forEach(function(ch){ if(ch.url&&ch.url!==cur&&liveMatchKey(ch.name)===nm) _al.push(ch); });
+            _al.sort(function(a,b){ var wa=__lqWeight(a.name).b, wb=__lqWeight(b.name).b, la=wa<_me, lb=wb<_me; if(la!==lb) return la?-1:1; return la?(wb-wa):(wa-wb); });
+            _al.forEach(function(ch){ add(ch.url); }); }
         else if(o.type==='movie'){ var t=(c.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
             (S.movies||[]).forEach(function(m){ if(m.url&&m.url!==cur&&(m.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()===t) add(m.url); }); }
         return out; }
@@ -19617,8 +19630,8 @@ var Pin=(function(){
         }, total);
     }
     function init(){ Nav.init(); wire();
-        Player.init({ onBuffering:function(){ if(S.playerExiting) return; $('player-spinner').classList.remove('hidden'); $('player-state').innerHTML='Buffering...'; },
-            onPlaying:function(){ if(S.playerExiting) return; $('player-spinner').classList.add('hidden');
+        Player.init({ onBuffering:function(){ if(S.playerExiting) return; try{ __weakNet.buffering(); }catch(_w){} $('player-spinner').classList.remove('hidden'); $('player-state').innerHTML='Buffering...'; },
+            onPlaying:function(){ if(S.playerExiting) return; $('player-spinner').classList.add('hidden'); try{ __weakNet.playing(); }catch(_w){}
                 try{ if(!S._liveGotVideo&&isLiveContent()&&S.playOpts&&S.playOpts.channelId){ S._liveGotVideo=true; ChanHealth.played(chanById(S.playOpts.channelId)); } }catch(_h){}
                 // Playback is alive → clear any stale "Stream unavailable" overlay and pending re-check.
                 if(!$('player-msg').classList.contains('hidden')) hidePlayerMsg(); if(S._errRecheckT){ clearTimeout(S._errRecheckT); S._errRecheckT=null; }

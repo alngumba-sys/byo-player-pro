@@ -684,6 +684,35 @@ _rep("    function playContent(url,title,sub,opts){ opts=opts||{};\n",
      "    function playContent(url,title,sub,opts){ opts=opts||{};\n        try{ var _av=document.querySelector('.view.active-view'); if(_av&&_av.id&&_av.id!=='view-player') S._viewBeforePlay=_av.id.replace(/^view-/,''); }catch(_vb){}\n", 'backorigin')
 _rep("        if(S.playerFrom==='live'){ showView('detail'); setTimeout(function(){ Nav.focusFirst(); },30); }",
      "        if(S.playerFrom==='live'){ var _bv=S._viewBeforePlay; if(!_bv||!document.getElementById('view-'+_bv)) _bv=(S.currentDetail&&S.currentDetail.data)?'detail':'live'; showView(_bv); setTimeout(function(){ Nav.focusFirst(); },30); }", 'backorigin2')
+# ---- Weak internet in the browser version ----
+# 1) Live: sit ~30 s behind the live edge (the provider keeps ~60 s), so short drops are covered by buffer.
+_rep("                lowLatencyMode:false,               // VOD/standard live: favour stability over latency",
+     "                lowLatencyMode:false,               // VOD/standard live: favour stability over latency\n                liveSyncDurationCount:6, liveMaxLatencyDurationCount:11, maxLiveSyncPlaybackRate:1,", 'wnsync')
+# 2) Keep retrying for minutes, not seconds, before giving up (movies resume where they stopped).
+_rep("    var BACKOFF=[0,2000,5000];          // reconnect delays before failover",
+     "    var BACKOFF=[0,2000,5000,8000,12000,20000,30000,30000];   // weak internet: keep trying for a few minutes", 'wnbackoff')
+_rep("    function reconnect(){ if(!ctx) return;",
+     "    function reconnect(){ if(!ctx) return; try{ if(navigator.onLine===false){ netIssue=true; showBanner('netlost'); timer=setTimeout(reconnect,3000); return; } }catch(_o){}", 'wnoffline')
+# 3) Same channel, lighter copy first when a live channel has to switch.
+_rep("        if(o.type==='live'){ var nm=liveMatchKey(c.title);\n            (S.live||[]).forEach(function(ch){ if(ch.url&&ch.url!==cur&&liveMatchKey(ch.name)===nm) add(ch.url); }); }",
+     "        if(o.type==='live'){ var nm=liveMatchKey(c.title), _me=__lqWeight(c.title).b, _al=[];\n            (S.live||[]).forEach(function(ch){ if(ch.url&&ch.url!==cur&&liveMatchKey(ch.name)===nm) _al.push(ch); });\n            _al.sort(function(a,b){ var wa=__lqWeight(a.name).b, wb=__lqWeight(b.name).b, la=wa<_me, lb=wb<_me; if(la!==lb) return la?-1:1; return la?(wb-wa):(wa-wb); });\n            _al.forEach(function(ch){ add(ch.url); }); }", 'wnalt')
+# 4) Live keeps buffering → switch to the next lighter copy of the same channel, and say so.
+_rep("        Player.init({ onBuffering:function(){ if(S.playerExiting) return;",
+     "        Player.init({ onBuffering:function(){ if(S.playerExiting) return; try{ __weakNet.buffering(); }catch(_w){}", 'wnbuf')
+_rep("            onPlaying:function(){ if(S.playerExiting) return; $('player-spinner').classList.add('hidden');",
+     "            onPlaying:function(){ if(S.playerExiting) return; $('player-spinner').classList.add('hidden'); try{ __weakNet.playing(); }catch(_w){}", 'wnplay')
+_rep("    function playLiveByChannel(c){",
+     r"""    var __weakNet=(function(){ var t0=0, tm=null, stalls=[], lastSwitch=0;
+        function cur(){ var u=S.lastPlayUrl||(S.lastPlay&&S.lastPlay.url); var L=S.live||[]; for(var i=0;i<L.length;i++){ if(L[i].url===u) return L[i]; } return S.playOpts&&S.playOpts.channelId?chanById(S.playOpts.channelId):null; }
+        function live(){ try{ return isLiveContent()&&$('view-player').classList.contains('active-view'); }catch(e){ return false; } }
+        function lighter(){ if(Date.now()-lastSwitch<20000) return; var c=cur(), q=c&&__liveLighter(c); if(!q||!q.list||!q.list.length) return;
+            var n=q.list[0]; lastSwitch=Date.now(); stalls=[]; if(tm){ clearTimeout(tm); tm=null; }
+            try{ var _m='Weak internet: switched to '+n.label+' to keep playing'; setToast(_m); var _t=$('app-toast'); if(_t){ _t.style.zIndex='2147483001'; _t.style.position='fixed'; } if(S.toastTimer) clearTimeout(S.toastTimer); S.toastTimer=setTimeout(function(){ if(_t) _t.style.opacity='0'; },6000); [].forEach.call(document.querySelectorAll('.rpc-msg'),function(x){ x.textContent='Weak internet: switching to '+n.label+'…'; }); }catch(e){}
+            try{ recoveryReplay(n.url,0); }catch(e){} }
+        return { buffering:function(){ if(!live()||tm) return; t0=Date.now(); tm=setTimeout(function(){ tm=null; if(live()) lighter(); },9000); },
+            playing:function(){ if(tm){ clearTimeout(tm); tm=null; var d=Date.now()-t0; if(d>2500&&live()){ var now=Date.now(); stalls.push(now); stalls=stalls.filter(function(x){ return now-x<120000; }); if(stalls.length>=3) lighter(); } } },
+            reset:function(){ if(tm){ clearTimeout(tm); tm=null; } stalls=[]; } }; })();
+    function playLiveByChannel(c){ try{ __weakNet.reset(); }catch(_w){}""", 'wnmod')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",
