@@ -1,0 +1,3 @@
+-- fleet.list now also returns "installs": total devices, active in 24h / 7d / 30d, new this week, paying.
+-- Applied to the live project as a patch of public.byo_support_admin (adds a v_r || jsonb_build_object('installs', ...) step
+-- at the end of the fleet.list branch). Counts come from byo.tv_devices (first_seen / last_seen) and byo.pay_received.
