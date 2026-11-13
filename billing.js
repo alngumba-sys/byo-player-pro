@@ -184,7 +184,7 @@
         // Subscribe live on the profile screen (statusBanner), plus a daily reminder in the last 3 days.
         // ---- Sales referral: a customer types the code their salesperson gave them ----
         function refDone(){ try{ return !!localStorage.getItem('byo_ref_done'); }catch(e){ return false; } }
-        function referralRow(){ var el=document.createElement('div'); el.className='pay-banner bl-banner'; el.setAttribute('data-focusable','true'); el.tabIndex=0;
+        function referralRow(){ try{ if(!localStorage.getItem('byo_ref_on')) return document.createComment('referral off'); }catch(e){ return document.createComment('referral off'); } var el=document.createElement('div'); el.className='pay-banner bl-banner'; el.setAttribute('data-focusable','true'); el.tabIndex=0;
             function paint(){ var d=refDone(); el.innerHTML='<div class="pb-ic">'+icon('i-clock')+'</div><div class="pb-text"><div class="pb-title">'+(d?'Referral code added':'Have a salesperson\'s code?')+'</div><div class="pb-sub">'+(d?'Thank you. Your salesperson has been credited.':'Enter it so the person who introduced BYO Player to you is credited.')+'</div></div>'+(d?'':'<div class="pb-cta">Enter code'+icon('i-chev-r')+'</div>'); }
             paint(); if(!refDone()) el.addEventListener('click',function(){ openRef(paint); }); return el; }
         function openRef(done){ var o=document.createElement('div'); o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,10,20,.85);display:flex;align-items:center;justify-content:center;padding:16px';
