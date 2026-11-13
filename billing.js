@@ -30,11 +30,17 @@
         // afterwards: pairing a phone again (e.g. scanning the QR to add a connection) used to give the TV a new ID,
         // which lost its payment and showed the trial-ended screen.
         var _did=null;
-        function deviceId(){ if(_did) return _did; var d=null; try{ d=localStorage.getItem('byo_tv_key'); }catch(e){}
+        // Order: this browser's saved ID, then the app's own copy (survives "clear data" of the web view), then the ID from
+        // pairing, then one made from the Android hardware ID (the same after a reinstall), and only last a random one.
+        function hwId(){ try{ var h=window.ByoAndroid&&window.ByoAndroid.hardwareId&&window.ByoAndroid.hardwareId(); return h?('h'+h):''; }catch(e){ return ''; } }
+        function deviceId(){ if(_did) return _did; var d=null, AB=window.ByoAndroid; try{ d=localStorage.getItem('byo_tv_key'); }catch(e){}
+            if(!d){ try{ d=(AB&&AB.getMark&&AB.getMark('tvkey'))||''; }catch(e){ d=''; } }
             if(!d){ if(Store.device&&Store.device.deviceId) d=Store.device.deviceId; else if(window.deviceId) d=window.deviceId;
                 if(!d){ try{ d=localStorage.getItem('byo_bill_did'); }catch(e){} }
-                if(!d) d='bd'+Date.now().toString(36)+Math.floor(Math.random()*1e9).toString(36);
-                try{ localStorage.setItem('byo_tv_key',d); localStorage.setItem('byo_bill_did',d); }catch(e){} }
+                if(!d) d=hwId();
+                if(!d) d='bd'+Date.now().toString(36)+Math.floor(Math.random()*1e9).toString(36); }
+            try{ localStorage.setItem('byo_tv_key',d); localStorage.setItem('byo_bill_did',d); }catch(e){}
+            try{ if(AB&&AB.setMark&&AB.getMark&&AB.getMark('tvkey')!==d) AB.setMark('tvkey',d); }catch(e){}
             _did=d; return d; }
         function fn(name, body, cb){ try{ var x=new XMLHttpRequest(); x.open('POST', base+'/functions/v1/'+name, true);
                 x.setRequestHeader('Content-Type','application/json'); x.setRequestHeader('apikey',key); x.setRequestHeader('Authorization','Bearer '+key); x.timeout=15000;
@@ -390,6 +396,6 @@
 
         return { boot:boot, begin:begin, renderTrialStep:renderTrialStep, allow:allow, canPlay:canPlay, locked:locked, inTrial:inTrial, daysLeft:daysLeft,
                  homeBanner:homeBanner, statusBanner:statusBanner, remind:remind, leftMs:leftMs, openWall:openWall, closeWall:closeWall, isWallOpen:function(){ return wallOpen; }, status:status,
-                 trialEndsAt:trialEndsAt, subActive:subActive, deviceId:deviceId, sync:sync, addBonusDays:addBonusDays, setAccess:setAccess, access:acc, isBlocked:isBlocked, grantedUntil:grantedUntil, paintNav:paintNav, navOk:function(n){ return navOk(n); }, _st:function(){ return st; } };
+                 trialEndsAt:trialEndsAt, subActive:subActive, deviceId:deviceId, hwId:hwId, sync:sync, addBonusDays:addBonusDays, setAccess:setAccess, access:acc, isBlocked:isBlocked, grantedUntil:grantedUntil, paintNav:paintNav, navOk:function(n){ return navOk(n); }, _st:function(){ return st; } };
     })();
     try{ window.Billing=Billing; }catch(_e){}

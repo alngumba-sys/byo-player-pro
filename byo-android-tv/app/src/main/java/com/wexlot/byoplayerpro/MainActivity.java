@@ -654,6 +654,15 @@ public class MainActivity extends Activity {
             public void setMark(final String key, final String value) {
                 try { getSharedPreferences("byo_marks", MODE_PRIVATE).edit().putString(key, value == null ? "" : value).commit(); } catch (Exception ignored) {}
             }
+            // Same on this device after a reinstall or "clear data"; changes only on a factory reset.
+            @JavascriptInterface
+            public String hardwareId() {
+                try { String a = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
+                    if (a == null || a.isEmpty()) return "";
+                    byte[] h = java.security.MessageDigest.getInstance("SHA-256").digest(("byo|" + a).getBytes("UTF-8"));
+                    StringBuilder sb = new StringBuilder(); for (int i = 0; i < 7; i++) sb.append(String.format("%02x", h[i])); return sb.toString();
+                } catch (Exception e) { return ""; }
+            }
             @JavascriptInterface
             public String getMark(final String key) {
                 try { return getSharedPreferences("byo_marks", MODE_PRIVATE).getString(key, ""); } catch (Exception e) { return ""; }

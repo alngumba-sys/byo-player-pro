@@ -1,6 +1,6 @@
 {
-  "versionCode": 234,
-  "versionName": "3.37.49",
+  "versionCode": 235,
+  "versionName": "3.37.50",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Sharper Home banner: posters are shown at their real size over a soft blurred background, never stretched."
+  "notes": "Each device now keeps the same ID after clearing data or reinstalling, so support counts it once."
 }

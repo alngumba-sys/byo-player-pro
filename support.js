@@ -19,7 +19,7 @@
         function snapshot(){ var d=window.__byoDevice||{}, lib={}; try{ lib=Multi.deviceState(); }catch(e){ lib={}; }
             var b={}; try{ var ax=Billing.access(); b={ state:billState(ax), days_left:Billing.daysLeft(), access:ax?ax.state:'', until:(ax&&ax.until)||'' }; }catch(e){}
             var p=Store.parental||{};
-            return { version:d.version||'', platform:plat(), model:d.model||'', country:(Store.settings&&Store.settings.region)||'', lang:(Store.settings&&Store.settings.lang)||'en',
+            return { version:d.version||'', hw:(function(){ try{ return Billing.hwId(); }catch(e){ return ''; } })(), platform:plat(), model:d.model||'', country:(Store.settings&&Store.settings.region)||'', lang:(Store.settings&&Store.settings.lang)||'en',
                 profiles:(Store.profiles||[]).length, parental:{ enabled:!!p.enabled, has_pin:!!p.pin, lock_settings:!!p.lockSettings },
                 flags:flags(), billing:b, library:lib, diag:diag(true), at:Date.now() }; }
         // What happened on this TV (crashes, last steps, memory), so support can see it without a photo of the screen.
@@ -42,7 +42,7 @@
         function fleetState(){ var d=window.__byoDevice||{}, b={}, lib={};
             try{ var ax=Billing.access(); b={ state:billState(ax), days_left:Billing.daysLeft(), access:ax?ax.state:'' }; try{ if(Billing.inTrial()) b.ends=new Date(Billing.trialEndsAt()).toISOString(); }catch(_e){} }catch(e){}
             try{ lib={ live:(S.live||[]).length, movies:(S.movies||[]).length, series:(S.series||[]).length, connections:(Store.savedPlaylists||[]).length||((Store.cfg&&Store.cfg.mode)?1:0) }; }catch(e){}
-            return { version:d.version||'', platform:plat(), model:d.model||'', country:(Store.settings&&Store.settings.region)||'', lang:(Store.settings&&Store.settings.lang)||'en',
+            return { version:d.version||'', hw:(function(){ try{ return Billing.hwId(); }catch(e){ return ''; } })(), platform:plat(), model:d.model||'', country:(Store.settings&&Store.settings.region)||'', lang:(Store.settings&&Store.settings.lang)||'en',
                 profiles:(Store.profiles||[]).length, billing:b, library:lib, diag:diag(false) }; }
         function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res);
             // access set by support (enable / end / block) is kept on the server and applied at every check-in
