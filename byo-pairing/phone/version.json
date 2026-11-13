@@ -1,6 +1,6 @@
 {
-  "versionCode": 235,
-  "versionName": "3.37.50",
+  "versionCode": 236,
+  "versionName": "3.37.51",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Each device now keeps the same ID after clearing data or reinstalling, so support counts it once."
+  "notes": "Fixes: updates now download on older Android TVs, Home banner no longer errors on files the player can't decode, Install button no longer covers the bottom menu on phones."
 }

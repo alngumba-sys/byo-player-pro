@@ -22,6 +22,7 @@ td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:middle}tr
 .dots{display:flex;gap:2px}.dots i{width:7px;height:16px;border-radius:2px;background:#1b2845}.dots i.on{background:var(--ok)}.dots i.t{outline:1px solid var(--acc)}
 .pill{padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#1d2a47}.pill.paid{background:#0f3a2c;color:var(--ok)}.pill.trial{background:#0d2a31;color:var(--acc)}.pill.expired{background:#3a2a0f;color:var(--warn)}
 .scroll{overflow-x:auto}h2{font-size:16px;margin:18px 0 8px}.empty{padding:22px;text-align:center;color:var(--mut)}
+@media (max-width:640px){ table,tbody{display:block} thead{display:none} tr{display:block;padding:10px 0;border-bottom:1px solid var(--line)} tr:last-child{border-bottom:0} td{display:flex;justify-content:space-between;align-items:center;gap:12px;border:0;padding:4px 0;text-align:right} td::before{content:attr(data-l);color:var(--mut);font-size:12px;font-weight:600;text-align:left} td:first-child{font-size:16px} .scroll{overflow-x:visible} td.empty{display:block;text-align:center} td.empty::before{content:none} }
 .hide{display:none!important}
 </style></head><body><div class="wrap">
 <section id="login" class="login card hide">
@@ -67,7 +68,7 @@ function paint(j){
   $('rows').innerHTML=C.length?C.map(function(c){ var on={}; (c.days||[]).forEach(function(x){on[String(x).slice(0,10)]=1});
     var dots='<div class="dots">'+days.map(function(x){return '<i class="'+(on[x]?'on':'')+(x===today?' t':'')+'" title="'+x+(on[x]?' active':'')+'"></i>'}).join('')+'</div>';
     var st=String(c.status||'trial').toLowerCase(); var cls=st==='paid'?'paid':(st==='expired'||st==='ended')?'expired':'trial';
-    return '<tr><td><b>'+esc(c.tv_id)+'</b><div class="mut" style="font-size:12px">'+esc([c.platform,c.country].filter(Boolean).join(' · '))+'</div></td><td>'+d(c.referred_at)+'</td><td><span class="pill '+cls+'">'+esc(st)+'</span></td><td>'+ago(c.last_seen)+'</td><td>'+(c.active_days||0)+'</td><td>'+dots+'</td><td>'+esc(money(c.paid))+'</td></tr>'; }).join(''):'<tr><td colspan="7" class="empty">No customers yet. Share your code <b>'+esc(a.code)+'</b> and ask them to enter it in the app under Profile.</td></tr>';
+    return '<tr><td data-l="Customer"><b>'+esc(c.tv_id)+'</b><div class="mut" style="font-size:12px">'+esc([c.platform,c.country].filter(Boolean).join(' · '))+'</div></td><td data-l="Joined">'+d(c.referred_at)+'</td><td data-l="Status"><span class="pill '+cls+'">'+esc(st)+'</span></td><td data-l="Last active">'+ago(c.last_seen)+'</td><td data-l="Days active">'+(c.active_days||0)+'</td><td data-l="Last 30 days">'+dots+'</td><td data-l="Paid">'+esc(money(c.paid))+'</td></tr>'; }).join(''):'<tr><td colspan="7" class="empty" data-l="">No customers yet. Share your code <b>'+esc(a.code)+'</b> and ask them to enter it in the app under Profile.</td></tr>';
 }
 function load(){ return rpc('byo_sales_me',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth){ ls('bs_tok',null); tok=null; show('login'); } return; } show('app'); paint(j); }); }
 function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(!document.hidden) load(); },60000); }

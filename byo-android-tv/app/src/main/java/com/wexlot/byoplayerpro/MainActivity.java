@@ -1079,7 +1079,7 @@ public class MainActivity extends Activity {
                     if (code == 416 && total > 0 && got >= total) { done = true; break; }
                     if (code / 100 != 2) throw new java.io.IOException("HTTP " + code);
                     boolean resumed = (code == 206 && got > 0);
-                    if (!resumed) { got = 0; long cl = c.getContentLengthLong(); total = cl > 0 ? cl : -1; }
+                    if (!resumed) { got = 0; long cl = android.os.Build.VERSION.SDK_INT >= 24 ? c.getContentLengthLong() : (long) c.getContentLength(); total = cl > 0 ? cl : -1; }
                     else if (total <= 0) { String cr = c.getHeaderField("Content-Range"); if (cr != null && cr.contains("/")) try { total = Long.parseLong(cr.substring(cr.lastIndexOf('/') + 1).trim()); } catch (Exception ignored) {} }
                     reportUpdate("downloading", total > 0 ? (int) (got * 100L / total) : -1, got, Math.max(total, 0));
                     java.io.InputStream in = c.getInputStream();

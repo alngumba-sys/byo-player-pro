@@ -139,6 +139,7 @@ SHEET = r'''<style id="ios-install-css">
 SHEET += r"""<style id="web-install-css">
 #web-install{ position:fixed; right:16px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:99998; display:none; border:0; background:transparent; color:rgba(200,212,226,.45); font:500 13px/1 Inter,system-ui,sans-serif; padding:8px 10px; cursor:pointer; border-radius:8px; opacity:.5; transition:color .2s, opacity .2s; }
 #web-install:hover{ color:rgba(220,232,244,.85); opacity:1; }
+@media (max-width:900px){ #web-install{ bottom:calc(86px + env(safe-area-inset-bottom)); } }
 #web-install.on{ display:inline-flex; align-items:center; gap:6px; }
 #web-install svg{ width:14px; height:14px; }
 html.is-playing #web-install{ display:none !important; }

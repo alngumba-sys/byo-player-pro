@@ -569,7 +569,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
       say($('c-err'),''); open(j); }); }
   $('r-load').onclick=loadRecent;
   function loadRecent(){ api('support.recent',{ limit:12 }).then(function(j){ if(!j.ok){ $('recent').textContent=j.error||''; return; }
-    if(!j.sessions.length){ $('recent').textContent='No sessions yet.'; return; }
+    if(!j.sessions||!j.sessions.length){ $('recent').textContent='No sessions yet.'; return; }
     $('recent').innerHTML='<table class="rec"><tr><th>When</th><th>Code</th><th>TV</th><th>Status</th><th>Support</th><th></th></tr>'+j.sessions.map(function(s){
       var d=s.device_state||{}; var op=(s.status==='connected');
       return '<tr><td>'+esc(when(s.created_at))+'</td><td>'+esc(s.code)+'</td><td>'+esc([d.platform,d.version].filter(Boolean).join(' · ')||'TV')+'</td><td>'+pill(s.status)+'</td><td>'+esc(s.claimed_by||'')+'</td><td>'+(op?'<button class="btn sm" data-open="'+esc(s.id)+'">Open</button>':'')+'</td></tr>'; }).join('')+'</table>';
@@ -745,7 +745,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   function tickFleet(){ [].forEach.call(document.querySelectorAll('#fl-list .cd[data-until]'),function(el){ el.textContent=cdown(el.getAttribute('data-until')); }); }
   setInterval(function(){ if(view==='v-fleet') tickFleet(); }, 30000);
   function paintFleet(tvs){ var S=fleetSum||{};
-    try{ var I=fleetIns, bx=$('fl-ins'); if(!bx){ bx=document.createElement('div'); bx.id='fl-ins'; var sm=$('fl-sums'); sm.parentNode.insertBefore(bx,sm); }
+    try{ var I=fleetIns, bx=$('fl-ins'); if(!bx){ bx=document.createElement('div'); bx.id='fl-ins'; var sm=$('fl-sums'), hd=sm.parentNode; hd.parentNode.insertBefore(bx,hd); }
       bx.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin:0 0 12px';
       bx.innerHTML=I?[['Installs',I.total,'devices that have ever checked in'],['Active today',I.active_24h,'seen in the last 24 hours'],['Active 7 days',I.active_7d,'seen in the last 7 days'],['Active 30 days',I.active_30d,'seen in the last 30 days'],['New this week',I.new_7d,'first seen in the last 7 days'],['Paying',I.paying,'devices with a payment']].map(function(c){
         return '<div title="'+esc(c[2])+'" style="flex:1 1 130px;min-width:120px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card)"><div style="font-size:11px;color:var(--muted);font-weight:600">'+esc(c[0])+'</div><div style="font-size:22px;font-weight:800;font-variant-numeric:tabular-nums">'+num(c[1]||0)+'</div></div>'; }).join(''):''; }catch(e){}

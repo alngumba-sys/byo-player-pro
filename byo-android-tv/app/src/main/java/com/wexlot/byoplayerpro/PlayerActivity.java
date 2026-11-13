@@ -1249,6 +1249,7 @@ public class PlayerActivity extends Activity {
         if (Build.VERSION.SDK_INT < 26 || isTvDevice()) return false;
         try { return getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE); } catch (Exception e) { return false; }
     }
+    @android.annotation.TargetApi(26)
     private android.app.PictureInPictureParams pipParams() {
         android.app.PictureInPictureParams.Builder b = new android.app.PictureInPictureParams.Builder();
         int w = 16, hh = 9;
@@ -1258,6 +1259,7 @@ public class PlayerActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 31) { b.setSeamlessResizeEnabled(true); b.setAutoEnterEnabled(everPlayed && player != null && player.getPlayWhenReady()); }
         return b.build();
     }
+    @android.annotation.TargetApi(26)
     private void enterPip() {
         if (!pipSupported() || finishing) return;
         try { if (view != null) view.hideController(); enterPictureInPictureMode(pipParams()); }
