@@ -182,6 +182,24 @@
         // ---- Home banner: quiet countdown during the trial, firm prompt after ----
         // Home stays clean: only "paused" (not a subscription matter) is shown there. Days left, trial and
         // Subscribe live on the profile screen (statusBanner), plus a daily reminder in the last 3 days.
+        // ---- Sales referral: a customer types the code their salesperson gave them ----
+        function refDone(){ try{ return !!localStorage.getItem('byo_ref_done'); }catch(e){ return false; } }
+        function referralRow(){ var el=document.createElement('div'); el.className='pay-banner bl-banner'; el.setAttribute('data-focusable','true'); el.tabIndex=0;
+            function paint(){ var d=refDone(); el.innerHTML='<div class="pb-ic">'+icon('i-clock')+'</div><div class="pb-text"><div class="pb-title">'+(d?'Referral code added':'Have a salesperson\'s code?')+'</div><div class="pb-sub">'+(d?'Thank you. Your salesperson has been credited.':'Enter it so the person who introduced BYO Player to you is credited.')+'</div></div>'+(d?'':'<div class="pb-cta">Enter code'+icon('i-chev-r')+'</div>'); }
+            paint(); if(!refDone()) el.addEventListener('click',function(){ openRef(paint); }); return el; }
+        function openRef(done){ var o=document.createElement('div'); o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,10,20,.85);display:flex;align-items:center;justify-content:center;padding:16px';
+            o.innerHTML='<div style="width:100%;max-width:420px;background:#121c33;border-radius:16px;padding:22px;color:#eaf0fb;font-family:inherit"><div style="font-size:20px;font-weight:800;margin-bottom:6px">Salesperson code</div><div style="color:#9fb0cc;margin-bottom:14px">Type the code your salesperson gave you.</div>'+
+                '<input id="refin" data-focusable="true" maxlength="12" autocomplete="off" autocapitalize="characters" style="width:100%;padding:14px;border-radius:12px;border:2px solid #2a3a5c;background:#0b1220;color:#fff;font-size:22px;letter-spacing:3px;text-transform:uppercase;text-align:center">'+
+                '<div id="referr" style="color:#ff8a8a;min-height:22px;margin:8px 0"></div><div style="display:flex;gap:10px"><button id="refok" data-focusable="true" style="flex:1;padding:14px;border:0;border-radius:12px;background:#22d3ee;color:#04202a;font-weight:800;font-size:17px">Apply</button><button id="refno" data-focusable="true" style="flex:1;padding:14px;border:0;border-radius:12px;background:#1d2a47;color:#eaf0fb;font-weight:700;font-size:17px">Cancel</button></div></div>';
+            document.body.appendChild(o); var inp=o.querySelector('#refin'), er=o.querySelector('#referr'), ok=o.querySelector('#refok');
+            function close(){ try{ document.removeEventListener('keydown',kd,true); o.remove(); }catch(e){} }
+            function kd(e){ if(e.key==='Escape'||e.keyCode===27||e.keyCode===4){ e.preventDefault(); e.stopPropagation(); close(); } else if(e.key==='Enter'&&document.activeElement===inp){ go(); } }
+            function go(){ var c=(inp.value||'').trim(); if(!c){ er.textContent='Enter the code first.'; return; } ok.disabled=true; er.textContent='';
+                Supa.rpc('byo_referral_claim',{ p_device_key:deviceId(), p_code:c },function(err,res){ ok.disabled=false;
+                    if(err||!res){ er.textContent='Could not reach BYO. Check your internet and try again.'; return; }
+                    if(!res.ok){ er.textContent=res.error||'That code did not work.'; return; }
+                    try{ localStorage.setItem('byo_ref_done','1'); }catch(e){} close(); try{ done&&done(); }catch(e){} }); }
+            ok.addEventListener('click',go); o.querySelector('#refno').addEventListener('click',close); document.addEventListener('keydown',kd,true); setTimeout(function(){ try{ inp.focus(); }catch(e){} },50); }
         function homeBanner(){ return isBlocked()?statusBanner():null; }
         function statusBanner(){ if(isBlocked()){ var bb=document.createElement('div'); bb.className='pay-banner bl-banner exp'; bb.setAttribute('data-focusable','true'); bb.tabIndex=0;
                 bb.innerHTML='<div class="pb-ic">'+icon('i-lock')+'</div><div class="pb-text"><div class="pb-title">BYO Player is paused on this TV</div><div class="pb-sub">Contact '+esc(BILLING_CONFIG.supportEmail)+' or get remote help.</div></div><div class="pb-cta">Details'+icon('i-chev-r')+'</div>';
@@ -395,7 +413,7 @@
             try{ Pay.applyLocks(); }catch(e){} refreshBanner(); focusFirst(); }
 
         return { boot:boot, begin:begin, renderTrialStep:renderTrialStep, allow:allow, canPlay:canPlay, locked:locked, inTrial:inTrial, daysLeft:daysLeft,
-                 homeBanner:homeBanner, statusBanner:statusBanner, remind:remind, leftMs:leftMs, openWall:openWall, closeWall:closeWall, isWallOpen:function(){ return wallOpen; }, status:status,
+                 homeBanner:homeBanner, statusBanner:statusBanner, referralRow:referralRow, remind:remind, leftMs:leftMs, openWall:openWall, closeWall:closeWall, isWallOpen:function(){ return wallOpen; }, status:status,
                  trialEndsAt:trialEndsAt, subActive:subActive, deviceId:deviceId, hwId:hwId, sync:sync, addBonusDays:addBonusDays, setAccess:setAccess, access:acc, isBlocked:isBlocked, grantedUntil:grantedUntil, paintNav:paintNav, navOk:function(n){ return navOk(n); }, _st:function(){ return st; } };
     })();
     try{ window.Billing=Billing; }catch(_e){}

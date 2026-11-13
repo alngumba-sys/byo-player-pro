@@ -374,6 +374,15 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   </section>
 
   <!-- Payments: plans, prices, receiving numbers, what came in -->
+  <section id="v-sales" class="view hidden">
+    <div class="card" style="padding:16px;margin-bottom:12px"><b>Add a salesperson</b>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        <input class="inp" id="sl-name" placeholder="Full name" style="flex:1 1 160px"><input class="inp" id="sl-email" type="email" placeholder="Email (their login)" style="flex:1 1 200px">
+        <input class="inp" id="sl-pw" placeholder="Password (8+ characters)" style="flex:1 1 180px"><input class="inp" id="sl-pct" type="number" min="0" max="100" value="10" title="Commission %" style="flex:0 0 90px">
+        <button class="btn" id="sl-add">Create</button></div>
+      <div id="sl-msg" style="margin-top:8px;color:var(--muted)">They sign in at <b>byoplayer-pair.netlify.app/sales/</b>. Their code is made for you and customers type it in the app under Profile.</div></div>
+    <div class="card" style="padding:8px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse" id="sl-tbl"></table></div>
+  </section>
   <section id="v-pay" class="view hidden">
     <div class="pay">
       <div class="card pbar">
@@ -533,7 +542,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
       .then(function(r){ return r.json().catch(function(){ return { ok:false, error:'HTTP '+r.status }; }).then(function(j){ if(r.status===401) j={ ok:false, error:'The admin key was not accepted.', auth:true }; return j; }); })
       .catch(function(){ return { ok:false, error:'Could not reach the backend.' }; }); }
 
-  function show(v){ if(v!=='v-fleet') stopFleet(); if(v!=='v-pay') stopPay(); ['v-login','v-code','v-sess','v-fleet','v-pay'].forEach(function(id){ $(id).classList.toggle('hidden', id!==v); }); view=v;
+  function show(v){ if(v!=='v-fleet') stopFleet(); if(v!=='v-pay') stopPay(); ['v-login','v-code','v-sess','v-fleet','v-pay','v-sales'].forEach(function(id){ $(id).classList.toggle('hidden', id!==v); }); view=v;
     $('strip').classList.toggle('hidden', v==='v-login'); if(v!=='v-login') startRail(); else stopRail();
     $('who').innerHTML=cfg.key?('<span class="as">Signed in as <b>'+esc(cfg.agent||'support')+'</b></span><button class="btn sm gh" id="logout">Sign out</button>'):'';
     var lo=$('logout'); if(lo) lo.onclick=function(){ stop(); stopRail(); cfg.key=''; ls('sc_key',null); show('v-login'); }; }
@@ -579,6 +588,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   function cls(ms){ return ms<=5*60000?'late':(ms<=15*60000?'warn':''); }
   function paintRail(){ var L=$('strip');
     var h='<button class="chip fl'+(view==='v-fleet'?' on':'')+'" id="strip-fleet" title="Every TV that has checked in, with its subscription">All TVs'+(fleetSum?' <span class="n">'+fleetSum.total+'</span>':'')+'</button>';
+    h+='<button class="chip fl'+(view==='v-sales'?' on':'')+'" id="strip-sales" title="Salespeople, their referral codes and customers">Sales team</button>';
     h+='<button class="chip fl'+(view==='v-pay'?' on':'')+'" id="strip-pay" title="Plans, prices and payments received">Payments</button>';
     h+='<button class="chip new" id="strip-new" title="Connect another TV">+ Connect a TV</button>';
     h+=active.map(function(a){ var d=a.device_state||{}, ms=leftMs(a.expires_at), on=sess&&sess.session&&sess.session.id===a.id;
@@ -784,6 +794,17 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   // ---------- payments ----------
   var payT=null, pcfg=null, pCtry='KE', pDirty=false;
   var PST={ matched:['ok','matched'], held:['warn','TV disabled'], partial:['warn','too little'], unmatched:['bad','no match'] };
+  function toSales(){ stop(); sess=null; show('v-sales'); paintRail(); loadSales(); }
+  function loadSales(){ api('fleet.sales_list',{}).then(function(j){ var T=$('sl-tbl');
+    if(!j.ok){ T.innerHTML='<tr><td style="padding:14px">'+esc(/unknown action/.test(j.error||'')?'The sales system needs the 0018_sales_referrals.sql update on the backend.':(j.error||'Could not load'))+'</td></tr>'; return; }
+    var A=j.agents||[]; function mo(o){ var k=Object.keys(o||{}); return k.length?k.map(function(c){ return num(o[c])+' '+c; }).join(' + '):'-'; }
+    T.innerHTML='<tr style="color:var(--muted);text-align:left;font-size:12px"><th style="padding:8px 6px">Name</th><th>Code</th><th>Customers</th><th>Active 7d</th><th>Paid by customers</th><th>Commission</th><th>Last login</th><th></th></tr>'+(A.length?A.map(function(g){ var pc={}; Object.keys(g.paid||{}).forEach(function(c){ pc[c]=g.paid[c]*g.pct/100; });
+      return '<tr style="border-top:1px solid var(--line)"><td style="padding:10px 6px"><b>'+esc(g.name)+'</b><div style="color:var(--muted);font-size:12px">'+esc(g.email)+'</div></td><td><b>'+esc(g.code)+'</b></td><td>'+num(g.referrals)+'</td><td>'+num(g.active_7d)+'</td><td>'+esc(mo(g.paid))+'</td><td>'+esc(mo(pc))+' <span style="color:var(--muted)">('+g.pct+'%)</span></td><td>'+(g.last_login?day(g.last_login):'never')+'</td><td style="white-space:nowrap"><button class="btn sm gh" data-pw="'+esc(g.id)+'">Reset password</button> <button class="btn sm gh" data-act="'+esc(g.id)+'" data-on="'+(g.active?1:0)+'">'+(g.active?'Switch off':'Switch on')+'</button></td></tr>'; }).join(''):'<tr><td colspan="8" style="padding:18px;color:var(--muted)">No salespeople yet.</td></tr>');
+    [].forEach.call(T.querySelectorAll('[data-pw]'),function(b){ b.onclick=function(){ var pw=prompt('New password for this salesperson (8+ characters):'); if(!pw) return; api('fleet.sales_save',{ id:b.getAttribute('data-pw'), password:pw, pct:A.filter(function(x){return x.id===b.getAttribute('data-pw')})[0].pct, active:true }).then(function(r){ $('sl-msg').textContent=r.ok?'Password changed. Share it with them privately.':(r.error||'Could not change'); }); }; });
+    [].forEach.call(T.querySelectorAll('[data-act]'),function(b){ b.onclick=function(){ var g=A.filter(function(x){return x.id===b.getAttribute('data-act')})[0]; api('fleet.sales_save',{ id:g.id, pct:g.pct, active:!g.active }).then(function(){ loadSales(); }); }; }); }); }
+  document.addEventListener('click',function(e){ var t=e.target; if(t&&t.id==='sl-add'){ api('fleet.sales_save',{ name:$('sl-name').value, email:$('sl-email').value, password:$('sl-pw').value, pct:$('sl-pct').value }).then(function(r){
+      if(r.ok){ $('sl-msg').innerHTML='Created. Their referral code is <b>'+esc(r.code)+'</b>. Send them their login (email and password) privately.'; $('sl-name').value=$('sl-email').value=$('sl-pw').value=''; loadSales(); } else $('sl-msg').textContent=r.error||'Could not create'; }); }
+    if(t&&t.id==='strip-sales') toSales(); });
   function toPay(){ stop(); sess=null; show('v-pay'); paintRail(); loadPayCfg(); loadPays(); if(!payT) payT=setInterval(function(){ if(!document.hidden) loadPays(); },10000); }
   function stopPay(){ if(payT){ clearInterval(payT); payT=null; } }
   function amt(cur,n){ n=Number(n||0); return (cur||'')+' '+(n%1?n.toFixed(2):n.toLocaleString()); }

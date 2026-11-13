@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><title>BYO Sales</title><meta name="theme-color" content="#0b1220">
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--card:#121c33;--line:#22304f;--fg:#eaf0fb;--mut:#8fa1bf;--acc:#22d3ee;--ok:#34d399;--warn:#fbbf24;--bad:#f87171}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+h1{font-size:20px;margin:0}.mut{color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+input{width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:16px;margin:6px 0 12px}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:700;font-size:15px;background:var(--acc);color:#04202a}
+button.gh{background:#1d2a47;color:var(--fg)}
+.login{max-width:380px;margin:12vh auto 0}.err{color:var(--bad);min-height:20px;margin-bottom:8px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.tile .l{font-size:12px;color:var(--mut);font-weight:600}.tile .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.code{display:inline-block;padding:4px 10px;border-radius:8px;background:#0d2a31;color:var(--acc);font-weight:800;letter-spacing:2px}
+.bars{display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:8px}.bars i{flex:1;background:var(--acc);border-radius:3px 3px 0 0;min-height:2px;opacity:.85}.bars i.z{background:#26365a;opacity:1}
+.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:4px}
+table{width:100%;border-collapse:collapse}th{text-align:left;font-size:12px;color:var(--mut);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line)}
+td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:middle}tr:last-child td{border-bottom:0}
+.dots{display:flex;gap:2px}.dots i{width:7px;height:16px;border-radius:2px;background:#1b2845}.dots i.on{background:var(--ok)}.dots i.t{outline:1px solid var(--acc)}
+.pill{padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#1d2a47}.pill.paid{background:#0f3a2c;color:var(--ok)}.pill.trial{background:#0d2a31;color:var(--acc)}.pill.expired{background:#3a2a0f;color:var(--warn)}
+.scroll{overflow-x:auto}h2{font-size:16px;margin:18px 0 8px}.empty{padding:22px;text-align:center;color:var(--mut)}
+.hide{display:none!important}
+</style></head><body><div class="wrap">
+<section id="login" class="login card hide">
+  <h1>BYO Sales</h1><p class="mut">Sign in to see the customers you brought in.</p>
+  <label class="mut">Email</label><input id="em" type="email" autocomplete="username">
+  <label class="mut">Password</label><input id="pw" type="password" autocomplete="current-password">
+  <div class="err" id="err"></div><button id="go" style="width:100%">Sign in</button>
+</section>
+<section id="app" class="hide">
+  <header><div><h1 id="nm">BYO Sales</h1><div class="mut">Your code <span class="code" id="cd"></span> <span id="pc"></span></div></div><button class="gh" id="out">Sign out</button></header>
+  <div class="tiles" id="tiles"></div>
+  <div class="card"><b>Active customers each day</b> <span class="mut">(last 30 days)</span><div class="bars" id="bars"></div><div class="axis"><span id="a0"></span><span id="a1"></span></div></div>
+  <h2>Your customers</h2>
+  <div class="card scroll"><table><thead><tr><th>Customer</th><th>Joined</th><th>Status</th><th>Last active</th><th>Days active</th><th>Last 30 days</th><th>Paid</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <p class="mut" style="font-size:13px">Customers are shown by device ID only. Green marks are days the app was opened.</p>
+</section></div>
+<script>
+(function(){
+var URL_='https://lkftnbkuuitaxtlvrqfj.supabase.co', KEY='sb_publishable_D5tMkCSL1AVvJS8S9fuPgQ_nOg_ItOY';
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function ls(k,v){try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v);}catch(e){} return null}
+function rpc(n,b){ return fetch(URL_+'/rest/v1/rpc/'+n,{method:'POST',headers:{'content-type':'application/json',apikey:KEY,Authorization:'Bearer '+KEY},body:JSON.stringify(b||{})}).then(function(r){return r.json()}).catch(function(){return {ok:false,error:'Could not reach the server. Check your internet.'}}); }
+function fmt(n){return Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2})}
+function d(t){return t?new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'}):'-'}
+function ago(t){ if(!t) return '-'; var m=(Date.now()-new Date(t).getTime())/60000; if(m<2) return 'just now'; if(m<60) return Math.round(m)+' min ago'; var h=m/60; if(h<24) return Math.round(h)+' h ago'; var dd=Math.round(h/24); return dd+' day'+(dd===1?'':'s')+' ago'; }
+var tok=ls('bs_tok'), timer=null;
+function show(v){ $('login').classList.toggle('hide',v!=='login'); $('app').classList.toggle('hide',v!=='app'); }
+function money(o,pct){ var k=Object.keys(o||{}); if(!k.length) return '-'; return k.map(function(c){ var v=o[c]*(pct==null?1:pct/100); return fmt(v)+' '+c; }).join(' + '); }
+function paint(j){
+  var a=j.agent,S=j.summary||{};
+  $('nm').textContent=a.name; $('cd').textContent=a.code; $('pc').textContent='Commission '+a.pct+'%';
+  var T=[['Customers',S.referrals],['Active today',S.active_today],['Active 7 days',S.active_7d],['Active 30 days',S.active_30d],['New this week',S.new_7d],['Paying',S.paying]];
+  var h=T.map(function(t){return '<div class="card tile"><div class="l">'+t[0]+'</div><div class="v">'+fmt(t[1])+'</div></div>'}).join('');
+  var keys=Object.keys(j.paid||{});
+  h+='<div class="card tile" style="grid-column:span 2"><div class="l">Commission earned ('+a.pct+'% of what your customers paid)</div><div class="v" style="font-size:20px">'+esc(money(j.paid,a.pct))+'</div><div class="l">Customers paid '+esc(money(j.paid))+'</div></div>';
+  $('tiles').innerHTML=h;
+  var dl=j.daily||[], mx=Math.max.apply(null,dl.map(function(x){return x.active}).concat([1]));
+  $('bars').innerHTML=dl.map(function(x){ return '<i class="'+(x.active?'':'z')+'" style="height:'+Math.max(3,Math.round(x.active/mx*100))+'%" title="'+esc(x.day)+': '+x.active+' active, '+x['new']+' new"></i>'; }).join('');
+  if(dl.length){ $('a0').textContent=d(dl[0].day); $('a1').textContent='Today'; }
+  var today=j.today, days=[]; for(var i=29;i>=0;i--){ var t=new Date(today+'T00:00:00'); t.setDate(t.getDate()-i); days.push(t.getFullYear()+'-'+('0'+(t.getMonth()+1)).slice(-2)+'-'+('0'+t.getDate()).slice(-2)); }
+  var C=j.customers||[];
+  $('rows').innerHTML=C.length?C.map(function(c){ var on={}; (c.days||[]).forEach(function(x){on[String(x).slice(0,10)]=1});
+    var dots='<div class="dots">'+days.map(function(x){return '<i class="'+(on[x]?'on':'')+(x===today?' t':'')+'" title="'+x+(on[x]?' active':'')+'"></i>'}).join('')+'</div>';
+    var st=String(c.status||'trial').toLowerCase(); var cls=st==='paid'?'paid':(st==='expired'||st==='ended')?'expired':'trial';
+    return '<tr><td><b>'+esc(c.tv_id)+'</b><div class="mut" style="font-size:12px">'+esc([c.platform,c.country].filter(Boolean).join(' · '))+'</div></td><td>'+d(c.referred_at)+'</td><td><span class="pill '+cls+'">'+esc(st)+'</span></td><td>'+ago(c.last_seen)+'</td><td>'+(c.active_days||0)+'</td><td>'+dots+'</td><td>'+esc(money(c.paid))+'</td></tr>'; }).join(''):'<tr><td colspan="7" class="empty">No customers yet. Share your code <b>'+esc(a.code)+'</b> and ask them to enter it in the app under Profile.</td></tr>';
+}
+function load(){ return rpc('byo_sales_me',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth){ ls('bs_tok',null); tok=null; show('login'); } return; } show('app'); paint(j); }); }
+function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(!document.hidden) load(); },60000); }
+$('go').onclick=function(){ var b=$('go'); b.disabled=true; $('err').textContent=''; rpc('byo_sales_login',{p_email:$('em').value,p_password:$('pw').value}).then(function(j){ b.disabled=false; if(j&&j.ok){ tok=j.token; ls('bs_tok',tok); $('pw').value=''; start(); } else $('err').textContent=(j&&j.error)||'Could not sign in.'; }); };
+$('pw').addEventListener('keydown',function(e){ if(e.key==='Enter') $('go').click(); });
+$('out').onclick=function(){ rpc('byo_sales_logout',{p_token:tok}); ls('bs_tok',null); tok=null; clearInterval(timer); show('login'); };
+if(tok) start(); else show('login');
+})();
+</script></body></html>

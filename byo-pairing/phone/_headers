@@ -18,3 +18,7 @@
 
 /get/*
   Cache-Control: no-cache
+
+/sales/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache

@@ -44,7 +44,7 @@
             try{ lib={ live:(S.live||[]).length, movies:(S.movies||[]).length, series:(S.series||[]).length, connections:(Store.savedPlaylists||[]).length||((Store.cfg&&Store.cfg.mode)?1:0) }; }catch(e){}
             return { version:d.version||'', hw:(function(){ try{ return Billing.hwId(); }catch(e){ return ''; } })(), platform:plat(), model:d.model||'', country:(Store.settings&&Store.settings.region)||'', lang:(Store.settings&&Store.settings.lang)||'en',
                 profiles:(Store.profiles||[]).length, billing:b, library:lib, diag:diag(false) }; }
-        function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res);
+        function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res); if(res.referred){ try{ localStorage.setItem('byo_ref_done','1'); }catch(_r){} }
             // access set by support (enable / end / block) is kept on the server and applied at every check-in
             try{ var cur=Billing.access(); var want=(res.access&&res.access.state)?res.access:null; if(JSON.stringify(cur||null)!==JSON.stringify(want)){ var wasLocked=Billing.locked(); Billing.setAccess(want);
                 if(!wasLocked&&Billing.locked()){ try{ if($('view-player').classList.contains('active-view')) exitPlayer(); }catch(e){} try{ Billing.openWall(Billing.isBlocked()?'blocked':'expired'); }catch(e){} }

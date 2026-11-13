@@ -659,7 +659,7 @@ _rep("""                    <p class="pp-sub" id="pp-sub">Select a profile to st
      """                    <p class="pp-sub" id="pp-sub">Select a profile to start watching</p>
                     <div class="pp-billing" id="pp-billing"></div>""", 'ppbillmark')
 _rep("    function openProfilePicker(firstRun){ pickerManaging=false;",
-     "    function openProfilePicker(firstRun){ try{ var _pb=$('pp-billing'); if(_pb){ _pb.innerHTML=''; var _bn=(!firstRun&&typeof Billing!=='undefined'&&Billing.statusBanner)?Billing.statusBanner():null; if(_bn) _pb.appendChild(_bn); } }catch(_e){} pickerManaging=false;", 'ppbill')
+     "    function openProfilePicker(firstRun){ try{ var _pb=$('pp-billing'); if(_pb){ _pb.innerHTML=''; var _bn=(!firstRun&&typeof Billing!=='undefined'&&Billing.statusBanner)?Billing.statusBanner():null; if(_bn) _pb.appendChild(_bn); if(!firstRun&&typeof Billing!=='undefined'&&Billing.referralRow) _pb.appendChild(Billing.referralRow()); } }catch(_e){} pickerManaging=false;", 'ppbill')
 # Provider accounts (Xtream panels) allow only a few streams at once (often 1 to 3, shared by every TV and phone
 # on the account). Testing channels in the background and the silent Home preview each took one of those, so the
 # programme people actually chose was refused. Neither runs for those accounts any more, and old test results
