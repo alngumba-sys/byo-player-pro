@@ -6,7 +6,7 @@
 --   public.byo_sales_login(email, password)           (sales portal /sales/)
 --   public.byo_sales_me(token)                         (sales portal)
 --   public.byo_sales_logout(token)
---   fleet.sales_list / fleet.sales_save / fleet.sales_reset  (support console, via byo_support_admin)
+--   fleet.sales_list / fleet.sales_save  (support console, via byo_support_admin; password reset is sales_save with a password)
 --   byo_device_checkin now records one row per device per day (Nairobi date) in byo.device_activity.
 -- Safe to run more than once.
 -- ============================================================================
@@ -157,7 +157,7 @@ declare d text; o text := E'begin\n    if p_action = \'fleet.list\' then';
         return jsonb_build_object('ok', true, 'agents', coalesce((select jsonb_agg(jsonb_build_object('id', g.id, 'name', g.name, 'email', g.email, 'code', g.code, 'pct', g.pct, 'active', g.active, 'last_login', g.last_login, 'created_at', g.created_at,
                 'referrals', (select count(*) from byo.referrals r where r.agent_id = g.id),
                 'active_7d', (select count(distinct da.device_key) from byo.device_activity da join byo.referrals r on r.device_key = da.device_key where r.agent_id = g.id and da.day > (now() at time zone 'Africa/Nairobi')::date - 7),
-                'paid', (select coalesce(jsonb_object_agg(c, s), '{}'::jsonb) from (select p.currency c, sum(p.amount) s from byo.pay_received p join byo.referrals r on r.device_key = p.device_key where r.agent_id = g.id and p.status in ('matched','held') group by p.currency) q)
+                'paid', (select coalesce(jsonb_object_agg(cur, amt), '{}'::jsonb) from (select p.currency cur, sum(p.amount) amt from byo.pay_received p join byo.referrals r on r.device_key = p.device_key where r.agent_id = g.id and p.status in ('matched','held') group by p.currency) q)
             ) order by g.created_at desc) from byo.sales_agents g), '[]'::jsonb));
     end if;
     if p_action = 'fleet.sales_save' then
