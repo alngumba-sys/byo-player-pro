@@ -15,3 +15,6 @@
   Content-Type: application/manifest+json
 /app/sw.js
   Cache-Control: no-cache
+
+/get/*
+  Cache-Control: no-cache

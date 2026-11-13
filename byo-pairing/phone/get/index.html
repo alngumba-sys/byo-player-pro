@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Get BYO Player</title><meta name="theme-color" content="#0b1220">
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b1220;color:#eaf0fb;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:24px 16px}
+.card{width:100%;max-width:420px;text-align:center}
+h1{font-size:28px;margin:14px 0 6px}p{color:#9fb0cc;margin:0 0 18px}
+.logo{width:72px;height:72px;border-radius:18px}
+.btn{display:block;width:100%;padding:16px;border-radius:14px;background:#22d3ee;color:#04202a;font-weight:800;font-size:18px;text-decoration:none;margin:10px 0}
+.btn.alt{background:#16213a;color:#eaf0fb;font-weight:700;font-size:16px}
+.box{display:none;margin-top:18px;text-align:left;background:#121c33;border-radius:14px;padding:14px 16px;font-size:15px;color:#c9d6ee}
+.box b{color:#fff}.box ol{margin:8px 0 0;padding-left:20px}.show{display:block}
+small{display:block;margin-top:22px;color:#6f819f}
+</style></head><body>
+<div class="card">
+  <img class="logo" src="/app/icon-192.png" alt="" onerror="this.style.display='none'">
+  <h1>BYO Player</h1>
+  <p>Bring your own playlist. Watch live TV, movies and series.</p>
+
+  <div id="android" style="display:none">
+    <a class="btn" id="dl" href="/tv3247.apk" download>Download the Android app</a>
+    <div class="box show"><b>After it downloads:</b><ol>
+      <li>Open the downloaded file.</li>
+      <li>If Android asks, allow installs from this browser, then tap Install.</li></ol></div>
+    <a class="btn alt" href="/app/">Or use it in your browser</a>
+  </div>
+
+  <div id="ios" style="display:none">
+    <a class="btn" href="/app/">Open BYO Player</a>
+    <div class="box show"><b>Add it to your Home Screen:</b><ol>
+      <li>Tap the Share button in Safari.</li>
+      <li>Choose <b>Add to Home Screen</b>.</li>
+      <li>Tap <b>Add</b>.</li></ol></div>
+  </div>
+
+  <div id="other" style="display:none">
+    <a class="btn" href="/app/">Open BYO Player in your browser</a>
+    <a class="btn alt" href="/tv3247.apk" download>Download the Android app (APK)</a>
+    <div class="box show">On a phone? Scan the QR code again with your phone camera to get the right version for it.</div>
+  </div>
+  <small>BYO Player does not provide any channels or content. You add your own playlist.</small>
+</div>
+<script>
+(function(){var ua=navigator.userAgent||'',id=function(x){return document.getElementById(x)};
+var ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+var and=/Android/i.test(ua);
+id(and?'android':ios?'ios':'other').style.display='block';
+if(and){ try{ setTimeout(function(){ id('dl').click(); },900); }catch(e){} }
+try{ fetch('/version.json',{cache:'no-store'}).then(function(r){return r.json()}).then(function(v){ if(v&&v.versionName){ var s=document.createElement('p'); s.style.cssText='margin:6px 0 0;font-size:13px'; s.textContent='Version '+v.versionName; id('android').appendChild(s);} }).catch(function(){}); }catch(e){}
+})();
+</script></body></html>
