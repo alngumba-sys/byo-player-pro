@@ -1076,7 +1076,7 @@ public class PlayerActivity extends Activity {
             for (View q = f; q != null; q = (q.getParent() instanceof View) ? (View) q.getParent() : null) { if (q == topBar) { inBar = true; break; } }
             if (kc == KeyEvent.KEYCODE_DPAD_UP && !inBar && (!live || view.isControllerFullyVisible())) {
                 if (!view.isControllerFullyVisible()) view.showController();
-                View t = (favBtn != null && favBtn.getVisibility() == View.VISIBLE) ? favBtn : topBar.getChildAt(0);
+                View t = (favBtn != null && favBtn.getVisibility() == View.VISIBLE) ? favBtn : ((android.view.ViewGroup) topBar).getChildAt(0);
                 if (t != null) { final View tt = t; tt.requestFocus(); view.post(() -> tt.requestFocus()); armAutoHide(); return true; }
             } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN && inBar) {
                 view.requestFocus(); armAutoHide(); return true;
