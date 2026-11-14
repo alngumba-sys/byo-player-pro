@@ -255,7 +255,7 @@ s=s.replace(_pc, """    function playContent(url,title,sub,opts){ opts=opts||{};
                 if(sr&&sr.seasons){ openSeries(sr); setTimeout(function(){ try{ S.currentSeason=Math.max(0,Math.min(o.seasonIdx||0,sr.seasons.length-1)); renderSeasons(sr);
                     var rows=document.querySelectorAll('#detail-body .episode'); var tgt=rows[o.epIdx||0]||rows[0]; if(tgt){ Nav.setFocus(tgt); try{ tgt.scrollIntoView({block:'center'}); }catch(_e){} } }catch(_e){} },80); return; } }
             // Back from a movie: return to Movies.
-            if(o.type==='movie'){ if(S.currentDetail&&S.currentDetail.type==='movie'&&$('view-detail').classList.contains('active-view')){ openMovie(S.currentDetail.data); return; } goTo('movies'); return; }
+            if(o.type==='movie'){ if(S.currentDetail&&S.currentDetail.type==='movie'&&$('view-detail').classList.contains('active-view')){ setTimeout(function(){ try{ var _pb=document.querySelector('#view-detail .btn-play, #view-detail .play-btn, #view-detail [data-play]'); if(_pb) Nav.setFocus(_pb); else Nav.focusFirst(); }catch(_e){} },30); return; } goTo('movies'); return; }
             }catch(e){} };
         // Web player, live channel: if nothing plays within 25 s, say so (with Next channel) instead of an endless "Getting it ready…".
         if(S._liveStartT){ clearTimeout(S._liveStartT); S._liveStartT=null; } S._playSeq=(S._playSeq||0)+1;
@@ -774,6 +774,39 @@ _pb_old = '                (src?\'<img class="h2-feat-img\'+(wide?\' wide\':\'\'
 _pb_new = "                (window.__byoHeroHTML?window.__byoHeroHTML(src,wide):''); }"
 assert s.count(_pb_old)==2, 'herohtml'
 s=s.replace(_pb_old,_pb_new)
+# Speed: Home filtered the whole 150k-title library once per row, and lower-cased every title each time.
+# The pool is built once per Home draw, and each title's lower-case key is remembered on the item (per session only).
+_rep("    function vodPool(){ return profFilter(S.movies).concat(profFilter(S.series)); }\n    function tkey(x){ return ((x.title||x.name||'')+'').toLowerCase(); }",
+     "    var _vpC=null, _vpOn=false;\n    function vodPool(){ if(_vpC) return _vpC; var r=profFilter(S.movies).concat(profFilter(S.series)); if(_vpOn) _vpC=r; return r; }\n    function tkey(x){ return x.__tk||(x.__tk=((x.title||x.name||'')+'').toLowerCase()); }", 'vodpoolmemo')
+_rep("    function renderHome(){\n        stopHeroPreview(); S._heroTries=0;",
+     "    function renderHome(){\n        stopHeroPreview(); S._heroTries=0;\n        _vpC=null; _vpOn=true; setTimeout(function(){ _vpOn=false; _vpC=null; },0);\n        S._capH={m:[],s:[]}; S._capOn=true; clearTimeout(S._capT); S._capT=setTimeout(function(){ S._capOn=false; S._homeSeen=S._capH; },1500);", 'homememo')
+# remember which titles Home showed, so a small quick-start copy can paint Home before the whole library is read
+_rep("    function moviePoster(m,rank){ var card=document.createElement('div');",
+     "    function moviePoster(m,rank){ try{ if(S._capOn&&S._capH.m.length<70) S._capH.m.push(m); }catch(_e){} var card=document.createElement('div');", 'cap1')
+_rep("    function seriesPoster(s,rank){ var card=document.createElement('div');",
+     "    function seriesPoster(s,rank){ try{ if(S._capOn&&S._capH.s.length<70) S._capH.s.push(s); }catch(_e){} var card=document.createElement('div');", 'cap2')
+_rep("    function h2PickCard(x){ var card=document.createElement('div');",
+     "    function h2PickCard(x){ try{ if(S._capOn) (x.seasons!==undefined?S._capH.s:S._capH.m).push(x); }catch(_e){} var card=document.createElement('div');", 'cap3')
+_rep("    function recPreviewCard(x){ var isSeries=(x.seasons!==undefined);",
+     "    function recPreviewCard(x){ var isSeries=(x.seasons!==undefined); try{ if(S._capOn) (isSeries?S._capH.s:S._capH.m).push(x); }catch(_e){}", 'cap4')
+# Titles open on their page and WAIT for Play (the page used to fade into the film before it could be read).
+# "Open titles straight into playback" is now opt-in (openStraight); live channels keep their own behaviour.
+_rep("    function directPlay(){ return !(Store.settings&&Store.settings.openAutoplay===false); }",
+     "    function directPlay(){ return !(Store.settings&&Store.settings.openAutoplay===false); }\n    function detailStraight(){ return !!(Store.settings&&Store.settings.openStraight===true); }", 'dstraight')
+_rep("        var _back=(S._lastPlayItem===m&&Date.now()-(S._lastPlayAt||0)<4*3600000)||(S._nativeRouteTs&&Date.now()-S._nativeRouteTs<8000)||(S._webPlayerLeftAt&&Date.now()-S._webPlayerLeftAt<8000);\n        if(_back){ cancelDetailAutoplay(); } else if(directPlay()){ cancelDetailAutoplay(); setTimeout(function(){ play.click(); },0); } else armDetailAutoplay(play, function(){ play.click(); }); }",
+     "        var _back=(S._lastPlayItem===m&&Date.now()-(S._lastPlayAt||0)<4*3600000)||(S._nativeRouteTs&&Date.now()-S._nativeRouteTs<8000)||(S._webPlayerLeftAt&&Date.now()-S._webPlayerLeftAt<8000);\n        cancelDetailAutoplay(); if(!_back&&detailStraight()){ setTimeout(function(){ play.click(); },0); } else { startDetailPreview(m); } }", 'dwait')
+_rep("    function armDetailAutoplay(btn, go){ cancelDetailAutoplay(); if(!btn) return;",
+     "    function armDetailAutoplay(btn, go){ cancelDetailAutoplay(); return;\n        if(!btn) return;", 'dnoarm')
+_rep("    function cancelDetailAutoplay(){ if(_dapT){",
+     "    var _dpv=null;\n    function stopDetailPreview(){ try{ if(_dpv){ _dpv.pause(); _dpv.removeAttribute('src'); _dpv.load(); if(_dpv.parentNode) _dpv.parentNode.removeChild(_dpv); } }catch(_e){} _dpv=null; }\n    // Quiet muted preview behind the page, starting ~20 minutes in (web/desktop only; stops on Play or leaving).\n    function startDetailPreview(m){ stopDetailPreview(); try{ if(!m||!m.url||m.seasons!==undefined||(typeof androidPreview==='function'&&androidPreview())) return; var wrap=$('detail-hero-bg'); if(!wrap) return;\n        var v=document.createElement('video'); v.muted=true; v.defaultMuted=true; v.playsInline=true; v.loop=true; v.setAttribute('muted',''); v.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s;pointer-events:none';\n        v.addEventListener('loadedmetadata',function(){ try{ var d=v.duration||0; v.currentTime=d>2400?1200:(d>60?d*0.25:0); }catch(_e){} });\n        v.addEventListener('playing',function(){ v.style.opacity='.55'; }); v.addEventListener('error',function(){ if(_dpv===v) stopDetailPreview(); });\n        _dpv=v; wrap.appendChild(v); v.src=m.url; var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){ if(_dpv===v) stopDetailPreview(); }); }catch(_e){} }\n    function cancelDetailAutoplay(){ stopDetailPreview(); if(_dapT){", 'dprev')
+_rep("sd.addEventListener('click',function(){ Store.settings.openAutoplay=!directPlay(); Store.save(); renderStartup(); });",
+     "sd.addEventListener('click',function(){ Store.settings.openStraight=!detailStraight(); Store.save(); renderStartup(); });", 'dtoggle')
+_rep("if(sd) sd.classList.toggle('on', directPlay()); }", "if(sd) sd.classList.toggle('on', detailStraight()); }", 'dtoggle2')
+_rep("        else if(S.playerFrom==='home'){ renderHome(); showView('home'); setTimeout(function(){ Nav.focusFirst(); },30); }",
+     "        else if(S.playerFrom==='home'){ showView('home'); setTimeout(function(){ try{ renderHome(); }catch(_e){} Nav.focusFirst(); },60); }", 'backhome')
+# "More like this" scores the whole library (~0.5 s on a TV): do it after the page is up so Play is instant.
+_rep("    function appendSimilarRow(container, ref){\n        var sims=similarTo(ref,12); if(!sims.length) return;",
+     "    function appendSimilarRow(container, ref){ container._simFor=ref; clearTimeout(S._simT); S._simT=setTimeout(function(){ if(container._simFor===ref) _appendSimilarRow(container,ref); },450); }\n    function _appendSimilarRow(container, ref){\n        var sims=similarTo(ref,12); if(!sims.length) return;", 'simdefer')
 # ---- TV Guide with the provider's real programmes ----
 # Channels from a provider's own lists (Xtream, or an M3U link from an Xtream panel) get "what's on" from the provider.
 _rep("        function apiOf(c){ if(c&&c._src&&c._src.api&&c._src.kind==='xtream') return c._src.api; return (S.xtream&&(!c||!c._src))?S.xtream:null; }",

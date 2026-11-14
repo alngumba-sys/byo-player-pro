@@ -41,8 +41,8 @@
         try{ document.addEventListener('keydown',function(){ lastKeyAt=Date.now(); },true); document.addEventListener('pointerdown',function(){ lastKeyAt=Date.now(); },true); }catch(_e){}
         var Snap={
             open:function(cb){ try{ if(!window.indexedDB) return cb(null); var r=indexedDB.open('byo_lib',1); r.onupgradeneeded=function(){ try{ r.result.createObjectStore('snap'); }catch(_e){} }; r.onsuccess=function(){ cb(r.result); }; r.onerror=function(){ cb(null); }; r.onblocked=function(){ cb(null); }; }catch(e){ cb(null); } },
-            put:function(v,cb){ Snap.open(function(db){ if(!db) return cb&&cb(false); try{ var tx=db.transaction('snap','readwrite'); tx.objectStore('snap').put(v,'lib'); tx.oncomplete=function(){ try{ db.close(); }catch(_e){} cb&&cb(true); }; tx.onerror=tx.onabort=function(){ try{ db.close(); }catch(_e){} cb&&cb(false); }; }catch(e){ cb&&cb(false); } }); },
-            get:function(cb){ Snap.open(function(db){ if(!db) return cb(null); try{ var rq=db.transaction('snap','readonly').objectStore('snap').get('lib'); rq.onsuccess=function(){ try{ db.close(); }catch(_e){} cb(rq.result||null); }; rq.onerror=function(){ try{ db.close(); }catch(_e){} cb(null); }; }catch(e){ cb(null); } }); } };
+            put:function(v,cb,key){ Snap.open(function(db){ if(!db) return cb&&cb(false); try{ var tx=db.transaction('snap','readwrite'); tx.objectStore('snap').put(v,key||'lib'); tx.oncomplete=function(){ try{ db.close(); }catch(_e){} cb&&cb(true); }; tx.onerror=tx.onabort=function(){ try{ db.close(); }catch(_e){} cb&&cb(false); }; }catch(e){ cb&&cb(false); } }); },
+            get:function(cb,key){ Snap.open(function(db){ if(!db) return cb(null); try{ var rq=db.transaction('snap','readonly').objectStore('snap').get(key||'lib'); rq.onsuccess=function(){ try{ db.close(); }catch(_e){} cb(rq.result||null); }; rq.onerror=function(){ try{ db.close(); }catch(_e){} cb(null); }; }catch(e){ cb(null); } }); } };
         function snapOk(pl){ return pl&&(pl.mode==='m3u'||pl.mode==='xtream'); }   // sources whose items play straight from the saved copy
         function libSig(list){ return (on()?'C:':'S:')+list.map(keyOf).join('\n'); }
         function bootList(){ if(on()) return included(); var c=Store.cfg||{}; if(!c.mode||c.mode==='multi') return [];
@@ -58,21 +58,34 @@
         var snapT=null;
         function saveSnap(list){ if(!list.length||!list.some(snapOk)) return;
             clearTimeout(snapT); snapT=setTimeout(function(){ snapT=null; try{
-                var lib=pendingSwap||S; var t0=Date.now(), pre=[], preIx={}, keys=[], keyIx={};
-                function shrink(u){ u=String(u); var c=u.lastIndexOf('/'); if(c<8) return u; var h=u.slice(0,c+1), n=preIx[h]; if(n==null){ n=preIx[h]=pre.length; pre.push(h); } return '^'+n+'^'+u.slice(c+1); }
-                var json=JSON.stringify({live:lib.live,movies:lib.movies,series:lib.series}, function(k,v){
-                    if(k==='_src'){ if(!(v&&v.key)) return undefined; var si=keyIx[v.key]; if(si==null){ si=keyIx[v.key]=keys.length; keys.push(v.key); } return si; }
-                    if(k.length>1&&k.charAt(0)==='_'&&k.charAt(1)==='_') return undefined;     // per-session caches
-                    if(k==='_mergedSeasons'||k==='_bdTried'||k==='_bd'||k==='_origIdx') return undefined;
-                    if(v===null||v==='') return (/^\d+$/.test(k))?v:undefined;
-                    if((k==='url'||k==='logo'||k==='thumb'||k==='art')&&typeof v==='string'&&v.length>40&&v.charAt(0)!=='^') return shrink(v);
-                    if(k==='desc'&&typeof v==='string'&&/^(Live channel|Channel) from /.test(v)) return undefined;
-                    return v; });
+                if(S._libHead&&!pendingSwap) return;          // only the small quick-start lists are loaded right now: never save those as the library
+                var lib=pendingSwap||S; var t0=Date.now();
+                function packer(){ var pre=[], preIx={}, keys=[], keyIx={};
+                    function shrink(u){ u=String(u); var c=u.lastIndexOf('/'); if(c<8) return u; var h=u.slice(0,c+1), n=preIx[h]; if(n==null){ n=preIx[h]=pre.length; pre.push(h); } return '^'+n+'^'+u.slice(c+1); }
+                    function rep(k,v){
+                        if(k==='_src'){ if(!(v&&v.key)) return undefined; var si=keyIx[v.key]; if(si==null){ si=keyIx[v.key]=keys.length; keys.push(v.key); } return si; }
+                        if(k.length>1&&k.charAt(0)==='_'&&k.charAt(1)==='_') return undefined;     // per-session caches
+                        if(k==='_mergedSeasons'||k==='_bdTried'||k==='_bd'||k==='_origIdx') return undefined;
+                        if(v===null||v==='') return (/^\d+$/.test(k))?v:undefined;
+                        if((k==='url'||k==='logo'||k==='thumb'||k==='art')&&typeof v==='string'&&v.length>40&&v.charAt(0)!=='^') return shrink(v);
+                        if(k==='desc'&&typeof v==='string'&&/^(Live channel|Channel) from /.test(v)) return undefined;
+                        return v; }
+                    return { pre:pre, keys:keys, rep:rep }; }
+                var pk=packer(), pre=pk.pre, keys=pk.keys;
+                var json=JSON.stringify({live:lib.live,movies:lib.movies,series:lib.series}, pk.rep);
                 var mb=(json.length/1048576).toFixed(1);
                 var part={}; Object.keys(PARTIAL).forEach(function(k){ var P=PARTIAL[k]; if(!P) return; part[k]={ cats:P.cats||null, lim:P.lim, web:!!P.web,
                     movies:P.movies?{ full:P.movies.full, kept:P.movies.kept, total:P.movies.total }:null, series:P.series?{ full:P.series.full, kept:P.series.kept, total:P.series.total }:null }; });
                 Snap.put({ v:2, sig:libSig(list), at:Date.now(), pre:pre, keys:keys, part:part, json:json }, function(ok){ libLog(ok?('saved copy '+mb+' MB in '+(Date.now()-t0)+'ms'):('saving copy FAILED ('+mb+' MB)')); });
                 json=null;
+                // Quick-start copy: only the titles Home showed (a few hundred KB), so Home can open at once on the next
+                // launch while the whole library is still being read. Written only when Home has been drawn this session.
+                try{ var seen=S._homeSeen; if(seen&&((seen.m&&seen.m.length)||(seen.s&&seen.s.length))){
+                    var inLib=function(arr,pool){ var ok={}; pool.forEach(function(x){ ok[x.id]=1; }); return (arr||[]).filter(function(x){ return x&&ok[x.id]; }); };
+                    var seenM=[], seenS=[], dupM={}, dupS={};
+                    inLib(seen.m,lib.movies).forEach(function(x){ if(!dupM[x.id]){ dupM[x.id]=1; seenM.push(x); } }); inLib(seen.s,lib.series).forEach(function(x){ if(!dupS[x.id]){ dupS[x.id]=1; seenS.push(x); } });
+                    if(seenM.length+seenS.length>=8){ var hp=packer(); var hj=JSON.stringify({live:[],movies:seenM,series:seenS}, hp.rep);
+                        Snap.put({ v:1, sig:libSig(list), at:Date.now(), pre:hp.pre, keys:hp.keys, json:hj }, function(ok2){ libLog(ok2?('quick start copy '+(hj.length/1024).toFixed(0)+' KB'):'quick start copy FAILED'); }, 'head'); } } }catch(_e){}
             }catch(e){ libLog('saving copy threw '+(e&&e.message||e)); } }, 6000); }
         function srcMapFor(list){ var m={}; list.forEach(function(pl,i){ var k=keyOf(pl), sc={ idx:i, key:k, name:plName(pl), kind:kindOf(pl), api:null };
             if(pl.mode==='xtream'){ try{ sc.api=xtreamApi(pl.server,pl.user,pl.pass); }catch(_e){} }
@@ -839,6 +852,13 @@
             // again on EVERY launch. 25s now only guards against IndexedDB never answering at all.
             var started=false, t0=Date.now(); S._libFromSnapWait=true;
             var giveUp=setTimeout(function(){ if(!started){ started=true; S._libFromSnapWait=false; libLog('saved copy did not answer in 25s; downloading'); bootLoad(); } }, 25000);
+            Snap.get(function(h){ if(started||!h||h.v!==1||!h.json||h.sig!==libSig(list)) return;
+                try{ var hd=JSON.parse(h.json); if(!hd||!Array.isArray(hd.movies)) return; hd.live=[]; hd.series=hd.series||[];
+                    revive(hd, list, h.pre, null, h.keys); if(started) return;
+                    S.live=[]; S.movies=hd.movies; S.series=hd.series; S._libHead=true; S._libLoading=false;
+                    libLog('quick start: Home opened from a small copy in '+(Date.now()-t0)+'ms');
+                    try{ if($('view-home').classList.contains('active-view')) renderHome(); }catch(_e){}
+                }catch(_e){} },'head');
             Snap.get(function(v){ if(started) return; var tRead=Date.now()-t0;
                 if(!v){ started=true; clearTimeout(giveUp); S._libFromSnapWait=false; libLog('no saved copy yet ('+tRead+'ms); downloading'); return bootLoad(); }
                 if((v.v!==1&&v.v!==2)||!v.json){ started=true; clearTimeout(giveUp); S._libFromSnapWait=false; libLog('saved copy is from an older format; downloading'); return bootLoad(); }
@@ -847,6 +867,7 @@
                     var fx=revive(d, list, v.pre, v.part, v.keys); if(started) return; started=true; clearTimeout(giveUp); S._libFromSnapWait=false;
                     S.live=d.live; S.movies=d.movies||[]; S.series=d.series||[]; S.replay=[]; S.emby=null; S.xtream=fx;
                     S._libLoading=false; S._libFailed=false; S._libFromSaved=true;
+                    S._libHead=false;
                     var ageMin=Math.round((Date.now()-(v.at||0))/60000);
                     libLog('opened saved copy: read '+tRead+'ms, parse '+(Date.now()-t1)+'ms, '+(v.json.length/1048576).toFixed(1)+' MB, '+ageMin+' min old');
                     try{ renderAll(); }catch(_e){} try{ window.__byoLibTick&&window.__byoLibTick(); }catch(_e){}
