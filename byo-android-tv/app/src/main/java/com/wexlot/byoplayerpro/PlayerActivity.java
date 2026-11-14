@@ -1070,6 +1070,18 @@ public class PlayerActivity extends Activity {
             }
             return true;
         }
+        // Remote: Up reaches the top bar (back, quality, favourite star); Down returns to the controls.
+        if (e.getAction() == KeyEvent.ACTION_DOWN && topBar != null && view != null && (kc == KeyEvent.KEYCODE_DPAD_UP || kc == KeyEvent.KEYCODE_DPAD_DOWN)) {
+            View f = getCurrentFocus(); boolean inBar = false;
+            for (View q = f; q != null; q = (q.getParent() instanceof View) ? (View) q.getParent() : null) { if (q == topBar) { inBar = true; break; } }
+            if (kc == KeyEvent.KEYCODE_DPAD_UP && !inBar && (!live || view.isControllerFullyVisible())) {
+                if (!view.isControllerFullyVisible()) view.showController();
+                View t = (favBtn != null && favBtn.getVisibility() == View.VISIBLE) ? favBtn : topBar.getChildAt(0);
+                if (t != null) { final View tt = t; tt.requestFocus(); view.post(() -> tt.requestFocus()); armAutoHide(); return true; }
+            } else if (kc == KeyEvent.KEYCODE_DPAD_DOWN && inBar) {
+                view.requestFocus(); armAutoHide(); return true;
+            }
+        }
         boolean r = super.dispatchKeyEvent(e);
         if (e.getAction() == KeyEvent.ACTION_DOWN && view != null && view.isControllerFullyVisible()) armAutoHide();
         return r;
@@ -1165,7 +1177,14 @@ public class PlayerActivity extends Activity {
         t.setTypeface(Typeface.DEFAULT_BOLD); t.setGravity(Gravity.CENTER);
         if (boxed) { t.setPadding(dp(12), dp(7), dp(12), dp(7)); GradientDrawable b = new GradientDrawable(); b.setColor(0x33FFFFFF); b.setCornerRadius(dp(16)); t.setBackground(b); }
         else t.setPadding(dp(8), 0, dp(14), dp(4));
-        t.setOnClickListener(l);
+        t.setOnClickListener(l); t.setFocusable(true); t.setClickable(true);
+        { // visible highlight when the remote lands on it
+            android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
+            GradientDrawable fo = new GradientDrawable(); fo.setColor(0x6622DDE2); fo.setCornerRadius(dp(16)); fo.setStroke(dp(2), 0xFF22DDE2);
+            sl.addState(new int[]{android.R.attr.state_focused}, fo);
+            android.graphics.drawable.Drawable base = t.getBackground();
+            sl.addState(new int[]{}, base != null ? base : new android.graphics.drawable.ColorDrawable(0));
+            t.setBackground(sl); }
         return t;
     }
 
