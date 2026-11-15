@@ -59,6 +59,7 @@ HEAD = '''<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="BYO Player">
 <meta name="theme-color" content="#05070d">
 <style>html.byo-web .wz-ver{display:none!important}</style>
+<script src="pwainstall.js"></script>
 <script>(function(){ try{
   // Web version on a phone or tablet: use the phone layout the Android app uses.
   if(!window.ByoAndroid){ var d=document.documentElement, ua=navigator.userAgent||'';
@@ -90,6 +91,7 @@ SHEET = r'''<style id="ios-install-css">
 #ios-install .ii-or{ color:#7f8b99; font-weight:500; font-size:13px; margin:0 -4px; }
 #ios-install .ii-d{ color:#a9b4c2; font-size:14px; margin-top:4px; line-height:1.4; }
 #ios-install .ii-note{ background:#2a2410; color:#f3dfa6; border-radius:12px; padding:12px 14px; font-size:14px; line-height:1.4; margin-top:4px; }
+#ios-install .ii-copy{ display:block; width:100%; margin-top:14px; padding:14px; border:0; border-radius:12px; background:#22d3ee; color:#04202a; font-size:16px; font-weight:800; }
 #ios-install .ii-later{ display:block; width:100%; margin-top:16px; padding:14px; border:1px solid #2b3846; border-radius:12px; background:transparent; color:#cfd8e3; font-size:15px; font-weight:600; }
 #ios-install-pill{ position:fixed; right:12px; bottom:calc(92px + env(safe-area-inset-bottom)); z-index:99999; display:none;
   border:0; color:rgba(200,212,226,.5); background:transparent; opacity:.5; padding:6px 8px; font-weight:500; font-size:13px; font-family:inherit; }
@@ -101,8 +103,8 @@ SHEET = r'''<style id="ios-install-css">
   <div class="ii-sheet">
     <button class="ii-x" aria-label="Close">&times;</button>
     <h2 id="ii-h">Add BYO Player to your Home Screen</h2>
-    <p class="ii-lead">Safari installs apps from the share menu. It takes three taps, and then BYO Player opens full screen like any other app.</p>
-    <ol>
+    <p class="ii-lead" id="ii-lead">Safari installs apps from the share menu. It takes three taps, and then BYO Player opens full screen like any other app.</p>
+    <ol id="ii-steps">
       <li><span class="ii-n">1</span><div><div class="ii-t"><span class="ii-ic"><svg width="18" height="20" viewBox="0 0 18 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 13V2M5 5.5 9 2l4 3.5"/><path d="M6 8H3.5A1.5 1.5 0 0 0 2 9.5v7A1.5 1.5 0 0 0 3.5 18h11a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 14.5 8H12"/></svg></span><span class="ii-or">or</span><span class="ii-ic">&bull;&bull;&bull;</span>Tap Share</div>
         <div class="ii-d">Share is the square with an arrow. On newer iPhones it sits behind the three dots <b>&bull;&bull;&bull;</b> at the bottom right of Safari: tap the dots, then Share.</div></div></li>
       <li><span class="ii-n">2</span><div><div class="ii-t"><span class="ii-ic">+</span>Choose Add to Home Screen</div>
@@ -111,28 +113,39 @@ SHEET = r'''<style id="ios-install-css">
         <div class="ii-d">BYO Player appears on your Home Screen. Open it from there and set it up.</div></div></li>
     </ol>
     <div class="ii-note" id="ii-note">This only works in Safari. If you are reading this in Chrome or another browser, open the same link in Safari first.</div>
+    <button class="ii-copy" id="ii-copy" style="display:none">Copy link</button>
     <button class="ii-later">Not now, use it in the browser</button>
   </div>
 </div>
 <button id="ios-install-pill">Install app<b aria-label="Hide">&times;</b></button>
 <script id="ios-install-js">(function(){ try{
-  var d=document.documentElement; if(!d.classList.contains('ios-web')||d.classList.contains('web-standalone')) return;
-  var ua=navigator.userAgent||'', other=/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|FBAN|FBAV|Instagram/.test(ua);
+  // Logic lives in pwainstall.js (PwaInstall). This only draws the iOS sheet.
+  var P=window.PwaInstall; if(!P) return;
+  var st=P.getState(); if(st.flow!=='ios-safari'&&st.flow!=='ios-other') return;   // installed, Android, desktop: no iOS prompts
+  var other=(st.flow==='ios-other');
   var sheet=document.getElementById('ios-install'), pill=document.getElementById('ios-install-pill'), note=document.getElementById('ii-note');
-  if(other) note.textContent='You are in another browser. Copy this link and open it in Safari to add BYO Player to your Home Screen.';
+  if(other){   // Chrome etc. on iPhone: the 3 steps would not work, so say only "open in Safari"
+    document.getElementById('ii-h').textContent='Open this page in Safari';
+    document.getElementById('ii-lead').style.display='none'; document.getElementById('ii-steps').style.display='none';
+    note.textContent='Apple only allows adding an app to the Home Screen from Safari. Copy this link, open it in Safari, then add BYO Player to your Home Screen.';
+    var cp=document.getElementById('ii-copy'); cp.style.display='block';
+    cp.addEventListener('click',function(){ var u=location.href.split('#')[0], ok=function(){ cp.textContent='Link copied. Paste it in Safari'; };
+      try{ navigator.clipboard.writeText(u).then(ok,function(){ fb(); }); }catch(e){ fb(); }
+      function fb(){ try{ var t=document.createElement('textarea'); t.value=u; t.style.cssText='position:fixed;opacity:0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); ok(); }catch(e){ cp.textContent=u; } } });
+    sheet.querySelector('.ii-later').textContent='Not now';
+  }
   function open(){ sheet.classList.add('on'); pill.classList.remove('on'); }
-  function close(){ sheet.classList.remove('on'); if(!hid) pill.classList.add('on'); try{ sessionStorage.setItem('byo_ii_seen','1'); }catch(e){} }
+  function close(){ sheet.classList.remove('on'); P.markPrompted('dismissed'); if(!hid) pill.classList.add('on'); }
   sheet.querySelector('.ii-x').addEventListener('click',close); sheet.querySelector('.ii-later').addEventListener('click',close);
   sheet.querySelector('.ii-dim').addEventListener('click',close);
   var hid=false; try{ hid=sessionStorage.getItem('byo_ii_hide')==='1'; }catch(e){}
   pill.addEventListener('click',function(e){ if(e.target&&e.target.tagName==='B'){ hid=true; pill.classList.remove('on'); try{ sessionStorage.setItem('byo_ii_hide','1'); }catch(_e){} return; } open(); });
-  // Settings and activation in Safari stay in Safari: an app added to the Home Screen starts fresh. So the sheet
-  // comes first, before anything is set up, and the pill stays for later.
+  window.byoShowInstallHelp=open;   // a settings / help menu can call this to show the sheet again
   // The pill stays out of the way while the setup screens (with their own bottom button) are showing.
   setInterval(function(){ try{ var w=document.getElementById('welcome'), pv=document.getElementById('view-player'), busy=(w&&!w.classList.contains('hidden')&&w.offsetParent!==null)||sheet.classList.contains('on')||(pv&&pv.classList.contains('active-view'));
     pill.style.visibility=busy?'hidden':''; }catch(e){} },700);
-  var seen=false; try{ seen=sessionStorage.getItem('byo_ii_seen')==='1'; }catch(e){}
-  if(seen){ if(!hid) pill.classList.add('on'); } else setTimeout(open, 600);
+  // First eligible visit: the sheet comes first, before anything is set up. After "Not now" it never opens by itself again; the pill stays.
+  if(P.shouldAutoShow()) setTimeout(open,600); else if(!hid) pill.classList.add('on');
 }catch(e){} })();</script>
 '''
 # Install app for laptops and Android: the browser's own install prompt where it offers one, short help otherwise.
@@ -154,23 +167,18 @@ html.android-app #wi-help{ bottom:calc(128px + env(safe-area-inset-bottom)); lef
 <button id="web-install" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Install app</button>
 <div id="wi-help" role="dialog"><button class="wi-x" aria-label="Close">&times;</button><div id="wi-text"></div></div>
 <script>(function(){ try{
-  var d=document.documentElement; if(d.classList.contains('ios-web')||d.classList.contains('web-standalone')) return;
-  if(window.matchMedia&&matchMedia('(display-mode: standalone)').matches) return;
+  // Android and desktop Chrome/Edge: the browser's own install prompt (stored by pwainstall.js). iPhone/iPad and installed apps: nothing here.
+  var P=window.PwaInstall; if(!P) return;
   if(window.ByoDesktop||/BYODesktop\//.test(navigator.userAgent||'')) return;
   try{ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(e){}
-  var btn=document.getElementById('web-install'), help=document.getElementById('wi-help'), txt=document.getElementById('wi-text'), ev=null;
-  var ua=navigator.userAgent||'', android=/Android/i.test(ua), safari=/Safari/.test(ua)&&!/Chrome|Chromium|Edg|OPR/.test(ua), firefox=/Firefox/.test(ua);
-  window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); ev=e; });
-  window.addEventListener('appinstalled',function(){ btn.classList.remove('on'); help.classList.remove('on'); });
-  btn.classList.add('on');
+  var btn=document.getElementById('web-install'), help=document.getElementById('wi-help'), txt=document.getElementById('wi-text');
+  function render(){ var f=P.getState().flow; var on=(f==='native'||f==='manual'); btn.classList.toggle('on',on); if(!on) help.classList.remove('on'); }
+  P.subscribe(render); render();
   help.querySelector('.wi-x').addEventListener('click',function(){ help.classList.remove('on'); });
   btn.addEventListener('click',function(){
-    if(ev){ var e=ev; ev=null; e.prompt(); if(e.userChoice) e.userChoice.then(function(r){ if(r&&r.outcome==='accepted') btn.classList.remove('on'); }); return; }
+    if(P.getState().canPrompt){ P.promptInstall(); return; }   // native prompt, then userChoice and appinstalled update the button
     var apk='<a href="https://byoplayer-pair.netlify.app/tv3247.apk">download the Android app</a>';
-    txt.innerHTML = android ? 'In Chrome, tap the <b>three dots</b> at the top right, then <b>Add to Home screen</b> or <b>Install app</b>.<br><br>For the best playback (all movie formats), '+apk+' instead.'
-      : safari ? 'In Safari on a Mac, open the <b>File</b> menu (or the Share button) and choose <b>Add to Dock</b>.'
-      : firefox ? 'Firefox cannot install apps. Open this page in <b>Chrome</b> or <b>Microsoft Edge</b> and click <b>Install app</b> again.'
-      : 'Click the <b>install icon</b> at the right end of the address bar, or open the browser menu (three dots) and choose <b>Cast, save and share</b> then <b>Install page as app</b>.';
+    txt.innerHTML='In Chrome, tap the <b>three dots</b> at the top right, then <b>Add to Home screen</b> or <b>Install app</b>.<br><br>For the best playback (all movie formats), '+apk+' instead.';
     help.classList.toggle('on'); });
 }catch(e){} })();</script>
 """
@@ -202,6 +210,7 @@ open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(s)
 open(os.path.join(OUT, 'sw.js'), 'w').write("// BYO Player: lets the browser install the app. Nothing is cached; every request goes to the network.\nself.addEventListener('install',function(){ self.skipWaiting(); });\nself.addEventListener('activate',function(e){ e.waitUntil(self.clients.claim()); });\nself.addEventListener('fetch',function(){});\n")
 
 shutil.copy(os.path.join(ASSETS, 'hls.min.js'), os.path.join(OUT, 'hls.min.js'))
+shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pwaInstall.js'), os.path.join(OUT, 'pwainstall.js'))
 if os.path.isdir(os.path.join(OUT, 'logos')):
     shutil.rmtree(os.path.join(OUT, 'logos'))
 shutil.copytree(os.path.join(ASSETS, 'logos'), os.path.join(OUT, 'logos'))
