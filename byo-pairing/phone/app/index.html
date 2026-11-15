@@ -13271,7 +13271,16 @@ var Pin=(function(){
             try{ var pend=localStorage.getItem('byo_ref_pending'); if(pend) inp.value=String(pend).toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20); }catch(e){}
             try{ if(navigator.clipboard&&navigator.clipboard.readText){ var pb=document.createElement('button'); pb.textContent='Paste code'; pb.setAttribute('data-focusable','true'); pb.style.cssText='margin-top:8px;padding:8px 14px;border:0;border-radius:10px;background:transparent;color:#22d3ee;font-weight:700;font-size:15px'; inp.parentNode.insertBefore(pb, o.querySelector('#referr')); pb.addEventListener('click',function(){ navigator.clipboard.readText().then(function(t){ t=String(t||'').toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20); if(t) inp.value=t; }).catch(function(){}); }); } }catch(e){}
             function close(){ try{ document.removeEventListener('keydown',kd,true); o.remove(); }catch(e){} }
-            function kd(e){ if(e.key==='Escape'||e.keyCode===27||e.keyCode===4){ e.preventDefault(); e.stopPropagation(); if(!must) close(); } else if(e.key==='Enter'&&document.activeElement===inp){ go(); } }
+            function kd(e){ var k=e.key, c=e.keyCode, ae=document.activeElement, no=o.querySelector('#refno'), pbb=o.querySelector('button:not(#refok):not(#refno)');
+                if(k==='Escape'||k==='GoBack'||k==='BrowserBack'||c===27||c===4||(c===8&&ae!==inp)){ e.preventDefault(); e.stopPropagation(); if(!must) close(); return; }
+                var dir=(k==='ArrowDown'||c===40)?'d':(k==='ArrowUp'||c===38)?'u':(k==='ArrowRight'||c===39)?'r':(k==='ArrowLeft'||c===37)?'l':'';
+                if(dir){ if(ae===inp&&(dir==='l'||dir==='r')&&inp.value) return;   // let the caret move while there is text
+                    var list=[inp]; if(pbb) list.push(pbb); list.push(ok); if(!must&&no) list.push(no); var i=list.indexOf(ae); if(i<0) i=0;
+                    if((dir==='r'||dir==='l')&&(ae===ok||ae===no)&&!must&&no) i=(ae===ok)?list.indexOf(no):list.indexOf(ok);
+                    else if(dir==='d'||dir==='r') i=Math.min(list.length-1,i+1); else i=Math.max(0,i-1);
+                    e.preventDefault(); e.stopPropagation(); try{ list[i].focus(); }catch(_f){} return; }
+                if((k==='Enter'||c===13)&&ae&&ae.tagName==='BUTTON'){ e.preventDefault(); e.stopPropagation(); ae.click(); return; }
+                if(k==='Enter'&&ae===inp){ go(); } }
             function go(){ var c=(inp.value||'').toUpperCase().replace(/[^A-Z0-9-]/g,''); if(!c){ er.textContent='Enter the code first.'; return; } ok.disabled=true; er.textContent='';
                 Supa.rpc('byo_referral_claim',{ p_device_key:deviceId(), p_code:c },function(err,res){ ok.disabled=false;
                     if(err||!res){ er.textContent='Could not reach BYO. Check your internet and try again.'; return; }
