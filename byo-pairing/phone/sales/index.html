@@ -33,10 +33,47 @@ details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}summary
 .empty{padding:22px;text-align:center;color:var(--mut)}.hide{display:none!important}
 @media (min-width:700px){.wrap{max-width:880px;zoom:1.35}.login{margin-top:6vh}}
 
-.c2{padding:10px 14px}.c2 .r1,.c2 .r2{display:flex;align-items:center;justify-content:space-between;gap:10px}.c2 .r2{margin-top:6px}
-.c2 .who{min-width:0;display:flex;align-items:baseline}.c2 .meta{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.c2 .meta.hot{color:var(--bad)}
-.c2 .ra button,.c2 .r2>button{flex:0 0 auto;padding:7px 14px;font-size:14px}.lnk{background:none!important;border:0!important;color:var(--acc)!important;padding:4px 6px!important;font-size:13px!important;text-decoration:underline;cursor:pointer;flex:0 0 auto}
-.payl{margin-top:8px}
+html,body{background:#060c18}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:2px 0 10px}
+.bar .tabs{flex:1 1 auto;margin:0;padding:0;gap:6px}
+.bar .tab{padding:6px 11px;font-size:12.5px;background:#0c1526;border:1px solid #1b2b48;color:#9fb3d1}.bar .tab.on{background:#22e6ff;border-color:#22e6ff;color:#041322}
+#q{flex:0 1 230px;width:auto;margin:0;padding:0 12px;height:36px;border-radius:10px;background:#0c1526;border:1px solid #1b2b48;font-size:16px}#q:focus{outline:0;border-color:#22e6ff}
+@media(max-width:560px){#q{flex:1 1 100%}}
+#list{container-type:inline-size}
+.it{margin-bottom:6px}
+.dv{position:relative;display:grid;grid-template-columns:112px 112px minmax(0,1fr) 196px 96px;align-items:center;column-gap:12px;height:48px;padding:0 12px 0 16px;background:#0c1526;border:1px solid #1b2b48;border-radius:12px;overflow:hidden;cursor:pointer;transition:background .12s}
+.dv:hover{background:#111e36}
+.dv::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac,#64748b)}
+.idc{display:flex;align-items:center;gap:4px;min-width:0}
+.idt{font:800 13.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.5px;color:#fff;cursor:copy;white-space:nowrap}
+.cp{background:none;border:0;padding:0;width:22px;height:22px;display:grid;place-items:center;color:#6f86ab;border-radius:6px;flex:0 0 auto}.cp:hover{color:#22e6ff;background:#12203a}.cp svg{width:14px;height:14px}.cp.ok{color:#34d399}
+.cb{height:30px;padding:0 9px;display:inline-flex;align-items:center;gap:6px;border-radius:9px;background:rgba(34,230,255,.14);border:1px solid rgba(34,230,255,.45);box-shadow:0 0 12px rgba(34,230,255,.18);color:#e8fcff;white-space:nowrap;justify-self:start}
+.cb i{font:700 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-style:normal;text-transform:uppercase;letter-spacing:.1em;color:#7fefff}
+.cb b{font:800 16px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.16em}
+.cb.ok{border-color:#34d399;box-shadow:0 0 12px rgba(52,211,153,.3)}
+.nc{justify-self:start;padding:4px 9px;border-radius:8px;background:#0a1322;border:1px dashed #263b61;color:#6f86ab;font-size:12px;font-weight:700;white-space:nowrap}
+.dash{color:#4a5f82;font-size:16px;padding-left:12px}
+.c3{display:flex;align-items:center;gap:6px;min-width:0;color:#9fb3d1;font-size:12.5px;white-space:nowrap;overflow:hidden}
+.c3 .pf{flex:0 0 auto;display:grid;color:#8fa1bf}.c3 .pf svg{width:14px;height:14px}.c3 .dl{overflow:hidden;text-overflow:ellipsis}.c3 .ds{display:none}
+.c4{display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0;overflow:hidden}
+.dv .pill{font-size:11.5px;padding:3px 9px}
+.dv .pill.pending{background:rgba(251,191,36,.14);color:#fbbf24}.dv .pill.trial{background:rgba(52,211,153,.14);color:#34d399}.dv .pill.paid{background:rgba(52,211,153,.22);color:#6ee7b7}.dv .pill.expiring{background:rgba(248,113,113,.15);color:#f87171}.dv .pill.expired{background:#1a2338;color:#8fa1bf}
+.chip{font:700 11.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:3px 7px;border-radius:7px;background:#091120;border:1px solid #1b2b48;color:#c6d4ec}.chip.hot{color:#f87171;border-color:#5a2a2a}.chip .sh{display:none}
+.c5{display:flex;justify-content:flex-end}
+.bt{width:96px;height:30px;padding:0;border-radius:8px;font-size:13px;font-weight:800;background:#22e6ff;color:#041322;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt.nd{background:#091120;color:var(--fg);border:1px solid #263b61}
+.dd{margin-top:4px;padding:8px 12px;background:#0a1322;border:1px solid #1b2b48;border-radius:10px;font-size:12.5px;color:#9fb3d1;line-height:1.6}.dd b{color:#eaf0fb}
+.dd .payl{margin-top:6px}
+.rxrow{margin-top:4px;padding:8px 10px;background:#0a1322;border:1px solid #1b2b48;border-radius:10px}
+@container (max-width:600px){
+ .dv{grid-template-columns:104px 104px minmax(0,1fr) auto 84px;column-gap:8px;padding:0 8px 0 12px}
+ .c3 .dl{display:none}.c3 .ds{display:inline}.c4 .pill{display:none}.chip .l{display:none}.chip .sh{display:inline}.bt{width:84px}
+}
+@container (max-width:420px){
+ .dv{grid-template-columns:52px 94px minmax(0,1fr) auto 72px;column-gap:6px;padding:0 6px 0 11px}
+ .cp{display:none}.bt{width:72px;height:28px;font-size:12px}.cb{padding:0 7px;gap:5px}.cb b{font-size:15.5px;letter-spacing:.1em}.idt{font-size:13px;letter-spacing:.2px}.c3{font-size:12px;gap:5px}
+}
+@container (max-width:340px){ .chip{display:none} }
 </style></head><body><div class="wrap">
 <section id="login" class="login card hide">
   <h1>BYO Sales</h1><p class="mut">Sign in to see the customers you brought in.</p>
@@ -59,7 +96,7 @@ details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}summary
   <div class="tiles" id="tiles"></div>
 
   <h2 style="margin-top:6px">Your customers</h2>
-  <div class="tabs" id="tabs"></div>
+  <div class="bar"><div class="tabs" id="tabs"></div><input id="q" type="search" placeholder="Search ID, code or platform" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search customers"></div>
   <div id="list"></div>
 </section></div>
 <script>
@@ -125,36 +162,56 @@ function paintTiles(){ var m=J.month, A=J.all_time, a=J.agent;
 function elapsed(){ return Math.floor((Date.now()-gotAt)/1000); }
 function secs(c){ return c.seconds_left==null?null:(c.seconds_left-elapsed()); }
 function statusOf(c){ var s=secs(c); if((c.status==='trial'||c.status==='expiring')&&s!=null&&s<=0) return 'expired'; if(c.status==='trial'&&s!=null&&s<=172800) return 'expiring'; return c.status; }
-var LABEL={pending:'Pending Activation',trial:'Trial Active',expiring:'Trial Expiring Soon',paid:'Paid',expired:'Expired'};
-var TABS=[['all','All Users',function(){return true}],['pending','Needs Activation',function(s){return s==='pending'}],['trial','On Trial',function(s){return s==='trial'||s==='expiring'}],['expiring','Expiring Soon',function(s){return s==='expiring'}],['paid','Paid / Active',function(s){return s==='paid'}]];
+var LABEL={pending:'Pending Activation',trial:'Trial Active',expiring:'Expiring Soon',paid:'Paid',expired:'Expired'};
+var ACC={pending:'#fbbf24',trial:'#34d399',expiring:'#f87171',paid:'#34d399',expired:'#64748b'};
+var TABS=[['all','All',function(){return true}],['pending','Pending Activation',function(s){return s==='pending'}],['trial','Trial Active',function(s){return s==='trial'||s==='expiring'}],['paid','Paid',function(s){return s==='paid'}]];
+var SV='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+var ICON={cp:SV+'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
+  web:SV+'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>',
+  and:SV+'<path d="M6 17v-6a6 6 0 0 1 12 0v6a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z"/><path d="M9 5 7.5 2.5M15 5l1.5-2.5"/><path d="M9.5 11h.01M14.5 11h.01"/></svg>',
+  tv:SV+'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/></svg>'};
+function plat(p){ p=String(p||''); return /android/i.test(p)?ICON.and:(/web/i.test(p)?ICON.web:ICON.tv); }
+function d1(t,short){ if(!t) return '-'; return new Date(t).toLocaleDateString('en-GB',short?{day:'numeric',month:'short'}:{day:'numeric',month:'short',year:'numeric'}); }
+function sh(sec){ if(sec==null) return ''; if(sec<=0) return 'ended'; var d=Math.floor(sec/86400), h=Math.floor(sec%86400/3600), m=Math.floor(sec%3600/60); return d>0?(d+'d'):(h>0?(h+'h'):(m+'m')); }
+function flashOk(el){ el.classList.add('ok'); setTimeout(function(){ el.classList.remove('ok'); },1200); }
+function qcopy(txt,el){ var done=function(){ flashOk(el); };
+  try{ navigator.clipboard.writeText(txt).then(done,fb); }catch(e){ fb(); }
+  function fb(){ try{ var t=document.createElement('textarea'); t.value=txt; t.style.cssText='position:fixed;opacity:0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done(); }catch(e){} } }
 function paintList(){ var C=J.customers||[];
-  var openD={}; [].forEach.call(document.querySelectorAll('#list details[open]'),function(d){ openD[d.getAttribute('data-r')]=1; });
   $('tabs').innerHTML=TABS.map(function(t){ var n=C.filter(function(c){return t[2](statusOf(c))}).length; return '<button class="tab'+(filter===t[0]?' on':'')+'" data-f="'+t[0]+'">'+t[1]+' ('+n+')</button>'; }).join('');
   [].forEach.call($('tabs').children,function(b){ b.onclick=function(){ filter=b.getAttribute('data-f'); paintList(); }; });
-  var fn=TABS.filter(function(t){return t[0]===filter})[0][2], rows=C.filter(function(c){return fn(statusOf(c))});
-  if(!rows.length){ $('list').innerHTML='<div class="card empty">'+(C.length?'No customers in this group.':'No customers yet. Share your referral link to get started.')+'</div>'; return; }
+  var fn=TABS.filter(function(t){return t[0]===filter})[0][2], qq=(($('q')||{}).value||'').trim().toLowerCase();
+  var rows=C.filter(function(c){ if(!fn(statusOf(c))) return false; if(!qq) return true;
+    return [c.tv_id,CODES[c.rid],c.platform].some(function(f){ return String(f||'').toLowerCase().indexOf(qq)>=0; }); });
+  if(!rows.length){ $('list').innerHTML='<div class="card empty">'+(C.length?(qq?'No customers match that search.':'No customers in this group.'):'No customers yet. Share your referral link to get started.')+'</div>'; return; }
   $('list').innerHTML=rows.map(function(c){ var st=statusOf(c), s=secs(c), P=c.payments||[], rid=esc(c.rid), code=CODES[c.rid];
-    // Every customer is two lines, so a long list stays easy to scan. Line 1: who + status. Line 2: the detail + the one action.
-    var who=(!c.activated&&code)?('<span class="id">'+esc(code)+'</span><span class="mut sm" style="margin-left:8px">activation code on their screen</span>'):('<span class="id">'+esc(c.tv_id)+'</span>');
-    var bits=[]; if(!c.activated){ bits.push('Installed '+dt(c.referred_at)); if(c.platform) bits.push(c.platform); if(code) bits.push('ID '+c.tv_id); else bits.push('no code showing right now'); }
-    else { if(st==='trial'||st==='expiring') bits.push('Trial: '+left(s)); else if(st==='paid'&&s!=null) bits.push('Paid access: '+left(s)); else if(st==='expired') bits.push('Expired');
-        bits.push('Activated '+dt(c.activated_at)+(c.delivered?'':' (waiting for the app)')); if(c.platform) bits.push(c.platform);
-        if(c.months>0) bits.push(mths(c.months)+' paid mo · '+kes(c.commission)); }
+    var idc='<span class="idc"><span class="idt" data-cp="'+esc(c.tv_id)+'" title="Copy device ID">'+esc(c.tv_id)+'</span><button class="cp" data-cp="'+esc(c.tv_id)+'" aria-label="Copy device ID" title="Copy device ID">'+ICON.cp+'</button></span>';
+    var codeCol=!c.activated?(code?('<button class="cb" data-cp="'+esc(code)+'" title="Copy activation code" aria-label="Activation code '+esc(code)+'"><i>Code</i><b>'+esc(code)+'</b></button>'):'<span class="nc">No code</span>'):'<span class="dash">—</span>';
+    var when=c.activated?c.activated_at:c.referred_at, wl=c.activated?'Activated ':'Installed ';
+    var c3='<span class="pf" title="'+esc(c.platform||'')+'">'+plat(c.platform)+'</span><span class="dl">'+wl+esc(d1(when))+'</span><span class="ds">'+esc(d1(when,true))+'</span>';
+    var timed=c.activated&&s!=null&&(st==='trial'||st==='expiring'||st==='paid');
+    var c4='<span class="pill '+st+'">'+LABEL[st]+'</span>'+(timed?('<span class="chip'+(st==='expiring'?' hot':'')+'"><span class="l">'+esc(left(s))+'</span><span class="sh">'+esc(sh(s))+'</span></span>'):'');
     var canRx=c.activated&&(st==='trial'||st==='expiring'||st==='paid');
-    var btn=!c.activated?('<button data-a="'+rid+'"'+(busy[c.rid]?' disabled':'')+'>'+(busy[c.rid]?'Activating...':'Activate')+'</button>')
-        :(canRx?('<button class="ghost" data-rx="'+rid+'">New device</button>'):'');
-    var pt=P.length?('<button class="lnk" data-pt="'+rid+'">Payments ('+P.length+')</button>'):'';
-    var rxp=(canRx&&rxOpen[c.rid])?('<div class="act" style="margin-top:8px"><input class="rxin" data-i="'+rid+'" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Code" value="'+esc(rxVal[c.rid]||'')+'" style="flex:0 0 100px;text-align:center;font-size:18px;letter-spacing:4px"><button data-rg="'+rid+'"'+(busy['rx'+c.rid]?' disabled':'')+'>'+(busy['rx'+c.rid]?'Reactivating...':'Reactivate')+'</button><button class="ghost" data-rc="'+rid+'">Cancel</button></div><div class="mut sm" style="margin-top:4px">Type the 4 digit code now showing on the customer\'s new screen.</div>'):'';
-    var pay=(P.length&&ptOpen[c.rid])?('<div class="payl">'+P.map(function(p){ return '<div class="pay"><span>'+esc(dt(p.at))+' · '+esc(p.method||'')+'</span><b>'+esc(fmt(p.amount)+' '+(p.currency||''))+'</b><span class="mut">Ref '+esc(p.ref||'-')+'</span><span class="mut" style="text-align:right">'+esc(p.plan||'')+(p.from?(' · '+esc(dt(p.from))+' to '+esc(dt(p.until))):'')+'</span></div>'; }).join('')+'</div>'):'';
-    return '<div class="card cust c2"><div class="r1"><div class="who">'+who+'</div><span class="pill '+st+'">'+LABEL[st]+'</span></div>'
-        +'<div class="r2"><div class="meta mut sm'+(st==='expiring'?' hot':'')+'">'+esc(bits.join(' · '))+(pt?' · ':'')+'</div>'+pt+(btn?'<div class="ra">'+btn+'</div>':'')+'</div>'+rxp+pay+'</div>'; }).join('');
+    var btn=!c.activated?('<button class="bt" data-a="'+rid+'"'+(busy[c.rid]?' disabled':'')+'>'+(busy[c.rid]?'Activating...':'Activate')+'</button>')
+        :(canRx?('<button class="bt nd" data-rx="'+rid+'">New device</button>'):'');
+    var rxp=(canRx&&rxOpen[c.rid])?('<div class="rxrow"><div class="act" style="margin-top:0"><input class="rxin" data-i="'+rid+'" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Code" value="'+esc(rxVal[c.rid]||'')+'" style="flex:0 0 100px;text-align:center;font-size:18px;letter-spacing:4px"><button data-rg="'+rid+'"'+(busy['rx'+c.rid]?' disabled':'')+'>'+(busy['rx'+c.rid]?'Reactivating...':'Reactivate')+'</button><button class="ghost" data-rc="'+rid+'">Cancel</button></div><div class="mut sm" style="margin-top:4px">Type the 4 digit code now showing on the customer\'s new screen.</div></div>'):'';
+    var det='';
+    if(ptOpen[c.rid]){ var L=['<b>'+esc(LABEL[st])+'</b>'+(timed?' · '+esc(left(s)):'')+(c.platform?' · '+esc(c.platform):''),'Installed '+esc(d1(c.referred_at))];
+      if(c.activated) L.push('Activated '+esc(d1(c.activated_at))+(c.delivered?'':' (waiting for the app)'));
+      if(c.months>0) L.push(esc(mths(c.months))+' paid months · '+esc(kes(c.commission)));
+      det='<div class="dd">'+L.join('<br>')+(P.length?('<div class="payl">'+P.map(function(p){ return '<div class="pay"><span>'+esc(dt(p.at))+' · '+esc(p.method||'')+'</span><b>'+esc(fmt(p.amount)+' '+(p.currency||''))+'</b><span class="mut">Ref '+esc(p.ref||'-')+'</span><span class="mut" style="text-align:right">'+esc(p.plan||'')+(p.from?(' · '+esc(dt(p.from))+' to '+esc(dt(p.until))):'')+'</span></div>'; }).join('')+'</div>'):'')+'</div>'; }
+    return '<div class="it"><div class="dv" data-r="'+rid+'" style="--ac:'+ACC[st]+'">'+idc+codeCol+'<div class="c3">'+c3+'</div><div class="c4">'+c4+'</div><div class="c5">'+btn+'</div></div>'+rxp+det+'</div>'; }).join('');
   [].forEach.call($('list').querySelectorAll('[data-a]'),function(b){ b.onclick=function(){ activate(b.getAttribute('data-a')); }; });
   [].forEach.call($('list').querySelectorAll('[data-rx]'),function(b){ b.onclick=function(){ rxOpen[b.getAttribute('data-rx')]=1; paintList(); var i=$('list').querySelector('.rxin[data-i="'+b.getAttribute('data-rx')+'"]'); if(i) i.focus(); }; });
-  [].forEach.call($('list').querySelectorAll('[data-pt]'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-pt'); if(ptOpen[k]) delete ptOpen[k]; else ptOpen[k]=1; paintList(); }; });
   [].forEach.call($('list').querySelectorAll('[data-rc]'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-rc'); delete rxOpen[k]; delete rxVal[k]; paintList(); }; });
   [].forEach.call($('list').querySelectorAll('[data-rg]'),function(b){ b.onclick=function(){ reactivate(b.getAttribute('data-rg')); }; });
   [].forEach.call($('list').querySelectorAll('.rxin'),function(i){ i.oninput=function(){ i.value=i.value.replace(/[^0-9]/g,'').slice(0,4); rxVal[i.getAttribute('data-i')]=i.value; };
     i.onkeydown=function(e){ if(e.key==='Enter'){ e.preventDefault(); reactivate(i.getAttribute('data-i')); } }; }); }
+$('list').addEventListener('click',function(e){ var t=e.target;
+  var cp=t.closest&&t.closest('[data-cp]'); if(cp){ qcopy(cp.getAttribute('data-cp'),cp.classList.contains('idt')?cp.nextSibling||cp:cp); return; }
+  if(t.closest&&t.closest('button,input')) return;
+  var row=t.closest&&t.closest('.dv'); if(row){ var k=row.getAttribute('data-r'); if(ptOpen[k]) delete ptOpen[k]; else ptOpen[k]=1; paintList(); } });
+$('q').addEventListener('input',function(){ if(J) paintList(); });
 var rxOpen={}, rxVal={}, ptOpen={}, CODES={};
 function reactivate(rid){ var code=(rxVal[rid]||'').replace(/[^0-9]/g,''); if(busy['rx'+rid]) return;
   if(code.length!==4){ flash('Type the 4 digit code shown on the customer\'s screen.','bad'); return; }
