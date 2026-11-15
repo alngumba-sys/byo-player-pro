@@ -18148,6 +18148,11 @@ var Pin=(function(){
                 profiles:(Store.profiles||[]).length, billing:b, library:lib, diag:diag(false) }; }
         // A salesperson tapped Activate: the connection assigned to this device is collected and added by itself.
         var provBusy=false, provNext=0;
+        // A salesperson's Activate must not leave the first-run setup screen ("Activate your device") on top of the app.
+        function leaveSetup(){ try{ if(typeof _leaveActivation==='function') _leaveActivation(); }catch(e){}
+            try{ Store.settings.firstRun=false; Store.save(); }catch(e){}
+            try{ if(typeof closeWelcome==='function') closeWelcome(); }catch(e){}
+            try{ if(typeof goTo==='function') goTo('home'); }catch(e){} }
         function pickupProvision(){ if(provBusy||Date.now()<provNext) return; var k=devKey(); if(!k||typeof Supa==='undefined') return; provBusy=true;
             Supa.rpc('byo_provision_fetch',{ p_device_key:k },function(err,res){
                 if(err||!res||!res.conn){ provBusy=false; return; }
@@ -18156,7 +18161,7 @@ var Pin=(function(){
                     Supa.rpc('byo_provision_ack',{ p_device_key:k, p_ok:!!ok, p_err:String(why||'').slice(0,180) },function(){ if(ok) setTimeout(checkin,1500); }); }
                 var guard=setTimeout(function(){ report(false,'timeout'); },600000);
                 try{ Multi.addFromPhone({ mode:p.mode, name:p.name||'BYO Player', url:p.url||'', epg:p.epg||'', server:p.server||'', user:p.user||'', pass:p.pass||'', via:'support' },function(r){ clearTimeout(guard);
-                        if(r&&r.ok){ report(true); try{ message('BYO Player is ready','Your account has been activated and your channels, movies and series are loading.\nHappy watching!',true,'Start watching'); }catch(e){} try{ unlockedNow(); }catch(e){} }
+                        if(r&&r.ok){ report(true); try{ leaveSetup(); }catch(e){} try{ message('BYO Player is ready','Your account has been activated and your channels, movies and series are loading.\nHappy watching!',true,'Start watching'); }catch(e){} try{ unlockedNow(); }catch(e){} }
                         else report(false,(r&&r.err)||'could not load'); }); }
                 catch(e){ clearTimeout(guard); report(false,String(e&&e.message||e)); } }); }
         function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res); if(typeof res.referred!=='undefined'){ try{ localStorage.setItem('byo_ref_on','1'); if(res.referred) localStorage.setItem('byo_ref_done','1'); }catch(_r){}  if(res.ref_required&&!res.referred){ try{ Billing.requireReferral(); }catch(_a){} } }   /* existing and updated installs are never asked */
