@@ -731,13 +731,21 @@ public class PlayerActivity extends Activity {
                 LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(ICON_DP(), ICON_DP()); plp.setMargins(dp(3), 0, dp(3), 0); plp.gravity = Gravity.CENTER_VERTICAL;
                 basic.addView(pick, 0, plp);
             }
+            // Next episode: its own button, so the remote can reach it without opening the episode list.
+            if (!live && "episode".equals(type) && (!nextEps.isEmpty() || allEps != null)) {
+                TextView nx = ctrlPill("\u23ED", v -> { if (epAdvanced < nextEps.size()) playNextEpisode(); else if (allEps != null) showEpisodes(); });
+                nx.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17); nx.setPadding(0, 0, 0, 0); nx.setContentDescription("Next episode");
+                focusNames.put(nx, "Next episode");
+                LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(ICON_DP(), ICON_DP()); nlp.setMargins(dp(3), 0, dp(3), 0); nlp.gravity = Gravity.CENTER_VERTICAL;
+                basic.addView(nx, 1, nlp);
+            }
             // Audio language: globe icon; lists the languages this stream carries.
             android.widget.ImageButton langBtn = new android.widget.ImageButton(this);
             langBtn.setImageResource(R.drawable.ic_language); langBtn.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
             langBtn.setBackgroundColor(0); langBtn.setFocusable(true); langBtn.setContentDescription("Audio language");
             langBtn.setOnClickListener(v -> showAudioLanguages());
             LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(ICON_DP(), ICON_DP()); llp.setMargins(dp(3), 0, dp(3), 0); llp.gravity = Gravity.CENTER_VERTICAL;
-            basic.addView(langBtn, (!live && ("episode".equals(type) || "movie".equals(type))) ? 1 : 0, llp);
+            basic.addView(langBtn, (!live && ("episode".equals(type) || "movie".equals(type))) ? (("episode".equals(type) && (!nextEps.isEmpty() || allEps != null)) ? 2 : 1) : 0, llp);
             // Icon only (no "Fit" text), same round size as the other player buttons; the mode name shows when pressed.
             displayBtn = ctrlPill("\u26F6", v -> cycleResize());
             displayBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17); displayBtn.setPadding(0, 0, 0, 0);
@@ -1039,6 +1047,11 @@ public class PlayerActivity extends Activity {
         epPanel.post(() -> { if (f != null) { f.requestFocus(); fsc.scrollTo(0, Math.max(0, f.getTop() - dp(120))); } else if (list.getChildCount() > 1) list.getChildAt(1).requestFocus(); });
     }
 
+    private static boolean isInside(View v, View ancestor) {
+        for (View q = v; q != null; q = (q.getParent() instanceof View) ? (View) q.getParent() : null) if (q == ancestor) return true;
+        return false;
+    }
+
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
         int kc = e.getKeyCode();
         if (epPanelShowing()) {
@@ -1069,6 +1082,26 @@ public class PlayerActivity extends Activity {
                 else if (!alertUrl.isEmpty()) watchAlert(); else hideAlert.run();
             }
             return true;
+        }
+        // Remote, movies and episodes: Down from the play row lands on the long seek bar (Left/Right then scrub),
+        // Down again reaches the button row, and Up walks back the same way. Without this the seek bar was skipped.
+        if (e.getAction() == KeyEvent.ACTION_DOWN && !live && view != null && view.isControllerFullyVisible() && (kc == KeyEvent.KEYCODE_DPAD_UP || kc == KeyEvent.KEYCODE_DPAD_DOWN)) {
+            View f = getCurrentFocus();
+            View tb = view.findViewById(androidx.media3.ui.R.id.exo_progress);
+            View basic = view.findViewById(androidx.media3.ui.R.id.exo_basic_controls);
+            View centre = view.findViewById(androidx.media3.ui.R.id.exo_play_pause);
+            boolean inTop = f != null && topBar != null && isInside(f, topBar);
+            boolean onTb = f != null && tb != null && f == tb;
+            boolean inBasic = f != null && basic != null && isInside(f, basic);
+            if (tb != null && tb.getVisibility() == View.VISIBLE) {
+                if (kc == KeyEvent.KEYCODE_DPAD_DOWN && !inTop && !onTb && !inBasic) { tb.requestFocus(); armAutoHide(); return true; }
+                if (kc == KeyEvent.KEYCODE_DPAD_UP && inBasic) { tb.requestFocus(); armAutoHide(); return true; }
+                if (kc == KeyEvent.KEYCODE_DPAD_UP && onTb && centre != null && centre.getVisibility() == View.VISIBLE) { centre.requestFocus(); armAutoHide(); return true; }
+                if (kc == KeyEvent.KEYCODE_DPAD_DOWN && onTb && basic instanceof android.view.ViewGroup) {
+                    android.view.ViewGroup bg = (android.view.ViewGroup) basic;
+                    for (int i = 0; i < bg.getChildCount(); i++) { View c = bg.getChildAt(i); if (c.getVisibility() == View.VISIBLE && c.isFocusable()) { c.requestFocus(); armAutoHide(); return true; } }
+                }
+            }
         }
         // Remote: Up reaches the top bar (back, quality, favourite star); Down returns to the controls.
         if (e.getAction() == KeyEvent.ACTION_DOWN && topBar != null && view != null && (kc == KeyEvent.KEYCODE_DPAD_UP || kc == KeyEvent.KEYCODE_DPAD_DOWN)) {
