@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#05070d">
 <style>html.byo-web .wz-ver{display:none!important}</style>
 <script src="pwainstall.js"></script>
+<script>try{ var _r=new URLSearchParams(location.search).get('ref'); if(_r){ _r=_r.toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20); if(_r) localStorage.setItem('byo_ref_pending',_r); } }catch(e){}</script>
 <script>(function(){ try{
   // Web version on a phone or tablet: use the phone layout the Android app uses.
   if(!window.ByoAndroid){ var d=document.documentElement, ua=navigator.userAgent||'';
@@ -13263,18 +13264,25 @@ var Pin=(function(){
             function paint(){ var d=refDone(); el.innerHTML='<div class="pb-ic">'+icon('i-clock')+'</div><div class="pb-text"><div class="pb-title">'+(d?'Referral code added':'Have a salesperson\'s code?')+'</div><div class="pb-sub">'+(d?'Thank you. Your salesperson has been credited.':'Enter it so the person who introduced BYO Player to you is credited.')+'</div></div>'+(d?'':'<div class="pb-cta">Enter code'+icon('i-chev-r')+'</div>'); }
             paint(); if(!refDone()) el.addEventListener('click',function(){ openRef(paint); }); return el; }
         function openRef(done){ var o=document.createElement('div'); o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,10,20,.85);display:flex;align-items:center;justify-content:center;padding:16px';
-            o.innerHTML='<div style="width:100%;max-width:420px;background:#121c33;border-radius:16px;padding:22px;color:#eaf0fb;font-family:inherit"><div style="font-size:20px;font-weight:800;margin-bottom:6px">Salesperson code</div><div style="color:#9fb0cc;margin-bottom:14px">Type the code your salesperson gave you.</div>'+
-                '<input id="refin" data-focusable="true" maxlength="12" autocomplete="off" autocapitalize="characters" style="width:100%;padding:14px;border-radius:12px;border:2px solid #2a3a5c;background:#0b1220;color:#fff;font-size:22px;letter-spacing:3px;text-transform:uppercase;text-align:center">'+
-                '<div id="referr" style="color:#ff8a8a;min-height:22px;margin:8px 0"></div><div style="display:flex;gap:10px"><button id="refok" data-focusable="true" style="flex:1;padding:14px;border:0;border-radius:12px;background:#22d3ee;color:#04202a;font-weight:800;font-size:17px">Apply</button><button id="refno" data-focusable="true" style="flex:1;padding:14px;border:0;border-radius:12px;background:#1d2a47;color:#eaf0fb;font-weight:700;font-size:17px">Cancel</button></div></div>';
+            o.innerHTML='<div style="width:100%;max-width:420px;background:#121c33;border-radius:16px;padding:22px;color:#eaf0fb;font-family:inherit"><div style="font-size:20px;font-weight:800;margin-bottom:6px">Enter referral code</div><div style="color:#9fb0cc;margin-bottom:14px">Type the code your salesperson gave you. No code? Tap Skip.</div>'+
+                '<input id="refin" data-focusable="true" maxlength="20" autocomplete="off" autocapitalize="characters" style="width:100%;padding:14px;border-radius:12px;border:2px solid #2a3a5c;background:#0b1220;color:#fff;font-size:22px;letter-spacing:3px;text-transform:uppercase;text-align:center">'+
+                '<div id="referr" style="color:#ff8a8a;min-height:22px;margin:8px 0"></div><div style="display:flex;gap:10px"><button id="refok" data-focusable="true" style="flex:1;padding:14px;border:0;border-radius:12px;background:#22d3ee;color:#04202a;font-weight:800;font-size:17px">Apply</button><button id="refno" data-focusable="true" style="flex:1;padding:14px;border:0;border-radius:12px;background:#1d2a47;color:#eaf0fb;font-weight:700;font-size:17px">Skip</button></div></div>';
             document.body.appendChild(o); var inp=o.querySelector('#refin'), er=o.querySelector('#referr'), ok=o.querySelector('#refok');
+            try{ var pend=localStorage.getItem('byo_ref_pending'); if(pend) inp.value=String(pend).toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20); }catch(e){}
+            try{ if(navigator.clipboard&&navigator.clipboard.readText){ var pb=document.createElement('button'); pb.textContent='Paste code'; pb.setAttribute('data-focusable','true'); pb.style.cssText='margin-top:8px;padding:8px 14px;border:0;border-radius:10px;background:transparent;color:#22d3ee;font-weight:700;font-size:15px'; inp.parentNode.insertBefore(pb, o.querySelector('#referr')); pb.addEventListener('click',function(){ navigator.clipboard.readText().then(function(t){ t=String(t||'').toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20); if(t) inp.value=t; }).catch(function(){}); }); } }catch(e){}
             function close(){ try{ document.removeEventListener('keydown',kd,true); o.remove(); }catch(e){} }
             function kd(e){ if(e.key==='Escape'||e.keyCode===27||e.keyCode===4){ e.preventDefault(); e.stopPropagation(); close(); } else if(e.key==='Enter'&&document.activeElement===inp){ go(); } }
-            function go(){ var c=(inp.value||'').trim(); if(!c){ er.textContent='Enter the code first.'; return; } ok.disabled=true; er.textContent='';
+            function go(){ var c=(inp.value||'').toUpperCase().replace(/[^A-Z0-9-]/g,''); if(!c){ er.textContent='Enter the code first.'; return; } ok.disabled=true; er.textContent='';
                 Supa.rpc('byo_referral_claim',{ p_device_key:deviceId(), p_code:c },function(err,res){ ok.disabled=false;
                     if(err||!res){ er.textContent='Could not reach BYO. Check your internet and try again.'; return; }
                     if(!res.ok){ er.textContent=res.error||'That code did not work.'; return; }
-                    try{ localStorage.setItem('byo_ref_done','1'); }catch(e){} close(); try{ done&&done(); }catch(e){} }); }
+                    try{ localStorage.setItem('byo_ref_done','1'); localStorage.removeItem('byo_ref_pending'); }catch(e){} close(); try{ done&&done(); }catch(e){} }); }
             ok.addEventListener('click',go); o.querySelector('#refno').addEventListener('click',close); document.addEventListener('keydown',kd,true); setTimeout(function(){ try{ inp.focus(); }catch(e){} },50); }
+        // First run: ask once for the salesperson's code (pre-filled when the page was opened from a ?ref= link). Never during setup or playback.
+        function askReferral(tries){ try{ tries=tries||0; if(refDone()||localStorage.getItem('byo_ref_asked')||!localStorage.getItem('byo_ref_on')||document.getElementById('refin')) return;
+                var w=document.getElementById('welcome'), pv=document.getElementById('view-player'), busy=(w&&!w.classList.contains('hidden')&&w.offsetParent!==null)||(pv&&pv.classList.contains('active-view'))||wallOpen;
+                if(busy){ if(tries<40) setTimeout(function(){ askReferral(tries+1); },8000); return; }
+                localStorage.setItem('byo_ref_asked','1'); openRef(function(){ try{ if(document.getElementById('view-home').classList.contains('active-view')) renderHome(); }catch(e){} }); }catch(e){} }
         function homeBanner(){ return isBlocked()?statusBanner():null; }
         function statusBanner(){ if(isBlocked()){ var bb=document.createElement('div'); bb.className='pay-banner bl-banner exp'; bb.setAttribute('data-focusable','true'); bb.tabIndex=0;
                 bb.innerHTML='<div class="pb-ic">'+icon('i-lock')+'</div><div class="pb-text"><div class="pb-title">BYO Player is paused on this TV</div><div class="pb-sub">Contact '+esc(BILLING_CONFIG.supportEmail)+' or get remote help.</div></div><div class="pb-cta">Details'+icon('i-chev-r')+'</div>';
@@ -13488,7 +13496,7 @@ var Pin=(function(){
             try{ Pay.applyLocks(); }catch(e){} refreshBanner(); focusFirst(); }
 
         return { boot:boot, begin:begin, renderTrialStep:renderTrialStep, allow:allow, canPlay:canPlay, locked:locked, inTrial:inTrial, daysLeft:daysLeft,
-                 homeBanner:homeBanner, statusBanner:statusBanner, referralRow:referralRow, remind:remind, leftMs:leftMs, openWall:openWall, closeWall:closeWall, isWallOpen:function(){ return wallOpen; }, status:status,
+                 homeBanner:homeBanner, statusBanner:statusBanner, referralRow:referralRow, askReferral:askReferral, remind:remind, leftMs:leftMs, openWall:openWall, closeWall:closeWall, isWallOpen:function(){ return wallOpen; }, status:status,
                  trialEndsAt:trialEndsAt, subActive:subActive, deviceId:deviceId, hwId:hwId, sync:sync, addBonusDays:addBonusDays, setAccess:setAccess, access:acc, isBlocked:isBlocked, grantedUntil:grantedUntil, paintNav:paintNav, navOk:function(n){ return navOk(n); }, _st:function(){ return st; } };
     })();
     try{ window.Billing=Billing; }catch(_e){}
@@ -18125,7 +18133,21 @@ var Pin=(function(){
             try{ lib={ live:(S.live||[]).length, movies:(S.movies||[]).length, series:(S.series||[]).length, connections:(Store.savedPlaylists||[]).length||((Store.cfg&&Store.cfg.mode)?1:0) }; }catch(e){}
             return { version:d.version||'', hw:(function(){ try{ return Billing.hwId(); }catch(e){ return ''; } })(), platform:plat(), model:d.model||'', country:(Store.settings&&Store.settings.region)||'', lang:(Store.settings&&Store.settings.lang)||'en',
                 profiles:(Store.profiles||[]).length, billing:b, library:lib, diag:diag(false) }; }
-        function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res); if(typeof res.referred!=='undefined'){ try{ localStorage.setItem('byo_ref_on','1'); if(res.referred) localStorage.setItem('byo_ref_done','1'); }catch(_r){} }
+        // A salesperson tapped Activate: the connection assigned to this device is collected and added by itself.
+        var provBusy=false, provNext=0;
+        function pickupProvision(){ if(provBusy||Date.now()<provNext) return; var k=devKey(); if(!k||typeof Supa==='undefined') return; provBusy=true;
+            Supa.rpc('byo_provision_fetch',{ p_device_key:k },function(err,res){
+                if(err||!res||!res.conn){ provBusy=false; return; }
+                var p=res.conn, fin=false;
+                function report(ok,why){ if(fin) return; fin=true; provBusy=false; if(!ok) provNext=Date.now()+120000;
+                    Supa.rpc('byo_provision_ack',{ p_device_key:k, p_ok:!!ok, p_err:String(why||'').slice(0,180) },function(){ if(ok) setTimeout(checkin,1500); }); }
+                var guard=setTimeout(function(){ report(false,'timeout'); },600000);
+                try{ Multi.addFromPhone({ mode:p.mode, name:p.name||'BYO Player', url:p.url||'', epg:p.epg||'', server:p.server||'', user:p.user||'', pass:p.pass||'', via:'support' },function(r){ clearTimeout(guard);
+                        if(r&&r.ok){ report(true); try{ message('BYO Player is ready','Your account has been activated and your channels, movies and series are loading.\nHappy watching!',true,'Start watching'); }catch(e){} try{ unlockedNow(); }catch(e){} }
+                        else report(false,(r&&r.err)||'could not load'); }); }
+                catch(e){ clearTimeout(guard); report(false,String(e&&e.message||e)); } }); }
+        function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res); if(typeof res.referred!=='undefined'){ try{ localStorage.setItem('byo_ref_on','1'); if(res.referred) localStorage.setItem('byo_ref_done','1'); }catch(_r){}  if(!res.referred){ try{ setTimeout(function(){ Billing.askReferral(); },3000); }catch(_a){} } }
+            if(res.provision) pickupProvision();
             // access set by support (enable / end / block) is kept on the server and applied at every check-in
             try{ var cur=Billing.access(); var want=(res.access&&res.access.state)?res.access:null; if(JSON.stringify(cur||null)!==JSON.stringify(want)){ var wasLocked=Billing.locked(); Billing.setAccess(want);
                 if(!wasLocked&&Billing.locked()){ try{ if($('view-player').classList.contains('active-view')) exitPlayer(); }catch(e){} try{ Billing.openWall(Billing.isBlocked()?'blocked':'expired'); }catch(e){} }

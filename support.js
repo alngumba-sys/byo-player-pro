@@ -44,7 +44,21 @@
             try{ lib={ live:(S.live||[]).length, movies:(S.movies||[]).length, series:(S.series||[]).length, connections:(Store.savedPlaylists||[]).length||((Store.cfg&&Store.cfg.mode)?1:0) }; }catch(e){}
             return { version:d.version||'', hw:(function(){ try{ return Billing.hwId(); }catch(e){ return ''; } })(), platform:plat(), model:d.model||'', country:(Store.settings&&Store.settings.region)||'', lang:(Store.settings&&Store.settings.lang)||'en',
                 profiles:(Store.profiles||[]).length, billing:b, library:lib, diag:diag(false) }; }
-        function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res); if(typeof res.referred!=='undefined'){ try{ localStorage.setItem('byo_ref_on','1'); if(res.referred) localStorage.setItem('byo_ref_done','1'); }catch(_r){} }
+        // A salesperson tapped Activate: the connection assigned to this device is collected and added by itself.
+        var provBusy=false, provNext=0;
+        function pickupProvision(){ if(provBusy||Date.now()<provNext) return; var k=devKey(); if(!k||typeof Supa==='undefined') return; provBusy=true;
+            Supa.rpc('byo_provision_fetch',{ p_device_key:k },function(err,res){
+                if(err||!res||!res.conn){ provBusy=false; return; }
+                var p=res.conn, fin=false;
+                function report(ok,why){ if(fin) return; fin=true; provBusy=false; if(!ok) provNext=Date.now()+120000;
+                    Supa.rpc('byo_provision_ack',{ p_device_key:k, p_ok:!!ok, p_err:String(why||'').slice(0,180) },function(){ if(ok) setTimeout(checkin,1500); }); }
+                var guard=setTimeout(function(){ report(false,'timeout'); },600000);
+                try{ Multi.addFromPhone({ mode:p.mode, name:p.name||'BYO Player', url:p.url||'', epg:p.epg||'', server:p.server||'', user:p.user||'', pass:p.pass||'', via:'support' },function(r){ clearTimeout(guard);
+                        if(r&&r.ok){ report(true); try{ message('BYO Player is ready','Your account has been activated and your channels, movies and series are loading.\nHappy watching!',true,'Start watching'); }catch(e){} try{ unlockedNow(); }catch(e){} }
+                        else report(false,(r&&r.err)||'could not load'); }); }
+                catch(e){ clearTimeout(guard); report(false,String(e&&e.message||e)); } }); }
+        function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res); if(typeof res.referred!=='undefined'){ try{ localStorage.setItem('byo_ref_on','1'); if(res.referred) localStorage.setItem('byo_ref_done','1'); }catch(_r){}  if(!res.referred){ try{ setTimeout(function(){ Billing.askReferral(); },3000); }catch(_a){} } }
+            if(res.provision) pickupProvision();
             // access set by support (enable / end / block) is kept on the server and applied at every check-in
             try{ var cur=Billing.access(); var want=(res.access&&res.access.state)?res.access:null; if(JSON.stringify(cur||null)!==JSON.stringify(want)){ var wasLocked=Billing.locked(); Billing.setAccess(want);
                 if(!wasLocked&&Billing.locked()){ try{ if($('view-player').classList.contains('active-view')) exitPlayer(); }catch(e){} try{ Billing.openWall(Billing.isBlocked()?'blocked':'expired'); }catch(e){} }

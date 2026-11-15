@@ -1,6 +1,6 @@
 {
-  "versionCode": 238,
-  "versionName": "3.37.53",
+  "versionCode": 239,
+  "versionName": "3.37.54",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Fix: the favourites star, back and quality buttons at the top of the player can now be reached with the remote (press Up)."
+  "notes": "New: enter a salesperson referral code when you first open the app, and connections activated by a salesperson load by themselves."
 }

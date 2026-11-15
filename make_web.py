@@ -60,6 +60,7 @@ HEAD = '''<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#05070d">
 <style>html.byo-web .wz-ver{display:none!important}</style>
 <script src="pwainstall.js"></script>
+<script>try{ var _r=new URLSearchParams(location.search).get('ref'); if(_r){ _r=_r.toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20); if(_r) localStorage.setItem('byo_ref_pending',_r); } }catch(e){}</script>
 <script>(function(){ try{
   // Web version on a phone or tablet: use the phone layout the Android app uses.
   if(!window.ByoAndroid){ var d=document.documentElement, ua=navigator.userAgent||'';

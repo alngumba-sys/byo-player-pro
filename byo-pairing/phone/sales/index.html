@@ -3,27 +3,33 @@
 <meta name="robots" content="noindex,nofollow"><title>BYO Sales</title><meta name="theme-color" content="#0b1220">
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--card:#121c33;--line:#22304f;--fg:#eaf0fb;--mut:#8fa1bf;--acc:#22d3ee;--ok:#34d399;--warn:#fbbf24;--bad:#f87171}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-.wrap{max-width:1000px;margin:0 auto;padding:16px}
-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
-h1{font-size:20px;margin:0}.mut{color:var(--mut)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-input{width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:16px;margin:6px 0 12px}
-button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:700;font-size:15px;background:var(--acc);color:#04202a}
-button.gh{background:#1d2a47;color:var(--fg)}
-.login{max-width:380px;margin:12vh auto 0}.err{color:var(--bad);min-height:20px;margin-bottom:8px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
-.tile .l{font-size:12px;color:var(--mut);font-weight:600}.tile .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
-.code{display:inline-block;padding:4px 10px;border-radius:8px;background:#0d2a31;color:var(--acc);font-weight:800;letter-spacing:2px}
-.bars{display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:8px}.bars i{flex:1;background:var(--acc);border-radius:3px 3px 0 0;min-height:2px;opacity:.85}.bars i.z{background:#26365a;opacity:1}
-.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:4px}
-table{width:100%;border-collapse:collapse}th{text-align:left;font-size:12px;color:var(--mut);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line)}
-td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:middle}tr:last-child td{border-bottom:0}
-.dots{display:flex;gap:2px}.dots i{width:7px;height:16px;border-radius:2px;background:#1b2845}.dots i.on{background:var(--ok)}.dots i.t{outline:1px solid var(--acc)}
-.pill{padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#1d2a47}.pill.paid{background:#0f3a2c;color:var(--ok)}.pill.trial{background:#0d2a31;color:var(--acc)}.pill.expired{background:#3a2a0f;color:var(--warn)}
-.scroll{overflow-x:auto}h2{font-size:16px;margin:18px 0 8px}.empty{padding:22px;text-align:center;color:var(--mut)}
-@media (max-width:640px){ table,tbody{display:block} thead{display:none} tr{display:block;padding:10px 0;border-bottom:1px solid var(--line)} tr:last-child{border-bottom:0} td{display:flex;justify-content:space-between;align-items:center;gap:12px;border:0;padding:4px 0;text-align:right} td::before{content:attr(data-l);color:var(--mut);font-size:12px;font-weight:600;text-align:left} td:first-child{font-size:16px} .scroll{overflow-x:visible} td.empty{display:block;text-align:center} td.empty::before{content:none} }
-.hide{display:none!important}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow-x:hidden}
+body{min-height:100vh;min-height:100dvh;-webkit-text-size-adjust:100%}
+.wrap{max-width:720px;margin:0 auto;padding:14px 14px calc(28px + env(safe-area-inset-bottom));padding-top:calc(14px + env(safe-area-inset-top))}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+h1{font-size:19px;margin:0;overflow-wrap:anywhere}h2{font-size:15px;margin:0 0 8px}.mut{color:var(--mut)}.sm{font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+input{width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:16px;margin:6px 0 10px}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:700;font-size:15px;background:var(--acc);color:#04202a;font-family:inherit}
+button:disabled{opacity:.45;cursor:default}button.gh{background:#1d2a47;color:var(--fg)}button.sm2{padding:9px 12px;font-size:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1 1 auto}
+.login{max-width:380px;margin:10vh auto 0}.err{color:var(--bad);min-height:20px;margin:2px 0 8px}.ok{color:var(--ok)}
+.codebox{display:flex;gap:8px;align-items:stretch;margin:6px 0 10px}.codebox>div{flex:1;background:#0d2a31;color:var(--acc);border-radius:10px;padding:11px 12px;font-weight:800;letter-spacing:1.5px;overflow-wrap:anywhere;font-size:16px}
+.codebox.link>div{letter-spacing:0;font-weight:600;font-size:13px;color:#bfeaf2}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.tiles .card{margin:0}
+.tile .l{font-size:12px;color:var(--mut);font-weight:600}.tile .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;line-height:1.2;margin-top:2px}.tile .s{font-size:12px;color:var(--mut);margin-top:2px}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;margin:0 -14px;padding-left:14px;padding-right:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;padding:8px 13px;border-radius:999px;background:#17233f;color:var(--mut);font-weight:700;font-size:13px;white-space:nowrap}.tab.on{background:var(--acc);color:#04202a}
+.cust{padding:12px 14px}.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.id{font-weight:800;font-size:16px;letter-spacing:1px}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap;background:#1d2a47}
+.pill.pending{background:#3a2a0f;color:var(--warn)}.pill.trial{background:#0d2a31;color:var(--acc)}.pill.expiring{background:#3a1717;color:var(--bad)}.pill.paid{background:#0f3a2c;color:var(--ok)}.pill.expired{background:#2a2f3d;color:var(--mut)}
+.cd{margin-top:8px;font-weight:700}.cd.hot{color:var(--bad)}
+.act{margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.act button{flex:1 1 140px}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}summary{cursor:pointer;color:var(--acc);font-weight:700;font-size:14px;list-style:none}summary::-webkit-details-marker{display:none}
+.pay{padding:8px 0;border-top:1px dashed var(--line);display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:13px}.pay:first-of-type{border-top:0}.pay b{font-variant-numeric:tabular-nums}
+.banner{border-radius:12px;padding:12px 14px;margin-bottom:12px;font-weight:600}.banner.bad{background:#3a1717;color:#ffc2c2;border:1px solid #6a2a2a}.banner.good{background:#0f3a2c;color:#b9f5dc;border:1px solid #1d6a4e}
+.empty{padding:22px;text-align:center;color:var(--mut)}.hide{display:none!important}
 </style></head><body><div class="wrap">
 <section id="login" class="login card hide">
   <h1>BYO Sales</h1><p class="mut">Sign in to see the customers you brought in.</p>
@@ -32,49 +38,107 @@ td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:middle}tr
   <div class="err" id="err"></div><button id="go" style="width:100%">Sign in</button>
 </section>
 <section id="app" class="hide">
-  <header><div><h1 id="nm">BYO Sales</h1><div class="mut">Your code <span class="code" id="cd"></span> <span id="pc"></span></div></div><button class="gh" id="out">Sign out</button></header>
+  <header><div><h1 id="nm">BYO Sales</h1><div class="mut sm" id="pc"></div></div><button class="gh sm2" id="out">Sign out</button></header>
+  <div id="msg"></div>
+
+  <div class="card" id="ref"></div>
+
   <div class="tiles" id="tiles"></div>
-  <div class="card"><b>Active customers each day</b> <span class="mut">(last 30 days)</span><div class="bars" id="bars"></div><div class="axis"><span id="a0"></span><span id="a1"></span></div></div>
-  <h2>Your customers</h2>
-  <div class="card scroll"><table><thead><tr><th>Customer</th><th>Joined</th><th>Status</th><th>Last active</th><th>Days active</th><th>Last 30 days</th><th>Paid</th></tr></thead><tbody id="rows"></tbody></table></div>
-  <p class="mut" style="font-size:13px">Customers are shown by device ID only. Green marks are days the app was opened.</p>
+
+  <h2 style="margin-top:6px">Your customers</h2>
+  <div class="tabs" id="tabs"></div>
+  <div id="list"></div>
 </section></div>
 <script>
 (function(){
-var URL_='https://lkftnbkuuitaxtlvrqfj.supabase.co', KEY='sb_publishable_D5tMkCSL1AVvJS8S9fuPgQ_nOg_ItOY';
+var URL_='https://lkftnbkuuitaxtlvrqfj.supabase.co', KEY='sb_publishable_D5tMkCSL1AVvJS8S9fuPgQ_nOg_ItOY', SITE='https://byoplayer-pair.netlify.app';
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function ls(k,v){try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v);}catch(e){} return null}
 function rpc(n,b){ return fetch(URL_+'/rest/v1/rpc/'+n,{method:'POST',headers:{'content-type':'application/json',apikey:KEY,Authorization:'Bearer '+KEY},body:JSON.stringify(b||{})}).then(function(r){return r.json()}).catch(function(){return {ok:false,error:'Could not reach the server. Check your internet.'}}); }
 function fmt(n){return Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2})}
-function d(t){return t?new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'}):'-'}
-function ago(t){ if(!t) return '-'; var m=(Date.now()-new Date(t).getTime())/60000; if(m<2) return 'just now'; if(m<60) return Math.round(m)+' min ago'; var h=m/60; if(h<24) return Math.round(h)+' h ago'; var dd=Math.round(h/24); return dd+' day'+(dd===1?'':'s')+' ago'; }
-var tok=ls('bs_tok'), timer=null;
+function dt(t){return t?new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):'-'}
+function money(o,pct){ var k=Object.keys(o||{}); if(!k.length) return '0'; return k.map(function(c){ var v=o[c]*(pct==null?1:pct/100); return fmt(v)+' '+c; }).join(' + '); }
+function left(sec){ if(sec<=0) return 'ended'; var d=Math.floor(sec/86400), h=Math.floor(sec%86400/3600), m=Math.floor(sec%3600/60); return d>0?(d+'d '+h+'h left'):(h>0?(h+'h '+m+'m left'):(m+' min left')); }
+var tok=ls('bs_tok'), timer=null, J=null, gotAt=0, filter='all', busy={};
 function show(v){ $('login').classList.toggle('hide',v!=='login'); $('app').classList.toggle('hide',v!=='app'); }
-function money(o,pct){ var k=Object.keys(o||{}); if(!k.length) return '-'; return k.map(function(c){ var v=o[c]*(pct==null?1:pct/100); return fmt(v)+' '+c; }).join(' + '); }
-function paint(j){
-  var a=j.agent,S=j.summary||{};
-  $('nm').textContent=a.name; $('cd').textContent=a.code; $('pc').textContent='Commission '+a.pct+'%';
-  var T=[['Customers',S.referrals],['Active today',S.active_today],['Active 7 days',S.active_7d],['Active 30 days',S.active_30d],['New this week',S.new_7d],['Paying',S.paying]];
-  var h=T.map(function(t){return '<div class="card tile"><div class="l">'+t[0]+'</div><div class="v">'+fmt(t[1])+'</div></div>'}).join('');
-  var keys=Object.keys(j.paid||{});
-  h+='<div class="card tile" style="grid-column:span 2"><div class="l">Commission earned ('+a.pct+'% of what your customers paid)</div><div class="v" style="font-size:20px">'+esc(money(j.paid,a.pct))+'</div><div class="l">Customers paid '+esc(money(j.paid))+'</div></div>';
-  $('tiles').innerHTML=h;
-  var dl=j.daily||[], mx=Math.max.apply(null,dl.map(function(x){return x.active}).concat([1]));
-  $('bars').innerHTML=dl.map(function(x){ return '<i class="'+(x.active?'':'z')+'" style="height:'+Math.max(3,Math.round(x.active/mx*100))+'%" title="'+esc(x.day)+': '+x.active+' active, '+x['new']+' new"></i>'; }).join('');
-  if(dl.length){ $('a0').textContent=d(dl[0].day); $('a1').textContent='Today'; }
-  var today=j.today, days=[]; for(var i=29;i>=0;i--){ var t=new Date(today+'T00:00:00'); t.setDate(t.getDate()-i); days.push(t.getFullYear()+'-'+('0'+(t.getMonth()+1)).slice(-2)+'-'+('0'+t.getDate()).slice(-2)); }
-  var C=j.customers||[];
-  $('rows').innerHTML=C.length?C.map(function(c){ var on={}; (c.days||[]).forEach(function(x){on[String(x).slice(0,10)]=1});
-    var dots='<div class="dots">'+days.map(function(x){return '<i class="'+(on[x]?'on':'')+(x===today?' t':'')+'" title="'+x+(on[x]?' active':'')+'"></i>'}).join('')+'</div>';
-    var st=String(c.status||'trial').toLowerCase(); var cls=st==='paid'?'paid':(st==='expired'||st==='ended')?'expired':'trial';
-    return '<tr><td data-l="Customer"><b>'+esc(c.tv_id)+'</b><div class="mut" style="font-size:12px">'+esc([c.platform,c.country].filter(Boolean).join(' · '))+'</div></td><td data-l="Joined">'+d(c.referred_at)+'</td><td data-l="Status"><span class="pill '+cls+'">'+esc(st)+'</span></td><td data-l="Last active">'+ago(c.last_seen)+'</td><td data-l="Days active">'+(c.active_days||0)+'</td><td data-l="Last 30 days">'+dots+'</td><td data-l="Paid">'+esc(money(c.paid))+'</td></tr>'; }).join(''):'<tr><td colspan="7" class="empty" data-l="">No customers yet. Share your code <b>'+esc(a.code)+'</b> and ask them to enter it in the app under Profile.</td></tr>';
+function flash(t,cls){ $('msg').innerHTML=t?'<div class="banner '+(cls||'bad')+'">'+esc(t)+'</div>':''; if(t&&cls==='good') setTimeout(function(){ if($('msg').textContent===t) $('msg').innerHTML=''; },5000); }
+function copy(txt,btn){ var done=function(){ var o=btn.textContent; btn.textContent='Copied'; setTimeout(function(){ btn.textContent=o; },1500); };
+  try{ navigator.clipboard.writeText(txt).then(done,fb); }catch(e){ fb(); }
+  function fb(){ try{ var t=document.createElement('textarea'); t.value=txt; t.style.cssText='position:fixed;opacity:0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done(); }catch(e){ btn.textContent='Press and hold to copy'; } } }
+function linkFor(code){ return SITE+'/get?ref='+encodeURIComponent(code); }
+
+// ---- referral code: create once, then share ----
+var checkT=null, chk={code:'',ok:false,msg:''};
+function paintRef(){ var a=J.agent, el=$('ref');
+  if(a.code_set&&a.code){ var L=linkFor(a.code);
+    el.innerHTML='<h2>My Referral Link</h2><div class="mut sm">Your referral code</div><div class="codebox"><div>'+esc(a.code)+'</div><button class="gh" id="cc">Copy</button></div>'+
+      '<div class="mut sm">Your referral link</div><div class="codebox link"><div>'+esc(L)+'</div><button class="gh" id="cl">Copy</button></div>'+
+      '<div class="row"><button id="wa">Share on WhatsApp</button></div><div class="mut sm" style="margin-top:8px">Customers who open this link get your code filled in automatically. Your code is locked and cannot be changed.</div>';
+    $('cc').onclick=function(){ copy(a.code,this); }; $('cl').onclick=function(){ copy(L,this); };
+    $('wa').onclick=function(){ window.open('https://wa.me/?text='+encodeURIComponent('Watch live TV, football, movies and series with BYO Player. Free 7-day trial: '+L),'_blank','noopener'); };
+    return; }
+  if($('cin')&&el.getAttribute('data-mode')==='create') return;   // keep what is being typed
+  el.setAttribute('data-mode','create');
+  el.innerHTML='<h2>Create your referral code</h2><div class="mut sm">Choose it carefully: you can do this <b>only once</b>. It can never be changed or deleted afterwards.</div>'+
+    '<input id="cin" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ALEX254"><div id="cmsg" class="sm mut" style="min-height:20px;margin:-4px 0 8px">4 to 20 letters or numbers.</div>'+
+    '<button id="cgo" style="width:100%" disabled>Create my code</button>';
+  var inp=$('cin'), go=$('cgo');
+  inp.addEventListener('input',function(){ var v=inp.value.toUpperCase().replace(/[^A-Z0-9-]/g,''); if(inp.value!==v) inp.value=v; chk={code:v,ok:false}; go.disabled=true; go.textContent='Create my code'; go.setAttribute('data-sure','');
+    clearTimeout(checkT); if(v.length<4){ $('cmsg').className='sm mut'; $('cmsg').textContent='4 to 20 letters or numbers.'; return; }
+    $('cmsg').className='sm mut'; $('cmsg').textContent='Checking...';
+    checkT=setTimeout(function(){ rpc('byo_sales_code_check',{p_token:tok,p_code:v}).then(function(r){ if(inp.value!==v) return;
+      if(r&&r.auth){ signedOut(); return; }
+      if(r&&r.locked){ load(); return; }
+      if(r&&r.available){ chk={code:r.code,ok:true}; go.disabled=false; $('cmsg').className='sm ok'; $('cmsg').textContent=r.code+' is available.'; }
+      else { $('cmsg').className='sm'; $('cmsg').style.color='var(--bad)'; $('cmsg').textContent=(r&&r.error)||'Could not check. Try again.'; } }); },350); });
+  go.onclick=function(){ if(!chk.ok) return;
+    if(go.getAttribute('data-sure')!=='1'){ go.setAttribute('data-sure','1'); go.textContent='Tap again to lock in '+chk.code+' forever'; return; }   // two taps: it cannot be undone
+    go.disabled=true; rpc('byo_sales_set_code',{p_token:tok,p_code:chk.code}).then(function(r){
+      if(r&&r.ok){ el.removeAttribute('data-mode'); flash('Your code '+r.code+' is ready to share.','good'); load(); }
+      else { go.disabled=false; go.setAttribute('data-sure',''); go.textContent='Create my code'; $('cmsg').style.color='var(--bad)'; $('cmsg').textContent=(r&&r.error)||'Could not save.'; if(r&&r.locked) load(); } }); };
 }
-function load(){ return rpc('byo_sales_me',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth){ ls('bs_tok',null); tok=null; show('login'); } return; } show('app'); paint(j); }); }
-function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(!document.hidden) load(); },60000); }
+
+// ---- tiles ----
+function paintTiles(){ var m=J.month, A=J.all_time, a=J.agent;
+  $('tiles').innerHTML='<div class="card tile"><div class="l">Sales in '+esc(m.label)+'</div><div class="v">'+esc(money(m.sales))+'</div><div class="s">Your commission ('+a.pct+'%): '+esc(money(m.sales,a.pct))+'</div></div>'+
+    '<div class="card tile"><div class="l">New users in '+esc(m.label)+'</div><div class="v">'+fmt(m.new_users)+'</div><div class="s">'+fmt(A.users)+' in total</div></div>'; }
+
+// ---- customers ----
+function elapsed(){ return Math.floor((Date.now()-gotAt)/1000); }
+function secs(c){ return c.seconds_left==null?null:(c.seconds_left-elapsed()); }
+function statusOf(c){ var s=secs(c); if((c.status==='trial'||c.status==='expiring')&&s!=null&&s<=0) return 'expired'; if(c.status==='trial'&&s!=null&&s<=172800) return 'expiring'; return c.status; }
+var LABEL={pending:'Pending Activation',trial:'Trial Active',expiring:'Trial Expiring Soon',paid:'Paid',expired:'Expired'};
+var TABS=[['all','All Users',function(){return true}],['pending','Needs Activation',function(s){return s==='pending'}],['trial','On Trial',function(s){return s==='trial'||s==='expiring'}],['expiring','Expiring Soon',function(s){return s==='expiring'}],['paid','Paid / Active',function(s){return s==='paid'}]];
+function paintList(){ var C=J.customers||[];
+  var openD={}; [].forEach.call(document.querySelectorAll('#list details[open]'),function(d){ openD[d.getAttribute('data-r')]=1; });
+  $('tabs').innerHTML=TABS.map(function(t){ var n=C.filter(function(c){return t[2](statusOf(c))}).length; return '<button class="tab'+(filter===t[0]?' on':'')+'" data-f="'+t[0]+'">'+t[1]+' ('+n+')</button>'; }).join('');
+  [].forEach.call($('tabs').children,function(b){ b.onclick=function(){ filter=b.getAttribute('data-f'); paintList(); }; });
+  var fn=TABS.filter(function(t){return t[0]===filter})[0][2], rows=C.filter(function(c){return fn(statusOf(c))});
+  if(!rows.length){ $('list').innerHTML='<div class="card empty">'+(C.length?'No customers in this group.':'No customers yet. Share your referral link to get started.')+'</div>'; return; }
+  $('list').innerHTML=rows.map(function(c){ var st=statusOf(c), s=secs(c), P=c.payments||[];
+    var cd=''; if(st==='trial'||st==='expiring'){ cd='<div class="cd'+(st==='expiring'?' hot':'')+'">Trial: '+esc(left(s))+(c.ends_at?' (ends '+esc(dt(c.ends_at))+')':'')+'</div>'; }
+    else if(st==='paid'&&s!=null){ cd='<div class="cd mut">Paid access: '+esc(left(s))+'</div>'; }
+    var act=''; if(!c.activated) act='<div class="act"><button data-a="'+esc(c.rid)+'"'+(busy[c.rid]?' disabled':'')+'>'+(busy[c.rid]?'Activating...':'Activate')+'</button></div>';
+    else act='<div class="act"><span class="pill paid">Activated</span><span class="mut sm">'+esc(dt(c.activated_at))+(c.delivered?'':' · waiting for the app to connect')+'</span></div>';
+    var pay=P.length?('<details data-r="'+esc(c.rid)+'"'+(openD[c.rid]?' open':'')+'><summary>Payments ('+P.length+') · '+esc(money(c.paid))+'</summary>'+P.map(function(p){ return '<div class="pay"><span>'+esc(dt(p.at))+' · '+esc(p.method||'')+'</span><b>'+esc(fmt(p.amount)+' '+(p.currency||''))+'</b><span class="mut">Ref '+esc(p.ref||'-')+'</span><span class="mut" style="text-align:right">'+esc(p.plan||'')+(p.from?(' · '+esc(dt(p.from))+' to '+esc(dt(p.until))):'')+'</span></div>'; }).join('')+'</details>'):'';
+    return '<div class="card cust"><div class="top"><div><div class="id">'+esc(c.tv_id)+'</div><div class="mut sm">Installed '+esc(dt(c.referred_at))+(c.platform?' · '+esc(c.platform):'')+'</div></div><span class="pill '+st+'">'+LABEL[st]+'</span></div>'+cd+act+pay+'</div>'; }).join('');
+  [].forEach.call($('list').querySelectorAll('[data-a]'),function(b){ b.onclick=function(){ activate(b.getAttribute('data-a')); }; }); }
+
+function activate(rid){ if(busy[rid]) return; busy[rid]=1; flash(''); paintList();
+  rpc('byo_sales_activate',{p_token:tok,p_rid:rid}).then(function(r){ delete busy[rid];
+    if(r&&r.auth){ signedOut(); return; }
+    if(r&&r.ok){ flash(r.already?'Already activated.':'Activated. Their app will connect within a minute.','good'); }
+    else flash((r&&r.error)||'Could not activate.','bad');
+    load(); }); }
+
+function paint(){ var a=J.agent; $('nm').textContent=a.name; $('pc').textContent='Commission '+a.pct+'%'; paintRef(); paintTiles(); paintList(); }
+function signedOut(){ ls('bs_tok',null); tok=null; clearInterval(timer); show('login'); }
+function load(){ return rpc('byo_sales_dash',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth) signedOut(); else if(j&&(j.error||j.message)) flash(j.error||'The sales system is being updated. Please try again in a little while.','bad'); return; } J=j; gotAt=Date.now(); show('app'); paint(); }); }
+function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(document.hidden) return; if(Date.now()-gotAt>60000) load(); else if(J) paintList(); },30000); }
 $('go').onclick=function(){ var b=$('go'); b.disabled=true; $('err').textContent=''; rpc('byo_sales_login',{p_email:$('em').value,p_password:$('pw').value}).then(function(j){ b.disabled=false; if(j&&j.ok){ tok=j.token; ls('bs_tok',tok); $('pw').value=''; start(); } else $('err').textContent=(j&&j.error)||'Could not sign in.'; }); };
 $('pw').addEventListener('keydown',function(e){ if(e.key==='Enter') $('go').click(); });
-$('out').onclick=function(){ rpc('byo_sales_logout',{p_token:tok}); ls('bs_tok',null); tok=null; clearInterval(timer); show('login'); };
+$('out').onclick=function(){ rpc('byo_sales_logout',{p_token:tok}); signedOut(); };
 if(tok) start(); else show('login');
 })();
 </script></body></html>

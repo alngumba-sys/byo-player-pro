@@ -41,6 +41,7 @@ h1 span{display:block;color:var(--cy)}
 .plat svg{height:clamp(20px,3.2vh,26px);width:auto;fill:#fff;opacity:.72;display:block}
 .plat i{width:1.5px;height:clamp(16px,2.6vh,22px);background:rgba(255,255,255,.35)}
 @media (max-height:600px){.brand{font-size:19px}h1{font-size:23px}.card li{margin:0}.btn{min-height:46px;font-size:18px}}
+.refnote{margin-top:8px;font-size:clamp(12px,3.3vw,14px);font-weight:600;color:#dff9ff;display:none}.refnote b{color:#22e6ff;letter-spacing:1px}
 </style></head><body>
 <div class="bg" aria-hidden="true"></div>
 <div class="wrap">
@@ -60,14 +61,14 @@ h1 span{display:block;color:var(--cy)}
       <div class="card"><span class="h">Add it to your Home Screen:</span><ol>
         <li>Tap the Share button in Safari.</li>
         <li>Choose <b>Add to Home Screen</b>.</li>
-        <li>Tap <b>Add</b>.</li></ol></div>
+        <li>Tap <b>Add</b>.</li></ol><div class="refnote" data-ref="ios">Your salesperson code <b></b> is filled in for you.</div></div>
     </div>
 
     <div id="android" class="panel">
       <a class="btn" id="dl" href="/tv3247.apk" download><span>Download the Android app</span><small>7-Day Free Trial</small></a>
       <div class="card"><span class="h">After it downloads:</span><ol>
         <li>Open the downloaded file.</li>
-        <li>If Android asks, allow installs from this browser, then tap <b>Install</b>.</li></ol></div>
+        <li>If Android asks, allow installs from this browser, then tap <b>Install</b>.</li></ol><div class="refnote" data-ref="and">Your salesperson code <b></b> is copied. Paste it when the app asks.</div></div>
       <a class="alt" href="/app/">Or use it in your browser</a>
     </div>
 
@@ -90,6 +91,11 @@ h1 span{display:block;color:var(--cy)}
 var ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 var and=/Android/i.test(ua);
 id(and?'android':ios?'ios':'other').className='panel on';
+var ref=''; try{ var q=new URLSearchParams(location.search).get('ref'); if(q){ ref=q.toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20); if(ref) localStorage.setItem('byo_ref_pending',ref); } else ref=(localStorage.getItem('byo_ref_pending')||''); }catch(e){}
+if(ref){ [].forEach.call(document.querySelectorAll('a[href="/app/"]'),function(a){ a.href='/app/?ref='+encodeURIComponent(ref); });
+  [].forEach.call(document.querySelectorAll('.refnote'),function(n){ n.querySelector('b').textContent=ref; n.style.display='block'; });
+  try{ id('dl').addEventListener('click',function(){ try{ navigator.clipboard.writeText(ref); }catch(e){} }); }catch(e){} }
+
 if(and){ try{ setTimeout(function(){ id('dl').click(); },900); }catch(e){} }
 })();
 </script></body></html>
