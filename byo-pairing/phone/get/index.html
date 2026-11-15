@@ -42,6 +42,10 @@ h1 span{display:block;color:var(--cy)}
 .plat i{width:1.5px;height:clamp(16px,2.6vh,22px);background:rgba(255,255,255,.35)}
 @media (max-height:600px){.brand{font-size:19px}h1{font-size:23px}.card li{margin:0}.btn{min-height:46px;font-size:18px}}
 .refnote{margin-top:8px;font-size:clamp(12px,3.3vw,14px);font-weight:600;color:#dff9ff;display:none}.refnote b{color:#22e6ff;letter-spacing:1px}
+@keyframes byoPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(40,240,255,.75),0 0 18px rgba(40,240,255,.45);filter:brightness(1)}50%{transform:scale(1.035);box-shadow:0 0 0 14px rgba(40,240,255,0),0 0 38px rgba(40,240,255,.95);filter:brightness(1.12)}}
+.btn{animation:byoPulse 1.6s ease-in-out infinite;will-change:transform,box-shadow}
+.btn:active{animation:none}
+@media (prefers-reduced-motion:reduce){.btn{animation-duration:3s}}
 </style></head><body>
 <div class="bg" aria-hidden="true"></div>
 <div class="wrap">
