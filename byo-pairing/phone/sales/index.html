@@ -10,6 +10,7 @@ body{min-height:100vh;min-height:100dvh;-webkit-text-size-adjust:100%}
 header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 h1{font-size:19px;margin:0;overflow-wrap:anywhere}h2{font-size:15px;margin:0 0 8px}.mut{color:var(--mut)}.sm{font-size:13px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}.rxin{margin:0!important}
 input{width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:16px;margin:6px 0 10px}
 button{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:700;font-size:15px;background:var(--acc);color:#04202a;font-family:inherit}
 button:disabled{opacity:.45;cursor:default}button.gh{background:#1d2a47;color:var(--fg)}button.sm2{padding:9px 12px;font-size:14px}
@@ -132,10 +133,28 @@ function paintList(){ var C=J.customers||[];
     else if(st==='paid'&&s!=null){ cd='<div class="cd mut">Paid access: '+esc(left(s))+'</div>'; }
     var act=''; if(!c.activated) act='<div class="act"><button data-a="'+esc(c.rid)+'"'+(busy[c.rid]?' disabled':'')+'>'+(busy[c.rid]?'Activating...':'Activate')+'</button></div>';
     else act='<div class="act"><span class="pill paid">Activated</span><span class="mut sm">'+esc(dt(c.activated_at))+(c.delivered?'':' · waiting for the app to connect')+'</span></div>';
+    var rx=''; if(c.activated && (st==='trial'||st==='expiring'||st==='paid')){
+      rx='<div class="rx">'+(rxOpen[c.rid]
+        ? '<div class="mut sm" style="margin:8px 0 6px">New phone, TV or reinstall? Type the 4 digit code now showing on their screen.</div><div class="act"><input class="rxin" data-i="'+esc(c.rid)+'" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Code" value="'+esc(rxVal[c.rid]||'')+'" style="flex:0 0 110px;text-align:center;font-size:20px;letter-spacing:4px"><button data-rg="'+esc(c.rid)+'"'+(busy['rx'+c.rid]?' disabled':'')+'>'+(busy['rx'+c.rid]?'Reactivating...':'Reactivate')+'</button><button class="ghost" data-rc="'+esc(c.rid)+'">Cancel</button></div>'
+        : '<div class="act"><button class="ghost" data-rx="'+esc(c.rid)+'">New device? Reactivate with its code</button></div>')+'</div>'; }
     var cm=(c.months>0)?'<div class="cd mut" style="margin-top:6px">Paid months: '+esc(mths(c.months))+' · your commission: <b style="color:var(--ok)">'+esc(kes(c.commission))+'</b></div>':'';
     var pay=P.length?('<details data-r="'+esc(c.rid)+'"'+(openD[c.rid]?' open':'')+'><summary>Payments ('+P.length+') · '+esc(money(c.paid))+'</summary>'+P.map(function(p){ return '<div class="pay"><span>'+esc(dt(p.at))+' · '+esc(p.method||'')+'</span><b>'+esc(fmt(p.amount)+' '+(p.currency||''))+'</b><span class="mut">Ref '+esc(p.ref||'-')+'</span><span class="mut" style="text-align:right">'+esc(p.plan||'')+(p.from?(' · '+esc(dt(p.from))+' to '+esc(dt(p.until))):'')+'</span></div>'; }).join('')+'</details>'):'';
-    return '<div class="card cust"><div class="top"><div><div class="id">'+esc(c.tv_id)+'</div><div class="mut sm">Installed '+esc(dt(c.referred_at))+(c.platform?' · '+esc(c.platform):'')+'</div></div><span class="pill '+st+'">'+LABEL[st]+'</span></div>'+cd+cm+act+pay+'</div>'; }).join('');
-  [].forEach.call($('list').querySelectorAll('[data-a]'),function(b){ b.onclick=function(){ activate(b.getAttribute('data-a')); }; }); }
+    return '<div class="card cust"><div class="top"><div><div class="id">'+esc(c.tv_id)+'</div><div class="mut sm">Installed '+esc(dt(c.referred_at))+(c.platform?' · '+esc(c.platform):'')+'</div></div><span class="pill '+st+'">'+LABEL[st]+'</span></div>'+cd+cm+act+rx+pay+'</div>'; }).join('');
+  [].forEach.call($('list').querySelectorAll('[data-a]'),function(b){ b.onclick=function(){ activate(b.getAttribute('data-a')); }; });
+  [].forEach.call($('list').querySelectorAll('[data-rx]'),function(b){ b.onclick=function(){ rxOpen[b.getAttribute('data-rx')]=1; paintList(); var i=$('list').querySelector('.rxin[data-i="'+b.getAttribute('data-rx')+'"]'); if(i) i.focus(); }; });
+  [].forEach.call($('list').querySelectorAll('[data-rc]'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-rc'); delete rxOpen[k]; delete rxVal[k]; paintList(); }; });
+  [].forEach.call($('list').querySelectorAll('[data-rg]'),function(b){ b.onclick=function(){ reactivate(b.getAttribute('data-rg')); }; });
+  [].forEach.call($('list').querySelectorAll('.rxin'),function(i){ i.oninput=function(){ i.value=i.value.replace(/[^0-9]/g,'').slice(0,4); rxVal[i.getAttribute('data-i')]=i.value; };
+    i.onkeydown=function(e){ if(e.key==='Enter'){ e.preventDefault(); reactivate(i.getAttribute('data-i')); } }; }); }
+var rxOpen={}, rxVal={};
+function reactivate(rid){ var code=(rxVal[rid]||'').replace(/[^0-9]/g,''); if(busy['rx'+rid]) return;
+  if(code.length!==4){ flash('Type the 4 digit code shown on the customer\'s screen.','bad'); return; }
+  busy['rx'+rid]=1; flash(''); paintList();
+  rpc('byo_sales_reactivate',{p_token:tok,p_rid:rid,p_code:code}).then(function(r){ delete busy['rx'+rid];
+    if(r&&r.auth){ signedOut(); return; }
+    if(r&&r.ok){ delete rxOpen[rid]; delete rxVal[rid]; flash('Reactivated on the new device. Their app will connect within a minute.','good'); }
+    else flash((r&&r.error)||'Could not reactivate.','bad');
+    load(); }); }
 
 function activate(rid){ if(busy[rid]) return; busy[rid]=1; flash(''); paintList();
   rpc('byo_sales_activate',{p_token:tok,p_rid:rid}).then(function(r){ delete busy[rid];
@@ -147,7 +166,7 @@ function activate(rid){ if(busy[rid]) return; busy[rid]=1; flash(''); paintList(
 function paint(){ var a=J.agent; $('nm').textContent=a.name; $('pc').textContent='Commission: '+kes(RATE(a))+' per customer, per paid month'; paintRef(); paintTiles(); paintList(); }
 function signedOut(){ ls('bs_tok',null); tok=null; clearInterval(timer); show('login'); }
 function load(){ return rpc('byo_sales_dash',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth) signedOut(); else if(j&&(j.error||j.message)) flash(j.error||'The sales system is being updated. Please try again in a little while.','bad'); return; } J=j; gotAt=Date.now(); show('app'); paint(); }); }
-function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(document.hidden) return; if(Date.now()-gotAt>60000) load(); else if(J) paintList(); },30000); }
+function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(document.hidden) return; var ae=document.activeElement; if(ae&&ae.classList&&ae.classList.contains('rxin')) return; if(Date.now()-gotAt>60000) load(); else if(J) paintList(); },30000); }
 var firstPw='';
 $('go').onclick=function(){ var b=$('go'); b.disabled=true; $('err').textContent=''; var pwv=$('pw').value; rpc('byo_sales_login',{p_email:$('em').value,p_password:pwv}).then(function(j){ b.disabled=false;
     if(j&&j.ok){ tok=j.token; $('pw').value=''; if(j.must_change){ firstPw=pwv; show('chg'); } else { ls('bs_tok',tok); start(); } }
