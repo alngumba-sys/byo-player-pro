@@ -464,6 +464,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
       <!-- Workspace B: connection pool -->
       <div id="ws-pool" style="display:none;flex-direction:column;gap:12px">
         <div class="policy"><label><input type="checkbox" id="gate-on"> <span><b>Require a referral code for new installs</b> <span style="color:var(--muted)">(people who already use the app are not affected)</span></span></label></div>
+        <div class="policy"><label for="pool-cap" style="cursor:default"><span><b>Customers per connection</b> <span style="color:var(--muted)">(how many customers can share one connection)</span></span></label><input class="inp" id="pool-cap" type="number" min="1" max="100" value="5" style="width:80px"><button class="btn sm" id="pool-cap-save">Save</button></div>
         <div id="pool-alerts"></div>
         <div class="tb">
           <div class="fp" id="pl-f"></div>
@@ -1016,7 +1017,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   function loadPool(){ api('fleet.referral_gate_get',{}).then(function(g){ if(g&&g.ok) $('gate-on').checked=!!g.on; });
     api('fleet.pool_list',{}).then(function(j){ var T=$('pool-tbl');
       if(!j.ok){ T.innerHTML='<tbody><tr><td class="empty2">'+esc(/unknown action/.test(j.error||'')?'Run the connection pool SQL on the backend first.':(j.error||'Could not load'))+'</td></tr></tbody>'; return; }
-      SX.pool=j; SX.rev={}; paintBanner(j); if(document.activeElement!==$('ip-days')) $('ip-days').value=j.trial_days||7; paintKpis(); paintPool(); }); }
+      SX.pool=j; SX.rev={}; paintBanner(j); if(document.activeElement!==$('ip-days')) $('ip-days').value=j.trial_days||7; if(document.activeElement!==$('pool-cap')&&j.cap) $('pool-cap').value=j.cap; paintKpis(); paintPool(); }); }
   var PFILT=[['all','All'],['available','Available'],['assigned','Assigned'],['disabled','Disabled']];
   function paintPool(){ var P=SX.pool; if(!P) return; var I=P.items||[], q=SX.pQ.toLowerCase(), T=$('pool-tbl');
     $('pool-alerts').innerHTML=(P.alerts||[]).length?'<div class="alertbar"><b>'+esc(P.alerts.map(function(a){ return a.message; }).join(' '))+'</b><button class="btn sm gh" id="pool-ack">Dismiss</button></div>':'';
@@ -1035,14 +1036,15 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
         '<td class="nw">'+pw+' <button class="btn xs gh" data-eye="'+esc(p.id)+'" title="'+(rv?'Hide':'Show')+'" aria-label="'+(rv?'Hide':'Show')+' password">'+(rv?'Hide':'Show')+'</button> <button class="btn xs gh" data-pc="'+esc(p.id)+'">Copy</button></td>'+
         '<td><span class="bdg '+(x?'acc':'')+'">'+(x?'Server Login':'M3U Playlist')+'</span></td>'+
         '<td class="r">'+num(p.trial_days||P.trial_days||7)+'</td><td><span class="bdg '+s[0]+'">'+s[1]+'</span></td>'+
-        '<td>'+(p.status==='assigned'?('<b>TV '+esc(p.assigned_tv||'')+'</b>'+(p.agent?' · '+esc(p.agent):'')+'<div class="sub">'+esc(when(p.assigned_at))+'</div>'):'<span class="sub">-</span>')+'</td>'+
-        '<td class="nw">'+(p.status==='assigned'?'<span class="sub">kept as the record</span>':'<button class="btn xs" data-ps="'+esc(p.id)+'" data-to="'+(p.status==='available'?'disabled':'available')+'">'+(p.status==='available'?'Disable':'Enable')+'</button> <button class="btn xs dng" data-pd="'+esc(p.id)+'">Delete</button>')+'</td></tr>'; }).join('')+'</tbody>';
+        '<td>'+(p.users>0?('<b>'+num(p.users)+' of '+num(p.cap||P.cap||1)+' customers</b>'+(p.agent?' · '+esc(p.agent):'')+'<div class="sub">TV '+esc((p.tvs||[]).join(', ')+(p.users>(p.tvs||[]).length?' …':''))+'</div>'):(p.status==='assigned'&&p.assigned_tv?('<b>TV '+esc(p.assigned_tv)+'</b>'+(p.agent?' · '+esc(p.agent):'')+'<div class="sub">'+esc(when(p.assigned_at))+'</div>'):'<span class="sub">0 of '+num(p.cap||P.cap||1)+' customers</span>'))+'</td>'+
+        '<td class="nw">'+(p.status==='assigned'?'<span class="sub">full, kept as the record</span>':'<button class="btn xs" data-ps="'+esc(p.id)+'" data-to="'+(p.status==='available'?'disabled':'available')+'">'+(p.status==='available'?'Disable':'Enable')+'</button>'+(p.users>0?'':' <button class="btn xs dng" data-pd="'+esc(p.id)+'">Delete</button>'))+'</td></tr>'; }).join('')+'</tbody>';
     [].forEach.call(T.querySelectorAll('[data-ps]'),function(b){ b.onclick=function(){ api('fleet.pool_set',{ id:b.getAttribute('data-ps'), status:b.getAttribute('data-to') }).then(function(r){ if(!r.ok) toast(r.error||'Could not change',true); loadPool(); }); }; });
     [].forEach.call(T.querySelectorAll('[data-pd]'),function(b){ b.onclick=function(){ if(confirm('Delete this unused connection? This cannot be undone.')) api('fleet.pool_delete',{ id:b.getAttribute('data-pd') }).then(function(r){ if(!r.ok) toast(r.error||'Could not delete',true); loadPool(); }); }; });
     [].forEach.call(T.querySelectorAll('[data-eye]'),function(b){ b.onclick=function(){ var id=b.getAttribute('data-eye'); if(SX.rev[id]){ delete SX.rev[id]; paintPool(); return; } reveal(id,function(){ paintPool(); }); }; });
     [].forEach.call(T.querySelectorAll('[data-pc]'),function(b){ b.onclick=function(){ var id=b.getAttribute('data-pc'), p=(SX.pool.items||[]).filter(function(z){ return z.id===id; })[0]; reveal(id,function(r){ var keep=SX.rev[id]; clip(p&&p.mode==='xtream'?(r.password||''):(r.url||''),b); if(!keep) delete SX.rev[id]; },true); }; }); }
   function reveal(id,cb,quiet){ api('fleet.pool_reveal',{ id:id }).then(function(r){ if(!r.ok){ toast(r.error||'Could not read it',true); return; } if(!quiet) SX.rev[id]={ password:r.password, url:r.url }; cb(r); }); }
-  document.addEventListener('change',function(e){ if(e.target&&e.target.id==='gate-on'){ var on=e.target.checked; api('fleet.referral_gate_set',{ on:on }).then(function(r){ if(!r.ok){ e.target.checked=!on; toast(r.error||'Could not change',true); } else toast(on?'New installs must now enter a referral code.':'A referral code is no longer required.'); }); } });
+  document.addEventListener('click',function(e){ if(e.target&&e.target.id==='pool-cap-save'){ var n=parseInt($('pool-cap').value,10); if(!(n>=1&&n<=100)){ toast('Enter a number from 1 to 100',true); return; } api('fleet.activation_set',{ max_users:n }).then(function(r){ if(!r.ok) toast(r.error||'Could not save',true); else { toast('Saved. Each connection can now serve '+n+' customer'+(n===1?'':'s')+'.'); loadPool(); } }); } });
+document.addEventListener('change',function(e){ if(e.target&&e.target.id==='gate-on'){ var on=e.target.checked; api('fleet.referral_gate_set',{ on:on }).then(function(r){ if(!r.ok){ e.target.checked=!on; toast(r.error||'Could not change',true); } else toast(on?'New installs must now enter a referral code.':'A referral code is no longer required.'); }); } });
 
   // ----- drawers
   function openDrawer(id){ [].forEach.call(document.querySelectorAll('.drw'),function(d){ d.classList.toggle('on', d.id===id); }); $('dr-bg').classList.add('on');

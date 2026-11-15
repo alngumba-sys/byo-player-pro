@@ -47,8 +47,10 @@ html,body{background:#060c18}
 .idc{display:flex;align-items:center;gap:4px;min-width:0}
 .idt{font:800 13.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.5px;color:#fff;cursor:copy;white-space:nowrap}
 .cp{background:none;border:0;padding:0;width:22px;height:22px;display:grid;place-items:center;color:#6f86ab;border-radius:6px;flex:0 0 auto}.cp:hover{color:#22e6ff;background:#12203a}.cp svg{width:14px;height:14px}.cp.ok{color:#34d399}
-.cb{height:30px;padding:0 9px;display:inline-flex;align-items:center;gap:6px;border-radius:9px;background:rgba(34,230,255,.14);border:1px solid rgba(34,230,255,.45);box-shadow:0 0 12px rgba(34,230,255,.18);color:#e8fcff;white-space:nowrap;justify-self:start}
+.cb{height:38px;padding:0 9px;display:inline-flex;align-items:center;gap:6px;border-radius:9px;background:rgba(34,230,255,.14);border:1px solid rgba(34,230,255,.45);box-shadow:0 0 12px rgba(34,230,255,.18);color:#e8fcff;white-space:nowrap;justify-self:start}
+.cb .lb{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
 .cb i{font:700 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-style:normal;text-transform:uppercase;letter-spacing:.1em;color:#7fefff}
+.cb .tm{font:700 10.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-style:normal;color:#9fd8e4;letter-spacing:0}.cb .tm.w{color:#fbbf24}.cb .tm.h{color:#f87171}
 .cb b{font:800 16px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.16em}
 .cb.ok{border-color:#34d399;box-shadow:0 0 12px rgba(52,211,153,.3)}
 .nc{justify-self:start;padding:4px 9px;border-radius:8px;background:#0a1322;border:1px dashed #263b61;color:#6f86ab;font-size:12px;font-weight:700;white-space:nowrap}
@@ -186,7 +188,7 @@ function paintList(){ var C=J.customers||[];
   if(!rows.length){ $('list').innerHTML='<div class="card empty">'+(C.length?(qq?'No customers match that search.':'No customers in this group.'):'No customers yet. Share your referral link to get started.')+'</div>'; return; }
   $('list').innerHTML=rows.map(function(c){ var st=statusOf(c), s=secs(c), P=c.payments||[], rid=esc(c.rid), code=CODES[c.rid];
     var idc='<span class="idc"><span class="idt" data-cp="'+esc(c.tv_id)+'" title="Copy device ID">'+esc(c.tv_id)+'</span><button class="cp" data-cp="'+esc(c.tv_id)+'" aria-label="Copy device ID" title="Copy device ID">'+ICON.cp+'</button></span>';
-    var codeCol=!c.activated?(code?('<button class="cb" data-cp="'+esc(code)+'" title="Copy activation code" aria-label="Activation code '+esc(code)+'"><i>Code</i><b>'+esc(code)+'</b></button>'):'<span class="nc">No code</span>'):'<span class="dash">—</span>';
+    var codeCol=!c.activated?(code?('<button class="cb" data-cp="'+esc(code)+'" title="Copy activation code" aria-label="Activation code '+esc(code)+'"><span class="lb"><i>Code</i>'+(CODEEXP[c.rid]!=null?'<em class="tm" data-tm="'+rid+'">'+tmFmt(codeLeft(c.rid))+'</em>':'')+'</span><b>'+esc(code)+'</b></button>'):'<span class="nc">No code</span>'):'<span class="dash">—</span>';
     var when=c.activated?c.activated_at:c.referred_at, wl=c.activated?'Activated ':'Installed ';
     var c3='<span class="pf" title="'+esc(c.platform||'')+'">'+plat(c.platform)+'</span><span class="dl">'+wl+esc(d1(when))+'</span><span class="ds">'+esc(d1(when,true))+'</span>';
     var timed=c.activated&&s!=null&&(st==='trial'||st==='expiring'||st==='paid');
@@ -212,7 +214,11 @@ $('list').addEventListener('click',function(e){ var t=e.target;
   if(t.closest&&t.closest('button,input')) return;
   var row=t.closest&&t.closest('.dv'); if(row){ var k=row.getAttribute('data-r'); if(ptOpen[k]) delete ptOpen[k]; else ptOpen[k]=1; paintList(); } });
 $('q').addEventListener('input',function(){ if(J) paintList(); });
-var rxOpen={}, rxVal={}, ptOpen={}, CODES={};
+var rxOpen={}, rxVal={}, ptOpen={}, CODES={}, CODEEXP={};
+function codeLeft(r){ return Math.max(0,Math.round((CODEEXP[r]-Date.now())/1000)); }
+function tmFmt(n){ return Math.floor(n/60)+':'+('0'+(n%60)).slice(-2); }
+var tmDone=false;
+setInterval(function(){ var any=false; [].forEach.call(document.querySelectorAll('[data-tm]'),function(e){ any=true; var n=codeLeft(e.getAttribute('data-tm')); e.textContent=tmFmt(n); e.className='tm'+(n<=60?' h':(n<=180?' w':'')); if(n<=0&&!tmDone){ tmDone=true; loadCodes(); } else if(n>0) tmDone=false; }); },1000);
 function reactivate(rid){ var code=(rxVal[rid]||'').replace(/[^0-9]/g,''); if(busy['rx'+rid]) return;
   if(code.length!==4){ flash('Type the 4 digit code shown on the customer\'s screen.','bad'); return; }
   busy['rx'+rid]=1; flash(''); paintList();
@@ -232,8 +238,9 @@ function activate(rid){ if(busy[rid]) return; busy[rid]=1; flash(''); paintList(
 function paint(){ var a=J.agent; $('nm').textContent=a.name; $('pc').textContent='Commission: '+kes(RATE(a))+' per customer, per paid month'; paintRef(); paintTiles(); paintList(); }
 function signedOut(){ ls('bs_tok',null); tok=null; clearInterval(timer); show('login'); }
 function load(){ return rpc('byo_sales_dash',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth) signedOut(); else if(j&&(j.error||j.message)) flash(j.error||'The sales system is being updated. Please try again in a little while.','bad'); return; } J=j; gotAt=Date.now(); show('app'); paint(); loadCodes(); }); }
-function loadCodes(){ if(!J||!(J.customers||[]).some(function(c){return !c.activated;})){ CODES={}; return; }
-  rpc('byo_sales_codes',{p_token:tok}).then(function(j){ if(j&&j.ok){ var n=JSON.stringify(j.codes||{}); if(n!==JSON.stringify(CODES)){ CODES=j.codes||{}; var ae=document.activeElement; if(!(ae&&ae.classList&&ae.classList.contains('rxin'))) paintList(); } } }).catch(function(){}); }
+function loadCodes(){ if(!J||!(J.customers||[]).some(function(c){return !c.activated;})){ CODES={}; CODEEXP={}; return; }
+  rpc('byo_sales_codes',{p_token:tok}).then(function(j){ if(j&&j.ok){ var now=Date.now(), ex={}, sc=j.secs||{}; Object.keys(sc).forEach(function(k){ ex[k]=now+Number(sc[k])*1000; }); CODEEXP=ex;
+      var n=JSON.stringify(j.codes||{}); if(n!==JSON.stringify(CODES)){ CODES=j.codes||{}; var ae=document.activeElement; if(!(ae&&ae.classList&&ae.classList.contains('rxin'))) paintList(); } else { [].forEach.call(document.querySelectorAll('[data-tm]'),function(e){ e.textContent=tmFmt(codeLeft(e.getAttribute('data-tm'))); }); } } }).catch(function(){}); }
 function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(document.hidden) return; var ae=document.activeElement; if(ae&&ae.classList&&ae.classList.contains('rxin')) return; if(Date.now()-gotAt>60000) load(); else if(J){ paintList(); loadCodes(); } },20000); }
 var firstPw='';
 $('go').onclick=function(){ var b=$('go'); b.disabled=true; $('err').textContent=''; var pwv=$('pw').value; rpc('byo_sales_login',{p_email:$('em').value,p_password:pwv}).then(function(j){ b.disabled=false;
