@@ -32,6 +32,11 @@ details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}summary
 .banner{border-radius:12px;padding:12px 14px;margin-bottom:12px;font-weight:600}.banner.bad{background:#3a1717;color:#ffc2c2;border:1px solid #6a2a2a}.banner.good{background:#0f3a2c;color:#b9f5dc;border:1px solid #1d6a4e}
 .empty{padding:22px;text-align:center;color:var(--mut)}.hide{display:none!important}
 @media (min-width:700px){.wrap{max-width:880px;zoom:1.35}.login{margin-top:6vh}}
+
+.c2{padding:10px 14px}.c2 .r1,.c2 .r2{display:flex;align-items:center;justify-content:space-between;gap:10px}.c2 .r2{margin-top:6px}
+.c2 .who{min-width:0;display:flex;align-items:baseline}.c2 .meta{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.c2 .meta.hot{color:var(--bad)}
+.c2 .ra button,.c2 .r2>button{flex:0 0 auto;padding:7px 14px;font-size:14px}.lnk{background:none!important;border:0!important;color:var(--acc)!important;padding:4px 6px!important;font-size:13px!important;text-decoration:underline;cursor:pointer;flex:0 0 auto}
+.payl{margin-top:8px}
 </style></head><body><div class="wrap">
 <section id="login" class="login card hide">
   <h1>BYO Sales</h1><p class="mut">Sign in to see the customers you brought in.</p>
@@ -128,25 +133,29 @@ function paintList(){ var C=J.customers||[];
   [].forEach.call($('tabs').children,function(b){ b.onclick=function(){ filter=b.getAttribute('data-f'); paintList(); }; });
   var fn=TABS.filter(function(t){return t[0]===filter})[0][2], rows=C.filter(function(c){return fn(statusOf(c))});
   if(!rows.length){ $('list').innerHTML='<div class="card empty">'+(C.length?'No customers in this group.':'No customers yet. Share your referral link to get started.')+'</div>'; return; }
-  $('list').innerHTML=rows.map(function(c){ var st=statusOf(c), s=secs(c), P=c.payments||[];
-    var cd=''; if(st==='trial'||st==='expiring'){ cd='<div class="cd'+(st==='expiring'?' hot':'')+'">Trial: '+esc(left(s))+(c.ends_at?' (ends '+esc(dt(c.ends_at))+')':'')+'</div>'; }
-    else if(st==='paid'&&s!=null){ cd='<div class="cd mut">Paid access: '+esc(left(s))+'</div>'; }
-    var act=''; if(!c.activated) act='<div class="act"><button data-a="'+esc(c.rid)+'"'+(busy[c.rid]?' disabled':'')+'>'+(busy[c.rid]?'Activating...':'Activate')+'</button></div>';
-    else act='<div class="act"><span class="pill paid">Activated</span><span class="mut sm">'+esc(dt(c.activated_at))+(c.delivered?'':' · waiting for the app to connect')+'</span></div>';
-    var rx=''; if(c.activated && (st==='trial'||st==='expiring'||st==='paid')){
-      rx='<div class="rx">'+(rxOpen[c.rid]
-        ? '<div class="mut sm" style="margin:8px 0 6px">New phone, TV or reinstall? Type the 4 digit code now showing on their screen.</div><div class="act"><input class="rxin" data-i="'+esc(c.rid)+'" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Code" value="'+esc(rxVal[c.rid]||'')+'" style="flex:0 0 110px;text-align:center;font-size:20px;letter-spacing:4px"><button data-rg="'+esc(c.rid)+'"'+(busy['rx'+c.rid]?' disabled':'')+'>'+(busy['rx'+c.rid]?'Reactivating...':'Reactivate')+'</button><button class="ghost" data-rc="'+esc(c.rid)+'">Cancel</button></div>'
-        : '<div class="act"><button class="ghost" data-rx="'+esc(c.rid)+'">New device? Reactivate with its code</button></div>')+'</div>'; }
-    var cm=(c.months>0)?'<div class="cd mut" style="margin-top:6px">Paid months: '+esc(mths(c.months))+' · your commission: <b style="color:var(--ok)">'+esc(kes(c.commission))+'</b></div>':'';
-    var pay=P.length?('<details data-r="'+esc(c.rid)+'"'+(openD[c.rid]?' open':'')+'><summary>Payments ('+P.length+') · '+esc(money(c.paid))+'</summary>'+P.map(function(p){ return '<div class="pay"><span>'+esc(dt(p.at))+' · '+esc(p.method||'')+'</span><b>'+esc(fmt(p.amount)+' '+(p.currency||''))+'</b><span class="mut">Ref '+esc(p.ref||'-')+'</span><span class="mut" style="text-align:right">'+esc(p.plan||'')+(p.from?(' · '+esc(dt(p.from))+' to '+esc(dt(p.until))):'')+'</span></div>'; }).join('')+'</details>'):'';
-    return '<div class="card cust"><div class="top"><div><div class="id">'+esc(c.tv_id)+'</div><div class="mut sm">Installed '+esc(dt(c.referred_at))+(c.platform?' · '+esc(c.platform):'')+'</div></div><span class="pill '+st+'">'+LABEL[st]+'</span></div>'+cd+cm+act+rx+pay+'</div>'; }).join('');
+  $('list').innerHTML=rows.map(function(c){ var st=statusOf(c), s=secs(c), P=c.payments||[], rid=esc(c.rid), code=CODES[c.rid];
+    // Every customer is two lines, so a long list stays easy to scan. Line 1: who + status. Line 2: the detail + the one action.
+    var who=(!c.activated&&code)?('<span class="id">'+esc(code)+'</span><span class="mut sm" style="margin-left:8px">activation code on their screen</span>'):('<span class="id">'+esc(c.tv_id)+'</span>');
+    var bits=[]; if(!c.activated){ bits.push('Installed '+dt(c.referred_at)); if(c.platform) bits.push(c.platform); if(code) bits.push('ID '+c.tv_id); else bits.push('no code showing right now'); }
+    else { if(st==='trial'||st==='expiring') bits.push('Trial: '+left(s)); else if(st==='paid'&&s!=null) bits.push('Paid access: '+left(s)); else if(st==='expired') bits.push('Expired');
+        bits.push('Activated '+dt(c.activated_at)+(c.delivered?'':' (waiting for the app)')); if(c.platform) bits.push(c.platform);
+        if(c.months>0) bits.push(mths(c.months)+' paid mo · '+kes(c.commission)); }
+    var canRx=c.activated&&(st==='trial'||st==='expiring'||st==='paid');
+    var btn=!c.activated?('<button data-a="'+rid+'"'+(busy[c.rid]?' disabled':'')+'>'+(busy[c.rid]?'Activating...':'Activate')+'</button>')
+        :(canRx?('<button class="ghost" data-rx="'+rid+'">New device</button>'):'');
+    var pt=P.length?('<button class="lnk" data-pt="'+rid+'">Payments ('+P.length+')</button>'):'';
+    var rxp=(canRx&&rxOpen[c.rid])?('<div class="act" style="margin-top:8px"><input class="rxin" data-i="'+rid+'" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Code" value="'+esc(rxVal[c.rid]||'')+'" style="flex:0 0 100px;text-align:center;font-size:18px;letter-spacing:4px"><button data-rg="'+rid+'"'+(busy['rx'+c.rid]?' disabled':'')+'>'+(busy['rx'+c.rid]?'Reactivating...':'Reactivate')+'</button><button class="ghost" data-rc="'+rid+'">Cancel</button></div><div class="mut sm" style="margin-top:4px">Type the 4 digit code now showing on the customer\'s new screen.</div>'):'';
+    var pay=(P.length&&ptOpen[c.rid])?('<div class="payl">'+P.map(function(p){ return '<div class="pay"><span>'+esc(dt(p.at))+' · '+esc(p.method||'')+'</span><b>'+esc(fmt(p.amount)+' '+(p.currency||''))+'</b><span class="mut">Ref '+esc(p.ref||'-')+'</span><span class="mut" style="text-align:right">'+esc(p.plan||'')+(p.from?(' · '+esc(dt(p.from))+' to '+esc(dt(p.until))):'')+'</span></div>'; }).join('')+'</div>'):'';
+    return '<div class="card cust c2"><div class="r1"><div class="who">'+who+'</div><span class="pill '+st+'">'+LABEL[st]+'</span></div>'
+        +'<div class="r2"><div class="meta mut sm'+(st==='expiring'?' hot':'')+'">'+esc(bits.join(' · '))+(pt?' · ':'')+'</div>'+pt+(btn?'<div class="ra">'+btn+'</div>':'')+'</div>'+rxp+pay+'</div>'; }).join('');
   [].forEach.call($('list').querySelectorAll('[data-a]'),function(b){ b.onclick=function(){ activate(b.getAttribute('data-a')); }; });
   [].forEach.call($('list').querySelectorAll('[data-rx]'),function(b){ b.onclick=function(){ rxOpen[b.getAttribute('data-rx')]=1; paintList(); var i=$('list').querySelector('.rxin[data-i="'+b.getAttribute('data-rx')+'"]'); if(i) i.focus(); }; });
+  [].forEach.call($('list').querySelectorAll('[data-pt]'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-pt'); if(ptOpen[k]) delete ptOpen[k]; else ptOpen[k]=1; paintList(); }; });
   [].forEach.call($('list').querySelectorAll('[data-rc]'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-rc'); delete rxOpen[k]; delete rxVal[k]; paintList(); }; });
   [].forEach.call($('list').querySelectorAll('[data-rg]'),function(b){ b.onclick=function(){ reactivate(b.getAttribute('data-rg')); }; });
   [].forEach.call($('list').querySelectorAll('.rxin'),function(i){ i.oninput=function(){ i.value=i.value.replace(/[^0-9]/g,'').slice(0,4); rxVal[i.getAttribute('data-i')]=i.value; };
     i.onkeydown=function(e){ if(e.key==='Enter'){ e.preventDefault(); reactivate(i.getAttribute('data-i')); } }; }); }
-var rxOpen={}, rxVal={};
+var rxOpen={}, rxVal={}, ptOpen={}, CODES={};
 function reactivate(rid){ var code=(rxVal[rid]||'').replace(/[^0-9]/g,''); if(busy['rx'+rid]) return;
   if(code.length!==4){ flash('Type the 4 digit code shown on the customer\'s screen.','bad'); return; }
   busy['rx'+rid]=1; flash(''); paintList();
@@ -165,8 +174,10 @@ function activate(rid){ if(busy[rid]) return; busy[rid]=1; flash(''); paintList(
 
 function paint(){ var a=J.agent; $('nm').textContent=a.name; $('pc').textContent='Commission: '+kes(RATE(a))+' per customer, per paid month'; paintRef(); paintTiles(); paintList(); }
 function signedOut(){ ls('bs_tok',null); tok=null; clearInterval(timer); show('login'); }
-function load(){ return rpc('byo_sales_dash',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth) signedOut(); else if(j&&(j.error||j.message)) flash(j.error||'The sales system is being updated. Please try again in a little while.','bad'); return; } J=j; gotAt=Date.now(); show('app'); paint(); }); }
-function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(document.hidden) return; var ae=document.activeElement; if(ae&&ae.classList&&ae.classList.contains('rxin')) return; if(Date.now()-gotAt>60000) load(); else if(J) paintList(); },30000); }
+function load(){ return rpc('byo_sales_dash',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth) signedOut(); else if(j&&(j.error||j.message)) flash(j.error||'The sales system is being updated. Please try again in a little while.','bad'); return; } J=j; gotAt=Date.now(); show('app'); paint(); loadCodes(); }); }
+function loadCodes(){ if(!J||!(J.customers||[]).some(function(c){return !c.activated;})){ CODES={}; return; }
+  rpc('byo_sales_codes',{p_token:tok}).then(function(j){ if(j&&j.ok){ var n=JSON.stringify(j.codes||{}); if(n!==JSON.stringify(CODES)){ CODES=j.codes||{}; var ae=document.activeElement; if(!(ae&&ae.classList&&ae.classList.contains('rxin'))) paintList(); } } }).catch(function(){}); }
+function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(document.hidden) return; var ae=document.activeElement; if(ae&&ae.classList&&ae.classList.contains('rxin')) return; if(Date.now()-gotAt>60000) load(); else if(J){ paintList(); loadCodes(); } },20000); }
 var firstPw='';
 $('go').onclick=function(){ var b=$('go'); b.disabled=true; $('err').textContent=''; var pwv=$('pw').value; rpc('byo_sales_login',{p_email:$('em').value,p_password:pwv}).then(function(j){ b.disabled=false;
     if(j&&j.ok){ tok=j.token; $('pw').value=''; if(j.must_change){ firstPw=pwv; show('chg'); } else { ls('bs_tok',tok); start(); } }

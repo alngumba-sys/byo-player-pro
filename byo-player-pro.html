@@ -5496,6 +5496,7 @@ var Pin=(function(){
         try{ state.platform=(typeof isTV!=='undefined'&&isTV)?'TV':'Phone'; }catch(e){ state.platform='Unknown'; }
         try{ state.lang=L18N.current(); }catch(e){ state.lang='en'; }
         try{ state.region=(Store&&Store.settings)?Store.settings.region||'':''; }catch(e){ state.region=''; }
+        try{ state.device_id=Billing.deviceId(); }catch(e){}   // lets a salesperson see this code next to the right customer and move that customer here
         if(stDisp) stDisp.textContent='Calling server...';
         Supa.rpc('byo_support_open',{ p_device_key:dk, p_state:state },function(err,res){
             var cEl=$('act-code-display'), sEl=$('act-status');
