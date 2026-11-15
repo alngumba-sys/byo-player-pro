@@ -1,6 +1,6 @@
 {
-  "versionCode": 240,
-  "versionName": "3.37.55",
+  "versionCode": 241,
+  "versionName": "3.37.56",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "New installs must enter a salesperson referral code before using the app. The code box is now larger and easier to read."
+  "notes": "Fix: on a TV remote you can now choose Later in the update window (Left and Right move between the buttons, Back means Later)."
 }
