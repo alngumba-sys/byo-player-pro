@@ -1,22 +1,51 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Get BYO Player</title><meta name="theme-color" content="#0b1220">
+<title>Get BYO Player</title><meta name="theme-color" content="#061640">
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b1220;color:#eaf0fb;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:24px 16px}
-.card{width:100%;max-width:420px;text-align:center}
-h1{font-size:28px;margin:14px 0 6px}p{color:#9fb0cc;margin:0 0 18px}
-.logo{width:72px;height:72px;border-radius:18px}
-.btn{display:block;width:100%;padding:16px;border-radius:14px;background:#22d3ee;color:#04202a;font-weight:800;font-size:18px;text-decoration:none;margin:10px 0}
-.btn.alt{background:#16213a;color:#eaf0fb;font-weight:700;font-size:16px}
-.box{display:none;margin-top:18px;text-align:left;background:#121c33;border-radius:14px;padding:14px 16px;font-size:15px;color:#c9d6ee}
-.box b{color:#fff}.box ol{margin:8px 0 0;padding-left:20px}.show{display:block}
-small{display:block;margin-top:22px;color:#6f819f}
+:root{color-scheme:dark;--cy:#22e1f0;--yl:#ffd21f;--ink:#04202a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:#061640}
+body{margin:0;min-height:100vh;min-height:100dvh;color:#fff;font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:
+   radial-gradient(520px 380px at 105% -4%,rgba(34,225,240,.38),transparent 62%),
+   radial-gradient(480px 360px at -10% 104%,rgba(34,225,240,.30),transparent 60%),
+   linear-gradient(165deg,#0a2a73 0%,#07194f 46%,#050f33 100%);
+  padding:max(26px,env(safe-area-inset-top)) 18px max(30px,env(safe-area-inset-bottom))}
+.card{width:100%;max-width:440px;margin:0 auto;text-align:center}
+.brand{display:flex;align-items:center;justify-content:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:.2px}
+.brand img{width:38px;height:38px;border-radius:10px;box-shadow:0 0 0 1px rgba(34,225,240,.35),0 6px 18px rgba(0,0,0,.35)}
+h1{margin:22px 0 14px;font-size:38px;line-height:1.08;font-weight:900;font-style:italic;letter-spacing:-.5px}
+h1 span{display:block;color:var(--cy)}
+.tag{display:inline-block;background:var(--yl);color:#1a1400;font-weight:800;font-style:italic;font-size:15px;padding:8px 18px;border-radius:12px 4px 12px 4px;transform:skewX(-6deg);box-shadow:0 6px 18px rgba(255,210,31,.25)}
+.tag i{display:inline-block;transform:skewX(6deg);font-style:italic}
+.stats{display:flex;justify-content:center;gap:0;margin:22px 0 4px;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12)}
+.stats div{flex:1;padding:12px 4px;font-size:12px;color:#c8d6f5}
+.stats div+div{border-left:1px solid rgba(255,255,255,.12)}
+.stats b{display:block;color:var(--yl);font-size:19px;font-weight:900;line-height:1.2}
+.price{margin:20px 0 10px;background:var(--yl);color:#16120a;border-radius:999px;padding:12px 18px;font-weight:900;font-size:22px;font-style:italic;box-shadow:0 8px 24px rgba(255,210,31,.22)}
+.price b{font-size:28px;color:#0b1b55}
+.trial{display:inline-block;margin:0 0 22px;padding:9px 22px;border-radius:999px;border:2px solid var(--cy);background:rgba(34,225,240,.10);color:#fff;font-weight:800;font-style:italic;font-size:18px;box-shadow:0 0 22px rgba(34,225,240,.28)}
+.btn{display:block;width:100%;padding:17px;border-radius:16px;background:var(--cy);color:var(--ink);font-weight:900;font-size:19px;text-decoration:none;margin:10px 0;box-shadow:0 10px 26px rgba(34,225,240,.30)}
+.btn:active{transform:scale(.985)}
+.btn.alt{background:rgba(255,255,255,.08);color:#fff;font-weight:700;font-size:16px;border:1.5px solid rgba(34,225,240,.55);box-shadow:none}
+.box{display:none;margin-top:16px;text-align:left;background:rgba(6,16,50,.62);border:1.5px solid rgba(34,225,240,.45);border-radius:18px;padding:14px 18px;font-size:15px;color:#d5e1fa}
+.box b{color:#fff}.box ol{margin:8px 0 0;padding-left:22px}.box li{margin:4px 0}.show{display:block}
+.ver{margin:8px 0 0;font-size:13px;color:#9db4e6}
+.plat{margin-top:22px;display:inline-flex;gap:14px;align-items:center;padding:9px 18px;border-radius:999px;border:1.5px solid rgba(34,225,240,.5);font-size:13px;font-weight:700;font-style:italic;color:#dfe9ff}
 </style></head><body>
 <div class="card">
-  <img class="logo" src="/app/icon-192.png" alt="" onerror="this.style.display='none'">
-  <h1>BYO Player</h1>
-  <p>Bring your own playlist. Watch live TV, movies and series.</p>
+  <div class="brand"><img src="/app/icon-192.png" alt="" onerror="this.style.display='none'">BYO Player</div>
+  <h1>Live TV, Football,<span>Movies &amp; Series</span></h1>
+  <div class="tag"><i>Your entertainment, wherever you go.</i></div>
+
+  <div class="stats">
+    <div><b>13,000+</b>Live Channels</div>
+    <div><b>70,000+</b>Movies</div>
+    <div><b>30,000+</b>Series</div>
+  </div>
+
+  <div class="price">Only <b>KSh 400</b> / Month</div>
+  <div class="trial">7-Day Free Trial</div>
 
   <div id="android" style="display:none">
     <a class="btn" id="dl" href="/tv3247.apk" download>Download the Android app</a>
@@ -39,7 +68,8 @@ small{display:block;margin-top:22px;color:#6f819f}
     <a class="btn alt" href="/tv3247.apk" download>Download the Android app (APK)</a>
     <div class="box show">On a phone? Scan the QR code again with your phone camera to get the right version for it.</div>
   </div>
-  <small>BYO Player does not provide any channels or content. You add your own playlist.</small>
+
+  <div class="plat">Supported on &nbsp;iPhone &nbsp;|&nbsp; Android</div>
 </div>
 <script>
 (function(){var ua=navigator.userAgent||'',id=function(x){return document.getElementById(x)};
@@ -47,6 +77,6 @@ var ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator
 var and=/Android/i.test(ua);
 id(and?'android':ios?'ios':'other').style.display='block';
 if(and){ try{ setTimeout(function(){ id('dl').click(); },900); }catch(e){} }
-try{ fetch('/version.json',{cache:'no-store'}).then(function(r){return r.json()}).then(function(v){ if(v&&v.versionName){ var s=document.createElement('p'); s.style.cssText='margin:6px 0 0;font-size:13px'; s.textContent='Version '+v.versionName; id('android').appendChild(s);} }).catch(function(){}); }catch(e){}
+try{ fetch('/version.json',{cache:'no-store'}).then(function(r){return r.json()}).then(function(v){ if(v&&v.versionName){ var s=document.createElement('p'); s.className='ver'; s.textContent='Version '+v.versionName; id('android').appendChild(s);} }).catch(function(){}); }catch(e){}
 })();
 </script></body></html>
