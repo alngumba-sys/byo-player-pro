@@ -35,20 +35,20 @@ details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}summary
 <section id="login" class="login card hide">
   <h1>BYO Sales</h1><p class="mut">Sign in to see the customers you brought in.</p>
   <label class="mut">Phone number</label><input id="em" type="tel" inputmode="tel" autocomplete="username" placeholder="e.g. 0712345678">
-  <label class="mut">Password</label><input id="pw" type="password" autocomplete="current-password">
+  <label class="mut">Password or PIN</label><input id="pw" type="password" autocomplete="current-password">
   <div class="err" id="err"></div><button id="go" style="width:100%">Sign in</button>
 </section>
 <section id="chg" class="login card hide">
-  <h1>Choose a new password</h1><p class="mut">For your safety, replace the first password you were given. Use at least 8 characters.</p>
-  <label class="mut">New password</label><input id="np1" type="password" autocomplete="new-password">
-  <label class="mut">Repeat new password</label><input id="np2" type="password" autocomplete="new-password">
+  <h1>Choose your 4-digit PIN</h1><p class="mut">For your safety, replace the first password you were given with a PIN of 4 digits. You will use it every time you sign in.</p>
+  <label class="mut">New PIN (4 digits)</label><input id="np1" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password" style="letter-spacing:8px;font-size:22px;text-align:center">
+  <label class="mut">Repeat new PIN</label><input id="np2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password" style="letter-spacing:8px;font-size:22px;text-align:center">
   <div class="err" id="cerr"></div><button id="cgo2" style="width:100%">Save and continue</button>
 </section>
 <section id="app" class="hide">
   <header><div><h1 id="nm">BYO Sales</h1><div class="mut sm" id="pc"></div></div><button class="gh sm2" id="out">Sign out</button></header>
   <div id="msg"></div>
 
-  <div class="card" id="ref"></div>
+  <div class="card" id="ref"><div class="mut">Loading your account...</div></div>
 
   <div class="tiles" id="tiles"></div>
 
@@ -147,8 +147,9 @@ var firstPw='';
 $('go').onclick=function(){ var b=$('go'); b.disabled=true; $('err').textContent=''; var pwv=$('pw').value; rpc('byo_sales_login',{p_email:$('em').value,p_password:pwv}).then(function(j){ b.disabled=false;
     if(j&&j.ok){ tok=j.token; $('pw').value=''; if(j.must_change){ firstPw=pwv; show('chg'); } else { ls('bs_tok',tok); start(); } }
     else $('err').textContent=(j&&j.error)||'Could not sign in.'; }); };
-$('cgo2').onclick=function(){ var a=$('np1').value, c=$('np2').value, e=$('cerr'); e.textContent=''; if(a.length<8){ e.textContent='Use at least 8 characters.'; return; } if(a!==c){ e.textContent='The two passwords are not the same.'; return; }
+$('cgo2').onclick=function(){ var a=$('np1').value, c=$('np2').value, e=$('cerr'); e.textContent=''; if(!/^[0-9]{4}$/.test(a)){ e.textContent='The PIN must be exactly 4 digits (numbers only).'; return; } if(a!==c){ e.textContent='The two PINs are not the same.'; return; } if(a===firstPw){ e.textContent='Choose a different PIN from the one you were given.'; return; }
   $('cgo2').disabled=true; rpc('byo_sales_change_password',{p_token:tok,p_old:firstPw,p_new:a}).then(function(j){ $('cgo2').disabled=false; if(j&&j.ok){ firstPw=''; ls('bs_tok',tok); $('np1').value=$('np2').value=''; start(); } else e.textContent=(j&&j.error)||'Could not save.'; }); };
+['np1','np2'].forEach(function(i){ $(i).addEventListener('input',function(){ var v=this.value.replace(/\D/g,'').slice(0,4); if(this.value!==v) this.value=v; }); $(i).addEventListener('keydown',function(e){ if(e.key==='Enter') $('cgo2').click(); }); });
 $('pw').addEventListener('keydown',function(e){ if(e.key==='Enter') $('go').click(); });
 $('out').onclick=function(){ rpc('byo_sales_logout',{p_token:tok}); signedOut(); };
 if(tok) start(); else show('login');
