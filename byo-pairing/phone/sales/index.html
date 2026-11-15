@@ -33,9 +33,15 @@ details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}summary
 </style></head><body><div class="wrap">
 <section id="login" class="login card hide">
   <h1>BYO Sales</h1><p class="mut">Sign in to see the customers you brought in.</p>
-  <label class="mut">Email</label><input id="em" type="email" autocomplete="username">
+  <label class="mut">Phone number</label><input id="em" type="tel" inputmode="tel" autocomplete="username" placeholder="e.g. 0712345678">
   <label class="mut">Password</label><input id="pw" type="password" autocomplete="current-password">
   <div class="err" id="err"></div><button id="go" style="width:100%">Sign in</button>
+</section>
+<section id="chg" class="login card hide">
+  <h1>Choose a new password</h1><p class="mut">For your safety, replace the first password you were given. Use at least 8 characters.</p>
+  <label class="mut">New password</label><input id="np1" type="password" autocomplete="new-password">
+  <label class="mut">Repeat new password</label><input id="np2" type="password" autocomplete="new-password">
+  <div class="err" id="cerr"></div><button id="cgo2" style="width:100%">Save and continue</button>
 </section>
 <section id="app" class="hide">
   <header><div><h1 id="nm">BYO Sales</h1><div class="mut sm" id="pc"></div></div><button class="gh sm2" id="out">Sign out</button></header>
@@ -61,7 +67,7 @@ function dt(t){return t?new Date(t).toLocaleDateString(undefined,{day:'numeric',
 function money(o,pct){ var k=Object.keys(o||{}); if(!k.length) return '0'; return k.map(function(c){ var v=o[c]*(pct==null?1:pct/100); return fmt(v)+' '+c; }).join(' + '); }
 function left(sec){ if(sec<=0) return 'ended'; var d=Math.floor(sec/86400), h=Math.floor(sec%86400/3600), m=Math.floor(sec%3600/60); return d>0?(d+'d '+h+'h left'):(h>0?(h+'h '+m+'m left'):(m+' min left')); }
 var tok=ls('bs_tok'), timer=null, J=null, gotAt=0, filter='all', busy={};
-function show(v){ $('login').classList.toggle('hide',v!=='login'); $('app').classList.toggle('hide',v!=='app'); }
+function show(v){ $('login').classList.toggle('hide',v!=='login'); $('chg').classList.toggle('hide',v!=='chg'); $('app').classList.toggle('hide',v!=='app'); }
 function flash(t,cls){ $('msg').innerHTML=t?'<div class="banner '+(cls||'bad')+'">'+esc(t)+'</div>':''; if(t&&cls==='good') setTimeout(function(){ if($('msg').textContent===t) $('msg').innerHTML=''; },5000); }
 function copy(txt,btn){ var done=function(){ var o=btn.textContent; btn.textContent='Copied'; setTimeout(function(){ btn.textContent=o; },1500); };
   try{ navigator.clipboard.writeText(txt).then(done,fb); }catch(e){ fb(); }
@@ -136,7 +142,12 @@ function paint(){ var a=J.agent; $('nm').textContent=a.name; $('pc').textContent
 function signedOut(){ ls('bs_tok',null); tok=null; clearInterval(timer); show('login'); }
 function load(){ return rpc('byo_sales_dash',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth) signedOut(); else if(j&&(j.error||j.message)) flash(j.error||'The sales system is being updated. Please try again in a little while.','bad'); return; } J=j; gotAt=Date.now(); show('app'); paint(); }); }
 function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(document.hidden) return; if(Date.now()-gotAt>60000) load(); else if(J) paintList(); },30000); }
-$('go').onclick=function(){ var b=$('go'); b.disabled=true; $('err').textContent=''; rpc('byo_sales_login',{p_email:$('em').value,p_password:$('pw').value}).then(function(j){ b.disabled=false; if(j&&j.ok){ tok=j.token; ls('bs_tok',tok); $('pw').value=''; start(); } else $('err').textContent=(j&&j.error)||'Could not sign in.'; }); };
+var firstPw='';
+$('go').onclick=function(){ var b=$('go'); b.disabled=true; $('err').textContent=''; var pwv=$('pw').value; rpc('byo_sales_login',{p_email:$('em').value,p_password:pwv}).then(function(j){ b.disabled=false;
+    if(j&&j.ok){ tok=j.token; $('pw').value=''; if(j.must_change){ firstPw=pwv; show('chg'); } else { ls('bs_tok',tok); start(); } }
+    else $('err').textContent=(j&&j.error)||'Could not sign in.'; }); };
+$('cgo2').onclick=function(){ var a=$('np1').value, c=$('np2').value, e=$('cerr'); e.textContent=''; if(a.length<8){ e.textContent='Use at least 8 characters.'; return; } if(a!==c){ e.textContent='The two passwords are not the same.'; return; }
+  $('cgo2').disabled=true; rpc('byo_sales_change_password',{p_token:tok,p_old:firstPw,p_new:a}).then(function(j){ $('cgo2').disabled=false; if(j&&j.ok){ firstPw=''; ls('bs_tok',tok); $('np1').value=$('np2').value=''; start(); } else e.textContent=(j&&j.error)||'Could not save.'; }); };
 $('pw').addEventListener('keydown',function(e){ if(e.key==='Enter') $('go').click(); });
 $('out').onclick=function(){ rpc('byo_sales_logout',{p_token:tok}); signedOut(); };
 if(tok) start(); else show('login');
