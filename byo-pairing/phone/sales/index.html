@@ -107,9 +107,12 @@ function paintRef(){ var a=J.agent, el=$('ref');
 }
 
 // ---- tiles ----
+function kes(n){ return 'KSh '+fmt(Math.round(Number(n||0))); }
+function mths(n){ n=Number(n||0); return (Math.round(n*10)/10).toLocaleString(undefined,{maximumFractionDigits:1}); }
 function paintTiles(){ var m=J.month, A=J.all_time, a=J.agent;
-  $('tiles').innerHTML='<div class="card tile"><div class="l">Sales in '+esc(m.label)+'</div><div class="v">'+esc(money(m.sales))+'</div><div class="s">Your commission ('+a.pct+'%): '+esc(money(m.sales,a.pct))+'</div></div>'+
-    '<div class="card tile"><div class="l">New users in '+esc(m.label)+'</div><div class="v">'+fmt(m.new_users)+'</div><div class="s">'+fmt(A.users)+' in total</div></div>'; }
+  $('tiles').innerHTML='<div class="card tile"><div class="l">Your commission in '+esc(m.label)+'</div><div class="v">'+esc(kes(m.commission))+'</div><div class="s">'+mths(m.months)+' paid month'+(Number(m.months)===1?'':'s')+' x '+esc(kes(a.rate))+'</div></div>'+
+    '<div class="card tile"><div class="l">New users in '+esc(m.label)+'</div><div class="v">'+fmt(m.new_users)+'</div><div class="s">'+fmt(A.users)+' in total</div></div>'+
+    '<div class="card tile" style="grid-column:1/-1"><div class="l">Total commission earned</div><div class="v">'+esc(kes(A.commission))+'</div><div class="s">'+mths(A.months)+' paid months so far. You earn '+esc(kes(a.rate))+' for every month a customer pays.</div></div>'; }
 
 // ---- customers ----
 function elapsed(){ return Math.floor((Date.now()-gotAt)/1000); }
@@ -128,8 +131,9 @@ function paintList(){ var C=J.customers||[];
     else if(st==='paid'&&s!=null){ cd='<div class="cd mut">Paid access: '+esc(left(s))+'</div>'; }
     var act=''; if(!c.activated) act='<div class="act"><button data-a="'+esc(c.rid)+'"'+(busy[c.rid]?' disabled':'')+'>'+(busy[c.rid]?'Activating...':'Activate')+'</button></div>';
     else act='<div class="act"><span class="pill paid">Activated</span><span class="mut sm">'+esc(dt(c.activated_at))+(c.delivered?'':' · waiting for the app to connect')+'</span></div>';
+    var cm=(c.months>0)?'<div class="cd mut" style="margin-top:6px">Paid months: '+esc(mths(c.months))+' · your commission: <b style="color:var(--ok)">'+esc(kes(c.commission))+'</b></div>':'';
     var pay=P.length?('<details data-r="'+esc(c.rid)+'"'+(openD[c.rid]?' open':'')+'><summary>Payments ('+P.length+') · '+esc(money(c.paid))+'</summary>'+P.map(function(p){ return '<div class="pay"><span>'+esc(dt(p.at))+' · '+esc(p.method||'')+'</span><b>'+esc(fmt(p.amount)+' '+(p.currency||''))+'</b><span class="mut">Ref '+esc(p.ref||'-')+'</span><span class="mut" style="text-align:right">'+esc(p.plan||'')+(p.from?(' · '+esc(dt(p.from))+' to '+esc(dt(p.until))):'')+'</span></div>'; }).join('')+'</details>'):'';
-    return '<div class="card cust"><div class="top"><div><div class="id">'+esc(c.tv_id)+'</div><div class="mut sm">Installed '+esc(dt(c.referred_at))+(c.platform?' · '+esc(c.platform):'')+'</div></div><span class="pill '+st+'">'+LABEL[st]+'</span></div>'+cd+act+pay+'</div>'; }).join('');
+    return '<div class="card cust"><div class="top"><div><div class="id">'+esc(c.tv_id)+'</div><div class="mut sm">Installed '+esc(dt(c.referred_at))+(c.platform?' · '+esc(c.platform):'')+'</div></div><span class="pill '+st+'">'+LABEL[st]+'</span></div>'+cd+cm+act+pay+'</div>'; }).join('');
   [].forEach.call($('list').querySelectorAll('[data-a]'),function(b){ b.onclick=function(){ activate(b.getAttribute('data-a')); }; }); }
 
 function activate(rid){ if(busy[rid]) return; busy[rid]=1; flash(''); paintList();
@@ -139,7 +143,7 @@ function activate(rid){ if(busy[rid]) return; busy[rid]=1; flash(''); paintList(
     else flash((r&&r.error)||'Could not activate.','bad');
     load(); }); }
 
-function paint(){ var a=J.agent; $('nm').textContent=a.name; $('pc').textContent='Commission '+a.pct+'%'; paintRef(); paintTiles(); paintList(); }
+function paint(){ var a=J.agent; $('nm').textContent=a.name; $('pc').textContent=kes(a.rate)+' per paid month'; paintRef(); paintTiles(); paintList(); }
 function signedOut(){ ls('bs_tok',null); tok=null; clearInterval(timer); show('login'); }
 function load(){ return rpc('byo_sales_dash',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth) signedOut(); else if(j&&(j.error||j.message)) flash(j.error||'The sales system is being updated. Please try again in a little while.','bad'); return; } J=j; gotAt=Date.now(); show('app'); paint(); }); }
 function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(document.hidden) return; if(Date.now()-gotAt>60000) load(); else if(J) paintList(); },30000); }
