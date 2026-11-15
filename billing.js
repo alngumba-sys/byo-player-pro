@@ -203,12 +203,13 @@
                     try{ localStorage.setItem('byo_ref_done','1'); localStorage.removeItem('byo_ref_pending'); }catch(e){} close(); try{ done&&done(); }catch(e){} }); }
             ok.addEventListener('click',go); if(must){ o.querySelector('#refno').style.display='none'; try{ var hp=document.createElement('div'); hp.style.cssText='color:#9fb0cc;font-size:13px;margin-top:12px;text-align:center'; hp.textContent='No code? Ask the person who introduced BYO Player to you, or write to '+BILLING_CONFIG.supportEmail+'.'; o.firstChild.appendChild(hp); }catch(e){} } else o.querySelector('#refno').addEventListener('click',close); document.addEventListener('keydown',kd,true); setTimeout(function(){ try{ inp.focus(); }catch(e){} },50); }
         // First run: ask once for the salesperson's code (pre-filled when the page was opened from a ?ref= link). Never during setup or playback.
-        function askReferral(tries){ try{ tries=tries||0; if(refDone()||localStorage.getItem('byo_ref_asked')||!localStorage.getItem('byo_ref_on')||document.getElementById('refin')) return;
+        function askReferral(tries){ try{ tries=tries||0; if(true) return; if(refDone()||localStorage.getItem('byo_ref_asked')||!localStorage.getItem('byo_ref_on')||document.getElementById('refin')) return;
                 var w=document.getElementById('welcome'), pv=document.getElementById('view-player'), busy=(w&&!w.classList.contains('hidden')&&w.offsetParent!==null)||(pv&&pv.classList.contains('active-view'))||wallOpen;
                 if(busy){ if(tries<40) setTimeout(function(){ askReferral(tries+1); },8000); return; }
                 localStorage.setItem('byo_ref_asked','1'); openRef(function(){ try{ if(document.getElementById('view-home').classList.contains('active-view')) renderHome(); }catch(e){} }); }catch(e){} }
         // New installs must enter a valid salesperson code before using the app (switched on from the support console).
-        function requireReferral(){ try{ if(refDone()||document.getElementById('refov')) return; try{ if(document.getElementById('view-player').classList.contains('active-view')&&typeof exitPlayer==='function') exitPlayer(); }catch(e){}
+        function refExempt(){ try{ if(localStorage.getItem('byo_ref_exempt')) return true; if((Store.savedPlaylists||[]).length){ localStorage.setItem('byo_ref_exempt','1'); return true; } }catch(e){} return false; }   // already set up before: an existing or updated install is never asked
+        function requireReferral(){ try{ if(refDone()||refExempt()||document.getElementById('refov')) return; try{ if(document.getElementById('view-player').classList.contains('active-view')&&typeof exitPlayer==='function') exitPlayer(); }catch(e){}
                 openRef(function(){ try{ if(document.getElementById('view-home').classList.contains('active-view')) renderHome(); }catch(e){} }, true); }catch(e){} }
         function homeBanner(){ return isBlocked()?statusBanner():null; }
         function statusBanner(){ if(isBlocked()){ var bb=document.createElement('div'); bb.className='pay-banner bl-banner exp'; bb.setAttribute('data-focusable','true'); bb.tabIndex=0;
