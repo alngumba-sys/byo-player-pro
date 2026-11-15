@@ -107,12 +107,13 @@ function paintRef(){ var a=J.agent, el=$('ref');
 }
 
 // ---- tiles ----
+function RATE(a){ return (a&&a.rate!=null)?a.rate:100; }
 function kes(n){ return 'KSh '+fmt(Math.round(Number(n||0))); }
 function mths(n){ n=Number(n||0); return (Math.round(n*10)/10).toLocaleString(undefined,{maximumFractionDigits:1}); }
 function paintTiles(){ var m=J.month, A=J.all_time, a=J.agent;
-  $('tiles').innerHTML='<div class="card tile"><div class="l">Your commission in '+esc(m.label)+'</div><div class="v">'+esc(kes(m.commission))+'</div><div class="s">'+mths(m.months)+' paid month'+(Number(m.months)===1?'':'s')+' x '+esc(kes(a.rate))+'</div></div>'+
+  $('tiles').innerHTML='<div class="card tile"><div class="l">Your commission in '+esc(m.label)+'</div><div class="v">'+esc(kes((m.commission||0)))+'</div><div class="s">'+mths(m.months)+' paid customer-month'+(Number(m.months)===1?'':'s')+' x '+esc(kes(RATE(a)))+'</div></div>'+
     '<div class="card tile"><div class="l">New users in '+esc(m.label)+'</div><div class="v">'+fmt(m.new_users)+'</div><div class="s">'+fmt(A.users)+' in total</div></div>'+
-    '<div class="card tile" style="grid-column:1/-1"><div class="l">Total commission earned</div><div class="v">'+esc(kes(A.commission))+'</div><div class="s">'+mths(A.months)+' paid months so far. You earn '+esc(kes(a.rate))+' for every month a customer pays.</div></div>'; }
+    '<div class="card tile" style="grid-column:1/-1"><div class="l">Total commission earned</div><div class="v">'+esc(kes((A.commission||0)))+'</div><div class="s">'+mths(A.months)+' paid months so far. You earn '+esc(kes(RATE(a)))+' for every customer, for every month they pay.</div></div>'; }
 
 // ---- customers ----
 function elapsed(){ return Math.floor((Date.now()-gotAt)/1000); }
@@ -143,7 +144,7 @@ function activate(rid){ if(busy[rid]) return; busy[rid]=1; flash(''); paintList(
     else flash((r&&r.error)||'Could not activate.','bad');
     load(); }); }
 
-function paint(){ var a=J.agent; $('nm').textContent=a.name; $('pc').textContent=kes(a.rate)+' per paid month'; paintRef(); paintTiles(); paintList(); }
+function paint(){ var a=J.agent; $('nm').textContent=a.name; $('pc').textContent='Commission: '+kes(RATE(a))+' per customer, per paid month'; paintRef(); paintTiles(); paintList(); }
 function signedOut(){ ls('bs_tok',null); tok=null; clearInterval(timer); show('login'); }
 function load(){ return rpc('byo_sales_dash',{p_token:tok}).then(function(j){ if(!j||!j.ok){ if(j&&j.auth) signedOut(); else if(j&&(j.error||j.message)) flash(j.error||'The sales system is being updated. Please try again in a little while.','bad'); return; } J=j; gotAt=Date.now(); show('app'); paint(); }); }
 function start(){ show('app'); load(); clearInterval(timer); timer=setInterval(function(){ if(document.hidden) return; if(Date.now()-gotAt>60000) load(); else if(J) paintList(); },30000); }

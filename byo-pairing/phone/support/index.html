@@ -351,6 +351,10 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
 .toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#0f2a34; color:#d9fbff; border:1px solid #1d5666; border-radius:10px; padding:10px 16px; font-weight:700; z-index:60; max-width:min(560px,92vw); box-shadow:0 8px 30px rgba(0,0,0,.45); }
 .toast.bad{ background:#3a1717; color:#ffd0d0; border-color:#6a2a2a; }
 .alertbar{ background:#3a1717; color:#ffc2c2; border:1px solid #6a2a2a; border-radius:12px; padding:10px 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+#pool-banner{ flex:none; display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:9px 16px; background:#3a1717; color:#ffd0d0; border-bottom:1px solid #6a2a2a; font-weight:700; }
+#pool-banner.low{ background:#3a2a0f; color:#ffe2a6; border-bottom-color:#6a4d1a; }
+#pool-banner .sp{ flex:1; }
+.mt{ margin-bottom:2px; }
 /* drawers */
 .dbg{ position:fixed; inset:0; background:rgba(2,6,14,.66); opacity:0; pointer-events:none; transition:opacity .2s; z-index:40; }
 .dbg.on{ opacity:1; pointer-events:auto; }
@@ -382,6 +386,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
     <div class="sess-strip" id="strip"></div>
     <div class="who" id="who"></div>
   </header>
+  <div id="pool-banner" class="hidden"></div>
 
   <!-- 1. Sign in -->
   <section id="v-login" class="view hidden">
@@ -492,18 +497,33 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
     <aside class="drw wide" id="dr-pool" aria-label="Import connections">
       <div class="dh"><h3>Import Connections</h3><button class="btn sm gh" data-close>Close</button></div>
       <div class="dbody">
-        <div>
-          <label class="lbl" for="ip-text">One connection per line</label>
-          <textarea class="inp mono" id="ip-text" rows="7" spellcheck="false" placeholder="http://server.com:8080 username password&#10;username password&#10;http://server.com/get.php?username=U&amp;password=P&amp;type=m3u_plus" style="font-size:12.5px;white-space:pre;overflow:auto"></textarea>
-          <div class="pm" style="margin-top:6px">Formats: <b>1)</b> <span class="mono">http://server.com:8080 username password</span> &nbsp; <b>2)</b> <span class="mono">username password</span> (uses the shared server below) &nbsp; <b>3)</b> a playlist link <span class="mono">http://server.com/get.php?username=U&amp;password=P&amp;type=m3u_plus</span></div>
+        <div class="seg" id="ip-mode"><button data-m="one" class="on">Add one</button><button data-m="bulk">Paste many</button></div>
+
+        <div id="ip-one" style="display:flex;flex-direction:column;gap:12px">
+          <span class="kicker">Add a connection</span>
+          <div class="seg" id="o-kind"><button data-k="xtream" class="on">Xtream</button><button data-k="m3u">M3U</button></div>
+          <div class="fg">
+            <div class="fgi"><label class="lbl" for="o-name">Name (optional)</label><input class="inp" id="o-name" placeholder="e.g. Home server" autocomplete="off"></div>
+            <div class="fgi" id="o-srvw"><label class="lbl" for="o-srv">Server URL</label><input class="inp mono" id="o-srv" placeholder="http://provider.com:8080" autocomplete="off"></div>
+            <div class="fgi" id="o-userw"><label class="lbl" for="o-user">Username</label><input class="inp mono" id="o-user" autocomplete="off"></div>
+            <div class="fgi" id="o-passw"><label class="lbl" for="o-pass">Password</label><input class="inp mono" id="o-pass" autocomplete="off"></div>
+            <div class="full fgi" id="o-urlw" style="display:none"><label class="lbl" for="o-url">Playlist URL</label><input class="inp mono" id="o-url" placeholder="http://server.com/get.php?username=U&amp;password=P&amp;type=m3u_plus" autocomplete="off"></div>
+          </div>
         </div>
-        <div class="fg">
+
+        <div id="ip-bulk" style="display:none;flex-direction:column;gap:12px">
+          <div>
+            <label class="lbl" for="ip-text">One connection per line</label>
+            <textarea class="inp mono" id="ip-text" rows="7" spellcheck="false" placeholder="http://server.com:8080 username password&#10;username password&#10;http://server.com/get.php?username=U&amp;password=P&amp;type=m3u_plus" style="font-size:12.5px;white-space:pre;overflow:auto"></textarea>
+            <div class="pm" style="margin-top:6px">Formats: <b>1)</b> <span class="mono">http://server.com:8080 username password</span> &nbsp; <b>2)</b> <span class="mono">username password</span> (uses the shared server below) &nbsp; <b>3)</b> a playlist link <span class="mono">http://server.com/get.php?username=U&amp;password=P&amp;type=m3u_plus</span></div>
+          </div>
           <div class="fgi"><label class="lbl" for="ip-srv">Shared server URL (optional)</label><input class="inp mono" id="ip-srv" placeholder="http://server.com:8080" autocomplete="off"></div>
-          <div class="fgi"><label class="lbl" for="ip-days">Trial days</label><input class="inp" id="ip-days" type="number" min="1" max="90" value="7"><small>Given when a salesperson taps Activate.</small></div>
+          <div class="pv" id="ip-pv"><div class="ph"><span style="color:var(--muted)">Live preview</span></div><div class="pl"><div class="empty2">Paste lines above to see how each one is read.</div></div></div>
         </div>
-        <div class="pv" id="ip-pv"><div class="ph"><span style="color:var(--muted)">Live preview</span></div><div class="pl"><div class="empty2">Paste lines above to see how each one is read.</div></div></div>
+
+        <div class="fgi" style="max-width:200px"><label class="lbl" for="ip-days">Trial days</label><input class="inp" id="ip-days" type="number" min="1" max="90" value="7"><small>Given when a salesperson taps Activate.</small></div>
       </div>
-      <div class="dfoot"><span class="msg" id="ip-msg"></span><button class="btn" data-close>Cancel</button><button class="btn pri" id="ip-go" disabled>Add to pool</button></div>
+      <div class="dfoot"><span class="msg" id="ip-msg"></span><button class="btn" data-close>Cancel</button><button class="btn pri" id="ip-go">Add to pool</button></div>
     </aside>
   </section>
   <section id="v-pay" class="view hidden">
@@ -996,7 +1016,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   function loadPool(){ api('fleet.referral_gate_get',{}).then(function(g){ if(g&&g.ok) $('gate-on').checked=!!g.on; });
     api('fleet.pool_list',{}).then(function(j){ var T=$('pool-tbl');
       if(!j.ok){ T.innerHTML='<tbody><tr><td class="empty2">'+esc(/unknown action/.test(j.error||'')?'Run the connection pool SQL on the backend first.':(j.error||'Could not load'))+'</td></tr></tbody>'; return; }
-      SX.pool=j; SX.rev={}; if(document.activeElement!==$('ip-days')) $('ip-days').value=j.trial_days||7; paintKpis(); paintPool(); }); }
+      SX.pool=j; SX.rev={}; paintBanner(j); if(document.activeElement!==$('ip-days')) $('ip-days').value=j.trial_days||7; paintKpis(); paintPool(); }); }
   var PFILT=[['all','All'],['available','Available'],['assigned','Assigned'],['disabled','Disabled']];
   function paintPool(){ var P=SX.pool; if(!P) return; var I=P.items||[], q=SX.pQ.toLowerCase(), T=$('pool-tbl');
     $('pool-alerts').innerHTML=(P.alerts||[]).length?'<div class="alertbar"><b>'+esc(P.alerts.map(function(a){ return a.message; }).join(' '))+'</b><button class="btn sm gh" id="pool-ack">Dismiss</button></div>':'';
@@ -1026,7 +1046,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
 
   // ----- drawers
   function openDrawer(id){ [].forEach.call(document.querySelectorAll('.drw'),function(d){ d.classList.toggle('on', d.id===id); }); $('dr-bg').classList.add('on');
-    if(id==='dr-sales'){ $('dr-done').innerHTML=''; $('dr-go').style.display=''; paintOnb(); setTimeout(function(){ $('dr-name').focus(); },230); } else { setTimeout(function(){ $('ip-text').focus(); },230); parsePv(); } }
+    if(id==='dr-sales'){ $('dr-done').innerHTML=''; $('dr-go').style.display=''; paintOnb(); setTimeout(function(){ $('dr-name').focus(); },230); } else { setIpMode('one'); setTimeout(function(){ $('o-srv').focus(); },230); } }
   function closeDrawers(){ [].forEach.call(document.querySelectorAll('.drw'),function(d){ d.classList.remove('on'); }); $('dr-bg').classList.remove('on'); }
   $('dr-bg').onclick=closeDrawers; [].forEach.call(document.querySelectorAll('[data-close]'),function(b){ b.onclick=closeDrawers; });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&$('dr-bg').classList.contains('on')) closeDrawers(); });
@@ -1061,17 +1081,35 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
       if(r.item&&seen[key]){ r.err='Duplicate of line '+seen[key]+'. Skipped.'; r.dup=true; r.item=null; } else if(key) seen[key]=r.n;
       out.push(r); }); return out; }
   var pvRows=[]; function parsePv(){ pvRows=parseLines($('ip-text').value,$('ip-srv').value); var ok=pvRows.filter(function(r){ return r.item; }).length, bad=pvRows.length-ok, box=$('ip-pv');
-    if(!pvRows.length){ box.innerHTML='<div class="ph"><span style="color:var(--muted)">Live preview</span></div><div class="pl"><div class="empty2">Paste lines above to see how each one is read.</div></div>'; $('ip-go').disabled=true; $('ip-go').textContent='Add to pool'; return; }
+    if(!pvRows.length){ box.innerHTML='<div class="ph"><span style="color:var(--muted)">Live preview</span></div><div class="pl"><div class="empty2">Paste lines above to see how each one is read.</div></div>'; if(IPM==='bulk'){ $('ip-go').disabled=true; $('ip-go').textContent='Add to pool'; } return; }
     box.innerHTML='<div class="ph"><span style="color:var(--ok)">'+ok+' valid</span><span style="color:'+(bad?'var(--bad)':'var(--muted)')+'">'+bad+' invalid / skipped</span></div><div class="pl"><table>'+pvRows.map(function(r){ return r.item?
       '<tr><td class="mono" style="color:var(--faint)">'+r.n+'</td><td><span class="bdg ok">ok</span></td><td><span class="bdg '+(r.fmt==='Server Login'?'acc':'')+'">'+esc(r.fmt)+'</span></td><td class="mono" style="overflow-wrap:anywhere">'+esc(r.where)+'</td><td class="mono">'+esc(r.user)+'</td><td class="mono">'+esc(r.pass)+'</td></tr>':
       '<tr class="bad"><td class="mono" style="color:var(--faint)">'+r.n+'</td><td><span class="bdg bad">'+(r.dup?'dup':'invalid')+'</span></td><td colspan="4"><span class="mono" style="overflow-wrap:anywhere">'+esc(r.raw.length>70?r.raw.slice(0,70)+'...':r.raw)+'</span><div class="sub" style="color:var(--bad)">'+esc(r.err)+'</div></td></tr>'; }).join('')+'</table></div>';
     $('ip-go').disabled=!ok; $('ip-go').textContent=ok?('Add '+ok+' to pool'):'Add to pool'; }
   var ipT=null; ['ip-text','ip-srv'].forEach(function(i){ $(i).addEventListener('input',function(){ clearTimeout(ipT); ipT=setTimeout(parsePv,120); }); });
-  $('ip-go').onclick=function(){ var items=pvRows.filter(function(r){ return r.item; }).map(function(r){ return r.item; }); if(!items.length) return; var b=$('ip-go'), m=$('ip-msg'); b.disabled=true; m.style.color=''; m.textContent='Adding...';
-    var td=parseInt($('ip-days').value,10); (td?api('fleet.activation_set',{ trial_days:td }):Promise.resolve()).then(function(){ return api('fleet.pool_add',{ items:items }); }).then(function(r){
-      if(!r.ok){ b.disabled=false; m.textContent=r.error||'Could not add'; m.style.color='var(--bad)'; return; }
-      var bad=(r.invalid||0)+pvRows.length-items.length; toast('Added '+r.added+(r.duplicates?(', '+r.duplicates+' already in the pool'):'')+(bad?(', '+bad+' not added'):'')+'.'); m.textContent='';
-      if(r.added){ $('ip-text').value=''; parsePv(); closeDrawers(); setWs('pool'); } else { b.disabled=false; } loadPool(); }); };
+  var IPM='one', OK='xtream';
+  function setIpMode(m){ IPM=m; [].forEach.call($('ip-mode').children,function(b){ b.classList.toggle('on', b.getAttribute('data-m')===m); }); $('ip-one').style.display=m==='one'?'flex':'none'; $('ip-bulk').style.display=m==='bulk'?'flex':'none'; $('ip-msg').textContent=''; if(m==='bulk') parsePv(); else { $('ip-go').disabled=false; $('ip-go').textContent='Add to pool'; } }
+  [].forEach.call($('ip-mode').children,function(b){ b.onclick=function(){ setIpMode(b.getAttribute('data-m')); }; });
+  [].forEach.call($('o-kind').children,function(b){ b.onclick=function(){ OK=b.getAttribute('data-k'); [].forEach.call($('o-kind').children,function(x){ x.classList.toggle('on', x===b); }); var x=OK==='xtream'; ['o-srvw','o-userw','o-passw'].forEach(function(i){ $(i).style.display=x?'':'none'; }); $('o-urlw').style.display=x?'none':''; }; });
+  function oneItem(){ var nm=$('o-name').value.trim(), m=$('ip-msg'); m.style.color='var(--bad)';
+    if(OK==='xtream'){ var sv=$('o-srv').value.trim(), us=$('o-user').value.trim(), pw=$('o-pass').value.trim(); if(sv&&!/^https?:\/\//i.test(sv)) sv='http://'+sv;
+      if(!sv||!us||!pw){ m.textContent='Enter the server URL, username and password.'; return null; } return { mode:'xtream', server:sv.replace(/\/+$/,''), username:us, password:pw, name:nm }; }
+    var u=$('o-url').value.trim(); if(!/^https?:\/\//i.test(u)){ m.textContent='Enter the full playlist URL, starting with http.'; return null; } return { mode:'m3u', url:u, name:nm }; }
+  $('ip-go').onclick=function(){ var items, skipped=0; if(IPM==='one'){ var it=oneItem(); if(!it) return; items=[it]; } else { items=pvRows.filter(function(r){ return r.item; }).map(function(r){ return r.item; }); skipped=pvRows.length-items.length; }
+    if(!items.length) return; var b=$('ip-go'), m=$('ip-msg'); b.disabled=true; m.style.color=''; m.textContent='Adding...';
+    var td=parseInt($('ip-days').value,10); (td?api('fleet.activation_set',{ trial_days:td }):Promise.resolve()).then(function(){ return api('fleet.pool_add',{ items:items }); }).then(function(r){ b.disabled=false;
+      if(!r.ok){ m.textContent=r.error||'Could not add'; m.style.color='var(--bad)'; return; }
+      var bad=(r.invalid||0)+skipped; toast(r.added?('Added '+r.added+(r.duplicates?(', '+r.duplicates+' already in the pool'):'')+(bad?(', '+bad+' not added'):'')+'.'):(r.duplicates?'That connection is already in the pool.':'Nothing was added. Check the details.'),!r.added); m.textContent='';
+      if(r.added){ if(IPM==='bulk'){ $('ip-text').value=''; parsePv(); } else { ['o-name','o-srv','o-user','o-pass','o-url'].forEach(function(i){ $(i).value=''; }); } closeDrawers(); setWs('pool'); } loadPool(); }); };
+  // ----- banner shown to support whenever the pool is empty or running low (all screens)
+  var bnT=null;
+  function paintBanner(P){ var el=$('pool-banner'); if(!P||!P.ok||!P.counts){ el.classList.add('hidden'); return; } var n=+P.counts.available||0;
+    if(n>3){ el.classList.add('hidden'); return; } el.className=n===0?'':'low';
+    el.innerHTML='<span>'+(n===0?'The connection pool is empty. Salespeople cannot activate customers until you add connections.':'Only '+n+' connection'+(n===1?' is':'s are')+' left in the pool.')+'</span><span class="sp"></span><button class="btn sm pri" id="pb-add">Add connections</button>';
+    $('pb-add').onclick=function(){ toSales(); setWs('pool'); openDrawer('dr-pool'); }; }
+  function checkPool(){ if(!cfg.key) return; api('fleet.pool_list',{}).then(paintBanner); }
+  if(!bnT) bnT=setInterval(function(){ if(!document.hidden&&cfg.key) checkPool(); },90000);
+  setTimeout(checkPool,1200);
   function toPay(){ stop(); sess=null; show('v-pay'); paintRail(); loadPayCfg(); loadPays(); if(!payT) payT=setInterval(function(){ if(!document.hidden) loadPays(); },10000); }
   function stopPay(){ if(payT){ clearInterval(payT); payT=null; } }
   function amt(cur,n){ n=Number(n||0); return (cur||'')+' '+(n%1?n.toFixed(2):n.toLocaleString()); }
