@@ -457,6 +457,15 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
           <input class="inp" id="sl-q" type="search" placeholder="Search name, phone or referral code" aria-label="Search salespeople">
           <div class="fp" id="sl-f"></div>
           <button class="btn sm gh" id="sl-ref">Refresh</button>
+          <button class="btn sm gh" id="sl-audit">Audit log</button>
+          <button class="btn sm gh" id="sl-set">Settings</button>
+          <button class="btn sm gh" data-csv="customers">Customers CSV</button>
+          <button class="btn sm gh" data-csv="commissions">Commissions CSV</button>
+          <button class="btn sm gh" data-csv="payouts">Payouts CSV</button>
+        </div>
+        <div id="audit-box" style="display:none;flex-direction:column;gap:8px">
+          <div class="tb"><b>Audit log</b><select class="inp" id="audit-kind" aria-label="Filter audit log" style="max-width:220px"><option value="all">Everything</option><option value="activate">Activations</option><option value="reactivate">New device moves</option><option value="failed">Failed or blocked</option></select><button class="btn sm gh" id="audit-ref">Refresh</button><button class="btn sm gh" id="audit-close">Close</button></div>
+          <div class="tw"><table class="dt" id="audit-tbl"></table></div>
         </div>
         <div class="tw"><table class="dt" id="sl-tbl"></table></div>
       </div>
@@ -939,7 +948,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   var payT=null, pcfg=null, pCtry='KE', pDirty=false;
   var PST={ matched:['ok','matched'], held:['warn','TV disabled'], partial:['warn','too little'], unmatched:['bad','no match'] };
   // ---------- Sales team + Connection pool (workspaces and drawers) ----------
-  var SX={ ws:'sales', agents:[], totals:null, pool:null, sF:'all', sQ:'', pF:'all', pQ:'', open:{}, cust:{}, rev:{} };
+  var SX={ ws:'sales', agents:[], totals:null, pool:null, sF:'all', sQ:'', pF:'all', pQ:'', open:{}, cust:{}, rev:{}, pay:{}, payOpen:{}, settings:{} };
   var SALES_URL='byoplayer-pair.netlify.app/sales/', SITE_URL='https://byoplayer-pair.netlify.app';
   function kes(n){ return 'KSh '+Math.round(Number(n||0)).toLocaleString(); }
   function mths(n){ n=Number(n||0); return (Math.round(n*10)/10).toLocaleString(undefined,{ maximumFractionDigits:1 }); }
@@ -972,24 +981,24 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
   // ----- Workspace A: sales team
   function loadSales(){ api('fleet.sales_list',{}).then(function(j){ var T=$('sl-tbl');
     if(!j.ok){ T.innerHTML='<tbody><tr><td class="empty2">'+esc(/unknown action/.test(j.error||'')?'The sales system needs the latest SQL update on the backend.':(j.error||'Could not load'))+'</td></tr></tbody>'; return; }
-    SX.agents=j.agents||[]; SX.totals=j.totals||null; paintKpis(); paintSales(); }); }
+    SX.agents=j.agents||[]; SX.totals=j.totals||null; SX.settings=j.settings||{}; paintKpis(); paintSales(); }); }
   var SFILT=[['all','All'],['code','Has Code'],['pending','Pending Code'],['paid','Has Paid Users']];
   function sMatch(g,f){ return f==='all'||(f==='code'&&!!g.code)||(f==='pending'&&!g.code)||(f==='paid'&&(+g.paying||0)>0); }
   function paintSales(){ var A=SX.agents, q=SX.sQ.toLowerCase(), T=$('sl-tbl');
     $('sl-f').innerHTML=SFILT.map(function(f){ return '<button data-f="'+f[0]+'" class="'+(SX.sF===f[0]?'on':'')+'">'+f[1]+' ('+A.filter(function(g){ return sMatch(g,f[0]); }).length+')</button>'; }).join('');
     [].forEach.call($('sl-f').children,function(b){ b.onclick=function(){ SX.sF=b.getAttribute('data-f'); paintSales(); }; });
     var R=A.filter(function(g){ if(!sMatch(g,SX.sF)) return false; return !q||[g.name,g.phone,g.email,g.code].join(' ').toLowerCase().indexOf(q)>=0; });
-    var head='<thead><tr><th>Name</th><th>Code</th><th class="r">Customers</th><th class="r">Active 7d</th><th>Paid by customers</th><th>Commission</th><th>Last login</th><th>Actions</th></tr></thead>';
-    if(!R.length){ T.innerHTML=head+'<tbody><tr><td colspan="8" class="empty2">'+(A.length?'Nobody matches. Clear the search or pick another filter.':'No salespeople yet. Press + Add Salesperson.')+'</td></tr></tbody>'; return; }
+    var head='<thead><tr><th>Name</th><th>Code</th><th class="r">Customers</th><th>Funnel</th><th class="r">Active 7d</th><th>Paid by customers</th><th>Commission</th><th>Last login</th><th>Actions</th></tr></thead>';
+    if(!R.length){ T.innerHTML=head+'<tbody><tr><td colspan="9" class="empty2">'+(A.length?'Nobody matches. Clear the search or pick another filter.':'No salespeople yet. Press + Add Salesperson.')+'</td></tr></tbody>'; return; }
     T.innerHTML=head+'<tbody>'+R.map(function(g){ var open=!!SX.open[g.id], rate=g.rate!=null?g.rate:100;
       var row='<tr class="main" data-id="'+esc(g.id)+'"><td><div class="nm">'+esc(g.name)+(g.active?'':' <span class="bdg bad">off</span>')+'</div><div class="sub">'+esc(g.phone||g.email||'')+(g.phone&&g.email?' · '+esc(g.email):'')+(g.must_change?' · first PIN not set yet':'')+'</div></td>'+
         '<td class="nw">'+(g.code?('<div class="rowbtns" style="margin:0;align-items:center"><span class="mono nm" style="color:var(--acc);margin-right:4px">'+esc(g.code)+'</span><button class="btn xs" data-cc="'+esc(g.code)+'">Copy Code</button><button class="btn xs" data-cl="'+esc(g.code)+'">Copy Link</button></div>'):'<span class="bdg warn">Pending self-setup</span>')+'</td>'+
-        '<td class="r">'+num(g.referrals)+'</td><td class="r">'+num(g.active_7d)+'</td>'+
+        '<td class="r">'+num(g.referrals)+'</td><td class="nw">'+(g.installs!=null?('<b>'+num(g.installs)+' \u2192 '+num(g.activated)+' \u2192 '+num(g.paid_customers)+'</b><div class="sub">'+fpct(g.activated,g.installs)+' activated \u00b7 '+fpct(g.paid_customers,g.activated)+' paid</div>'):'<span class="sub">-</span>')+'</td><td class="r">'+num(g.active_7d)+'</td>'+
         '<td><b>'+num(g.paying)+'</b>'+(money(g.paid)?'<div class="sub">'+esc(money(g.paid))+'</div>':'')+'</td>'+
-        '<td><b>'+kes(g.commission)+'</b><div class="sub">'+kes(rate)+' / paid month · '+mths(g.months)+' mo</div></td>'+
+        '<td><b>'+kes(g.commission)+'</b><div class="sub">'+kes(rate)+' / paid month · '+mths(g.months)+' mo</div>'+(g.paid_out!=null?('<div class="sub">paid out '+kes(g.paid_out)+' · <b style="color:'+(g.owed>0?'#fbbf24':'inherit')+'">'+(g.owed<0?'overpaid ':'owed ')+kes(Math.abs(g.owed))+'</b></div>'):'')+'</td>'+
         '<td class="nw">'+(g.last_login?day(g.last_login):'never')+'</td>'+
         '<td class="nw"><button class="btn sm gh" data-x="'+esc(g.id)+'" aria-expanded="'+open+'">'+(open?'Hide':'Details')+'</button></td></tr>';
-      if(open) row+='<tr class="xrow"><td colspan="8">'+expandHtml(g)+'</td></tr>';
+      if(open) row+='<tr class="xrow"><td colspan="9">'+expandHtml(g)+'</td></tr>';
       return row; }).join('')+'</tbody>';
     [].forEach.call(T.querySelectorAll('[data-cc]'),function(b){ b.onclick=function(){ clip(b.getAttribute('data-cc'),b); }; });
     [].forEach.call(T.querySelectorAll('[data-cl]'),function(b){ b.onclick=function(){ clip(SITE_URL+'/get?ref='+encodeURIComponent(b.getAttribute('data-cl')),b); }; });
@@ -997,15 +1006,63 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
     [].forEach.call(T.querySelectorAll('[data-a]'),function(b){ b.onclick=function(){ agentAction(b.getAttribute('data-a'), b.getAttribute('data-id')); }; }); }
   var SLAB={ pending:['warn','Pending Activation'], trial:['acc','Trial Active'], expiring:['bad','Trial Expiring Soon'], paid:['ok','Paid'], expired:['','Expired'] };
   function expandHtml(g){ var C=SX.cust[g.id], rate=g.rate!=null?g.rate:100;
-    var acts='<div class="xhead"><b>'+esc(g.name)+'\'s customers</b><button class="btn sm gh" data-a="rate" data-id="'+esc(g.id)+'">Change rate ('+kes(rate)+')</button><button class="btn sm gh" data-a="reset" data-id="'+esc(g.id)+'">'+(g.phone?'Reset PIN':'Reset password')+'</button><button class="btn sm gh" data-a="toggle" data-id="'+esc(g.id)+'">'+(g.active?'Switch off':'Switch on')+'</button></div>';
+    var acts='<div class="xhead"><b>'+esc(g.name)+'\'s customers</b><button class="btn sm" data-a="payouts" data-id="'+esc(g.id)+'">Payouts</button><button class="btn sm gh" data-a="rate" data-id="'+esc(g.id)+'">Change rate ('+kes(rate)+')</button><button class="btn sm gh" data-a="reset" data-id="'+esc(g.id)+'">'+(g.phone?'Reset PIN':'Reset password')+'</button><button class="btn sm gh" data-a="toggle" data-id="'+esc(g.id)+'">'+(g.active?'Switch off':'Switch on')+'</button></div>';
+    acts+=payHtml(g);
     if(!C) return acts+'<div class="pm">Loading customers...</div>';
     if(!C.length) return acts+'<div class="pm">No customers yet.</div>';
     return acts+'<table class="dt in"><thead><tr><th>TV</th><th>Installed</th><th>Status</th><th>Trial / access ends</th><th class="r">Paid months</th><th class="r">Commission</th><th>Payments</th></tr></thead><tbody>'+C.map(function(c){ var s=SLAB[c.status]||['',c.status];
       var ends=c.ends_at?(day(c.ends_at)+(c.seconds_left>0?' <span class="sub">('+Math.max(1,Math.ceil(c.seconds_left/86400))+' d left)</span>':'')):'-';
       var pays=(c.payments||[]).length?(c.payments||[]).map(function(p){ return '<div class="pm">'+esc(day(p.at))+' · '+esc((p.currency||'')+' '+Math.round(p.amount||0).toLocaleString())+(p.plan?' · '+esc(p.plan):'')+(p.ref?' · '+esc(p.ref):'')+'</div>'; }).join(''):'<span class="sub">none</span>';
       return '<tr><td class="mono nm">'+esc(c.tv_id)+'</td><td>'+esc(day(c.referred_at))+'</td><td><span class="bdg '+s[0]+'">'+esc(s[1])+'</span></td><td>'+ends+'</td><td class="r">'+mths(c.months)+'</td><td class="r"><b>'+kes(c.commission)+'</b></td><td>'+pays+'</td></tr>'; }).join('')+'</tbody></table>'; }
+  function fpct(a,b){ return (+b>0)?Math.round(a*100/b)+'%':'-'; }
+  function curMonth(){ var d=new Date(), m=d.getMonth()+1; return d.getFullYear()+'-'+(m<10?'0':'')+m; }
+  function payHtml(g){ if(!SX.payOpen[g.id]) return ''; var P=SX.pay[g.id];
+    if(!P) return '<div class="pm" style="margin-bottom:8px">Loading payouts...</div>';
+    var owed=Number(P.owed||0), mo=(P.months||[]), it=(P.items||[]), id=esc(g.id);
+    return '<div class="payp" style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#0a1322">'+
+      '<div class="xhead" style="margin-bottom:6px"><b>Payouts to '+esc(g.name)+'</b><span class="pm">Earned <b>'+kes(P.earned)+'</b> · Paid out <b>'+kes(P.paid_out)+'</b> · '+(owed<0?'Overpaid':'Still owed')+' <b style="color:'+(owed>0?'#fbbf24':'#34d399')+'">'+kes(Math.abs(owed))+'</b></span></div>'+
+      '<div class="xhead" style="align-items:flex-end"><label class="pm">Month<br><input class="inp" type="month" data-pf="period" data-id="'+id+'" value="'+curMonth()+'" style="width:150px"></label>'+
+        '<label class="pm">Amount (KSh)<br><input class="inp" type="number" min="1" step="1" inputmode="numeric" data-pf="amount" data-id="'+id+'" value="'+(owed>0?Math.round(owed):'')+'" style="width:120px"></label>'+
+        '<label class="pm">Method<br><select class="inp" data-pf="method" data-id="'+id+'" style="width:120px"><option>M-Pesa</option><option>Bank</option><option>Cash</option><option>Other</option></select></label>'+
+        '<label class="pm">Reference<br><input class="inp" data-pf="ref" data-id="'+id+'" maxlength="80" placeholder="e.g. M-Pesa code" style="width:170px"></label>'+
+        '<button class="btn sm" data-pa="'+id+'">Record payout</button></div>'+
+      (mo.length?'<table class="dt in" style="margin-top:8px"><thead><tr><th>Month</th><th class="r">Earned</th><th class="r">Paid out</th><th class="r">Owed</th></tr></thead><tbody>'+mo.map(function(m){ return '<tr><td>'+esc(m.label)+'</td><td class="r">'+kes(m.earned)+'</td><td class="r">'+kes(m.paid)+'</td><td class="r"><b>'+kes(m.owed)+'</b></td></tr>'; }).join('')+'</tbody></table>':'')+
+      (it.length?'<div style="margin-top:8px">'+it.map(function(x){ return '<div class="pm" style="display:flex;gap:8px;align-items:center;'+(x.voided?'text-decoration:line-through;opacity:.55':'')+'"><span style="flex:1">'+esc(day(x.paid_at))+' · '+esc(x.period)+' · <b>'+kes(x.amount)+'</b>'+(x.method?' · '+esc(x.method):'')+(x.ref?' · '+esc(x.ref):'')+(x.by?' · by '+esc(x.by):'')+'</span>'+(x.voided?'<span>voided</span>':'<button class="btn xs dng" data-pv="'+esc(x.id)+'" data-id="'+id+'">Void</button>')+'</div>'; }).join('')+'</div>':'')+'</div>'; }
+  function loadPay(id){ api('fleet.payout_summary',{ id:id }).then(function(j){ if(j.ok){ SX.pay[id]=j; } else { SX.pay[id]={ months:[], items:[], earned:0, paid_out:0, owed:0 }; toast(j.error||'Could not load payouts',true); } if(SX.payOpen[id]) paintSales(); }); }
+  document.addEventListener('click',function(e){ var t=e.target; if(!t||!t.getAttribute) return;
+    var pa=t.getAttribute('data-pa'), pv=t.getAttribute('data-pv');
+    if(pa){ var q=function(k){ var el=document.querySelector('[data-pf="'+k+'"][data-id="'+pa+'"]'); return el?el.value:''; };
+      var amt=parseFloat(q('amount')); if(!(amt>0)){ toast('Enter the amount you paid.',true); return; } if(!/^\d{4}-\d{2}$/.test(q('period'))){ toast('Pick the month this payment is for.',true); return; }
+      t.disabled=true; api('fleet.payout_add',{ id:pa, amount:amt, period:q('period'), method:q('method'), ref:q('ref') }).then(function(r){ t.disabled=false; if(r.ok){ SX.pay[pa]=r; toast('Payout recorded.'); loadSales(); } else toast(r.error||'Could not record',true); if(SX.payOpen[pa]) paintSales(); }); return; }
+    if(pv){ var aid=t.getAttribute('data-id'); if(!confirm('Void this payout? It stays in the list but no longer counts as paid.')) return;
+      api('fleet.payout_void',{ payout:pv }).then(function(r){ if(r.ok){ SX.pay[aid]=r; toast('Payout voided.'); loadSales(); } else toast(r.error||'Could not void',true); if(SX.payOpen[aid]) paintSales(); }); return; }
+    if(t.id==='sl-audit'){ var bx=$('audit-box'); var on=bx.style.display==='none'; bx.style.display=on?'flex':'none'; if(on) loadAudit(); return; }
+    if(t.id==='audit-close'){ $('audit-box').style.display='none'; return; }
+    if(t.id==='audit-ref'){ loadAudit(); return; }
+    if(t.id==='sl-set'){ var cur=(SX.settings&&SX.settings.reactivation_limit!=null)?SX.settings.reactivation_limit:3;
+      var v=prompt('How many times can one customer be moved to a new device in 30 days? (0 switches new-device moves off)', cur); if(v===null) return; v=parseInt(v,10); if(!(v>=0&&v<=50)){ toast('Enter a number from 0 to 50.',true); return; }
+      api('fleet.activation_set',{ reactivation_limit:v }).then(function(r){ toast(r.ok?('Saved. A customer can be moved '+v+' time'+(v===1?'':'s')+' in 30 days.'):(r.error||'Could not save'),!r.ok); loadSales(); }); return; }
+    var kd=t.getAttribute('data-csv'); if(kd){ exportCsv(kd,t); return; } });
+  document.addEventListener('change',function(e){ if(e.target&&e.target.id==='audit-kind') loadAudit(); });
+  var ALAB={ activate:'Activated', reactivate:'Moved to a new device' };
+  function loadAudit(){ var T=$('audit-tbl'); T.innerHTML='<tbody><tr><td class="empty2">Loading...</td></tr></tbody>';
+    api('fleet.audit_list',{ kind:$('audit-kind').value }).then(function(j){
+      if(!j.ok){ T.innerHTML='<tbody><tr><td class="empty2">'+esc(/unknown action/.test(j.error||'')?'Run the latest SQL (0031) on the backend first.':(j.error||'Could not load'))+'</td></tr></tbody>'; return; }
+      var I=j.items||[]; if(!I.length){ T.innerHTML='<tbody><tr><td class="empty2">Nothing logged yet.</td></tr></tbody>'; return; }
+      T.innerHTML='<thead><tr><th>When</th><th>Salesperson</th><th>Action</th><th>Customer</th><th>Result</th></tr></thead><tbody>'+I.map(function(x){
+        var who=(x.label?'<b>'+esc(x.label)+'</b> · ':'')+'<span class="mono">TV '+esc(x.tv||'')+'</span>'+(x.action==='reactivate'&&x.old_tv&&x.new_tv?('<div class="sub">TV '+esc(x.old_tv)+' → TV '+esc(x.new_tv)+'</div>'):'');
+        return '<tr><td class="nw">'+esc(when(x.at))+'</td><td>'+esc(x.agent||'-')+'</td><td>'+esc(ALAB[x.action]||x.action)+'</td><td>'+who+'</td><td>'+(x.ok?'<span class="bdg ok">OK</span>':'<span class="bdg bad">Failed</span>')+(x.detail?'<div class="sub">'+esc(x.detail)+'</div>':'')+'</td></tr>'; }).join('')+'</tbody>'; }); }
+  function csvCell(v){ v=String(v==null?'':v); if(/^=|^@|^[+\-][^0-9\s]/.test(v)) v="'"+v; return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+  function exportCsv(kind,btn){ if(btn) btn.disabled=true;
+    api('fleet.export',{ kind:kind }).then(function(j){ if(btn) btn.disabled=false;
+      if(!j.ok){ toast(/unknown action/.test(j.error||'')?'Run the latest SQL (0031) on the backend first.':(j.error||'Could not export'),true); return; }
+      var R=j.rows||[]; if(!R.length){ toast('Nothing to export yet.',true); return; }
+      var keys=Object.keys(R[0]), head=keys.map(function(k){ return k.replace(/_/g,' ').replace(/^./,function(c){ return c.toUpperCase(); }); });
+      var txt='﻿'+[head].concat(R.map(function(r){ return keys.map(function(k){ var v=r[k]; if(/(installed|activated|access_ends|paid_at)$/.test(k)&&v) v=String(v).slice(0,10); return v; }); })).map(function(r){ return r.map(csvCell).join(','); }).join('\r\n');
+      var b=new Blob([txt],{ type:'text/csv;charset=utf-8' }), a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='byo-'+kind+'-'+new Date().toISOString().slice(0,10)+'.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },600); toast(R.length+' row'+(R.length===1?'':'s')+' exported.'); }); }
   function loadCust(id){ api('fleet.sales_customers',{ id:id }).then(function(j){ if(j.ok){ SX.cust[id]=j.customers||[]; } else { SX.cust[id]=[]; toast(j.error||'Could not load customers',true); } if(SX.open[id]) paintSales(); }); }
   function agentAction(kind,id){ var g=SX.agents.filter(function(x){ return x.id===id; })[0]; if(!g) return;
+    if(kind==='payouts'){ if(SX.payOpen[id]){ delete SX.payOpen[id]; paintSales(); return; } SX.payOpen[id]=1; paintSales(); loadPay(id); return; }
     if(kind==='toggle'){ api('fleet.sales_save',{ id:id, active:!g.active }).then(function(r){ toast(r.ok?(g.name+(g.active?' is switched off.':' is switched on.')):(r.error||'Could not change'),!r.ok); loadSales(); }); return; }
     if(kind==='rate'){ var v=prompt('Commission for '+g.name+' in KSh per paid month, per customer:', g.rate!=null?g.rate:100); if(v===null) return; v=parseFloat(v); if(!(v>=0)){ toast('Enter a number, for example 100.',true); return; }
       api('fleet.sales_save',{ id:id, rate:v, active:g.active }).then(function(r){ toast(r.ok?('Commission for '+g.name+' is now '+kes(v)+' per paid month.'):(r.error||'Could not change'),!r.ok); loadSales(); loadCust(id); }); return; }
