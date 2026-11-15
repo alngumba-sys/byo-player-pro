@@ -1,6 +1,6 @@
 {
-  "versionCode": 241,
-  "versionName": "3.37.56",
+  "versionCode": 242,
+  "versionName": "3.37.57",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Fix: on a TV remote you can now choose Later in the update window (Left and Right move between the buttons, Back means Later)."
+  "notes": "New signing key: uninstall the old BYO Player first, then install this one. Remote can now reach the seek bar and a Next episode button; no referral prompt for existing installs."
 }
