@@ -18,7 +18,7 @@ button:disabled{opacity:.45;cursor:default}button.gh{background:#1d2a47;color:va
 .login{max-width:380px;margin:10vh auto 0}.err{color:var(--bad);min-height:20px;margin:2px 0 8px}.ok{color:var(--ok)}
 .codebox{display:flex;gap:8px;align-items:stretch;margin:6px 0 10px}.codebox>div{flex:1;background:#0d2a31;color:var(--acc);border-radius:10px;padding:11px 12px;font-weight:800;letter-spacing:1.5px;overflow-wrap:anywhere;font-size:16px}
 .codebox.link>div{letter-spacing:0;font-weight:600;font-size:13px;color:#bfeaf2}
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.tiles .card{margin:0}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}.tiles .card{margin:0}
 .tile .l{font-size:12px;color:var(--mut);font-weight:600}.tile .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;line-height:1.2;margin-top:2px}.tile .s{font-size:12px;color:var(--mut);margin-top:2px}
 .tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;margin:0 -14px;padding-left:14px;padding-right:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
 .tab{flex:0 0 auto;padding:8px 13px;border-radius:999px;background:#17233f;color:var(--mut);font-weight:700;font-size:13px;white-space:nowrap}.tab.on{background:var(--acc);color:#04202a}
@@ -34,6 +34,8 @@ details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}summary
 @media (min-width:700px){.wrap{max-width:880px;zoom:1.35}.login{margin-top:6vh}}
 
 html,body{background:#060c18}
+.tiles .card{padding:12px}.tile .l{font-size:12px;line-height:1.25}.tile .s{line-height:1.3}
+@media(max-width:560px){.tiles{gap:6px}.tiles .card{padding:9px 8px;border-radius:12px}.tile .l{font-size:10.5px}.tile .v{font-size:clamp(15px,5.2vw,20px)}.tile .s{font-size:10.5px}}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:2px 0 10px}
 .bar .tabs{flex:1 1 auto;margin:0;padding:0;gap:6px}
 .bar .tab{padding:6px 11px;font-size:12.5px;background:#0c1526;border:1px solid #1b2b48;color:#9fb3d1}.bar .tab.on{background:#22e6ff;border-color:#22e6ff;color:#041322}
@@ -158,7 +160,7 @@ function mths(n){ n=Number(n||0); return (Math.round(n*10)/10).toLocaleString(un
 function paintTiles(){ var m=J.month, A=J.all_time, a=J.agent;
   $('tiles').innerHTML='<div class="card tile"><div class="l">Your commission in '+esc(m.label)+'</div><div class="v">'+esc(kes((m.commission||0)))+'</div><div class="s">'+mths(m.months)+' paid customer-month'+(Number(m.months)===1?'':'s')+' x '+esc(kes(RATE(a)))+'</div></div>'+
     '<div class="card tile"><div class="l">New users in '+esc(m.label)+'</div><div class="v">'+fmt(m.new_users)+'</div><div class="s">'+fmt(A.users)+' in total</div></div>'+
-    '<div class="card tile" style="grid-column:1/-1"><div class="l">Total commission earned</div><div class="v">'+esc(kes((A.commission||0)))+'</div><div class="s">'+mths(A.months)+' paid months so far. You earn '+esc(kes(RATE(a)))+' for every customer, for every month they pay.</div></div>'; }
+    '<div class="card tile"><div class="l">Total commission earned</div><div class="v">'+esc(kes((A.commission||0)))+'</div><div class="s">'+mths(A.months)+' paid month'+(Number(A.months)===1?'':'s')+' so far</div></div>'; }
 
 // ---- customers ----
 function elapsed(){ return Math.floor((Date.now()-gotAt)/1000); }
