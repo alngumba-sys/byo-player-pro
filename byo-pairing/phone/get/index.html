@@ -95,6 +95,11 @@ h1 span{display:block;color:var(--cy)}
 var ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 var and=/Android/i.test(ua);
 id(and?'android':ios?'ios':'other').className='panel on';
+// TESTING SWITCH: while this is true, opening this page (scanning the poster QR) makes THIS phone look like a brand-new
+// install: the app's saved data and device ID on this browser are cleared, so it asks for a referral code again.
+// Turn it off before real customers use the link (an existing customer opening it would lose their saved playlists).
+var FRESH_ON_SCAN=true;
+if(FRESH_ON_SCAN){ try{ for(var i=localStorage.length-1;i>=0;i--){ var kk=localStorage.key(i); if(kk&&kk.indexOf('byo_')===0) localStorage.removeItem(kk); } }catch(e){} }
 var ref=''; try{ var q=new URLSearchParams(location.search).get('ref'); if(q){ ref=q.toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20); if(ref) localStorage.setItem('byo_ref_pending',ref); } else ref=(localStorage.getItem('byo_ref_pending')||''); }catch(e){}
 if(ref){ [].forEach.call(document.querySelectorAll('a[href="/app/"]'),function(a){ a.href='/app/?ref='+encodeURIComponent(ref); });
   [].forEach.call(document.querySelectorAll('.refnote'),function(n){ n.querySelector('b').textContent=ref; n.style.display='block'; });
