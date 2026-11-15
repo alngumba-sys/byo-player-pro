@@ -348,7 +348,11 @@
         // Home banner picture: a wide backdrop fills the banner; a poster is never stretched. It is shown at its real
         // size (never larger) in front of a blurred copy of itself, so nothing is ever pixelated.
         window.__byoHeroHTML=function(src,wide){ if(!src) return ''; var e=function(x){ return String(x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); };
-            if(wide) return '<img class="h2-feat-img wide" src="'+e(src)+'" alt="" onload="this.classList.add(\'ok\')" onerror="this.remove()"/>';
+            // A wide picture is only stretched across the banner when it is big enough to take it. A small one (some
+            // providers send a ~400px "backdrop") is shown at no more than 1.4x its real size over a blurred copy of
+            // itself, so it stays clean instead of turning to mush.
+            if(wide) return '<img class="h2-feat-bgblur" src="'+e(src)+'" alt="" onerror="this.remove()"/>'
+                +'<img class="h2-feat-img wide" src="'+e(src)+'" alt="" onload="var w=this.naturalWidth||0,h=this.naturalHeight||0,c=(this.parentNode&&this.parentNode.clientWidth)||1920; if(w&&c/w>1.45){ this.classList.add(\'soft\'); this.style.width=Math.round(w*1.4)+\'px\'; this.style.maxWidth=\'90%\'; var b=this.previousSibling; if(b&&b.classList) b.classList.add(\'ok\'); } this.classList.add(\'ok\')" onerror="this.remove()"/>';
             return '<img class="h2-feat-bgblur" src="'+e(src)+'" alt="" onload="this.classList.add(\'ok\')" onerror="this.remove()"/>'
                 +'<img class="h2-feat-fg" src="'+e(src)+'" alt="" onload="var h=this.naturalHeight||0,w=this.naturalWidth||0; if(h&&h<260||w&&w<170){ this.parentNode.classList.add(\'tiny\'); } this.style.maxHeight=Math.max(120,h)+\'px\'; this.classList.add(\'ok\')" onerror="this.remove()"/>'; };
         // Featured title on Home: find its sharpest picture. Provider movies are asked for their details (wide

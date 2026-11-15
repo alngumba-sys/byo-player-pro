@@ -1,6 +1,6 @@
 {
-  "versionCode": 242,
-  "versionName": "3.37.57",
+  "versionCode": 243,
+  "versionName": "3.37.58",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "New signing key: uninstall the old BYO Player first, then install this one. Remote can now reach the seek bar and a Next episode button; no referral prompt for existing installs."
+  "notes": "Home banner: small pictures are shown clean instead of stretched."
 }
