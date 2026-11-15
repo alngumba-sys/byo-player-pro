@@ -57,7 +57,7 @@
                         if(r&&r.ok){ report(true); try{ message('BYO Player is ready','Your account has been activated and your channels, movies and series are loading.\nHappy watching!',true,'Start watching'); }catch(e){} try{ unlockedNow(); }catch(e){} }
                         else report(false,(r&&r.err)||'could not load'); }); }
                 catch(e){ clearTimeout(guard); report(false,String(e&&e.message||e)); } }); }
-        function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res); if(typeof res.referred!=='undefined'){ try{ localStorage.setItem('byo_ref_on','1'); if(res.referred) localStorage.setItem('byo_ref_done','1'); }catch(_r){}  if(!res.referred){ try{ setTimeout(function(){ Billing.askReferral(); },3000); }catch(_a){} } }
+        function onFlags(res){ if(!res||typeof res!=='object'||res.error) return; applyFlags(res); if(typeof res.referred!=='undefined'){ try{ localStorage.setItem('byo_ref_on','1'); if(res.referred) localStorage.setItem('byo_ref_done','1'); }catch(_r){}  if(res.ref_required&&!res.referred){ try{ Billing.requireReferral(); }catch(_a){} } else if(!res.referred){ try{ setTimeout(function(){ Billing.askReferral(); },3000); }catch(_a){} } }
             if(res.provision) pickupProvision();
             // access set by support (enable / end / block) is kept on the server and applied at every check-in
             try{ var cur=Billing.access(); var want=(res.access&&res.access.state)?res.access:null; if(JSON.stringify(cur||null)!==JSON.stringify(want)){ var wasLocked=Billing.locked(); Billing.setAccess(want);

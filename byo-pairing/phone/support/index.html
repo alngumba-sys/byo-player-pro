@@ -384,7 +384,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
     <div class="card" style="padding:8px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse" id="sl-tbl"></table></div>
     <div class="card" style="padding:16px;margin-top:12px" id="pool-card"><b>Connection pool</b>
       <div style="color:var(--muted);margin:4px 0 10px">Ready-to-use logins. When a salesperson taps Activate on a customer, one Available connection is given to that customer's app automatically, and the 7-day trial starts.</div>
-      <div id="pool-alerts"></div><div id="pool-counts" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
+      <label style="display:flex;gap:8px;align-items:center;margin:0 0 10px;cursor:pointer"><input type="checkbox" id="gate-on"> <span><b>Require a referral code for new installs</b> <span style="color:var(--muted)">(people who already use the app are not affected)</span></span></label><div id="pool-alerts"></div><div id="pool-counts" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
       <textarea class="inp" id="pool-in" rows="5" placeholder="One per line:&#10;http://server.com:8080 username password&#10;username password   (uses the shared server below)&#10;http://server.com/get.php?username=U&amp;password=P&amp;type=m3u_plus   (a playlist link)" style="width:100%;font-family:monospace;font-size:13px"></textarea>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center"><input class="inp" id="pool-srv" placeholder="Shared server URL (optional)" style="flex:1 1 220px"><input class="inp" id="pool-trial" type="number" min="1" max="90" style="flex:0 0 90px" title="Trial days given on Activate"><span style="color:var(--muted);font-size:12px">trial days</span><button class="btn" id="pool-add">Add to pool</button></div>
       <div id="pool-msg" style="margin-top:8px;color:var(--muted)"></div>
@@ -810,7 +810,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
     [].forEach.call(T.querySelectorAll('[data-pw]'),function(b){ b.onclick=function(){ var pw=prompt('New password for this salesperson (8+ characters):'); if(!pw) return; api('fleet.sales_save',{ id:b.getAttribute('data-pw'), password:pw, pct:A.filter(function(x){return x.id===b.getAttribute('data-pw')})[0].pct, active:true }).then(function(r){ $('sl-msg').textContent=r.ok?'Password changed. Share it with them privately.':(r.error||'Could not change'); }); }; });
     [].forEach.call(T.querySelectorAll('[data-act]'),function(b){ b.onclick=function(){ var g=A.filter(function(x){return x.id===b.getAttribute('data-act')})[0]; api('fleet.sales_save',{ id:g.id, pct:g.pct, active:!g.active }).then(function(){ loadSales(); }); }; }); }); }
   // ---- connection pool ----
-  function loadPool(){ api('fleet.pool_list',{}).then(function(j){ var T=$('pool-tbl');
+  function loadPool(){ api('fleet.referral_gate_get',{}).then(function(g){ if(g&&g.ok) $('gate-on').checked=!!g.on; }); api('fleet.pool_list',{}).then(function(j){ var T=$('pool-tbl');
     if(!j.ok){ T.innerHTML='<tr><td style="padding:10px">'+esc(/unknown action/.test(j.error||'')?'Run 0019_activation_pool.sql on the backend first.':(j.error||'Could not load'))+'</td></tr>'; return; }
     var C=j.counts||{}; if(document.activeElement!==$('pool-trial')) $('pool-trial').value=j.trial_days||7;
     $('pool-counts').innerHTML=[['Available',C.available,'ok'],['Assigned',C.assigned,''],['Disabled',C.disabled,'']].map(function(x){ return '<span class="chip'+(x[2]?' on':'')+'" style="cursor:default">'+x[0]+': <b>'+num(x[1])+'</b></span>'; }).join('');
@@ -821,6 +821,7 @@ table.rec th{ color:var(--faint); font-weight:700; font-size:11px; text-transfor
     [].forEach.call(T.querySelectorAll('[data-ps]'),function(b){ b.onclick=function(){ api('fleet.pool_set',{ id:b.getAttribute('data-ps'), status:b.getAttribute('data-to') }).then(loadPool); }; });
     [].forEach.call(T.querySelectorAll('[data-pd]'),function(b){ b.onclick=function(){ if(confirm('Delete this unused connection?')) api('fleet.pool_delete',{ id:b.getAttribute('data-pd') }).then(loadPool); }; });
     var ak=$('pool-ack'); if(ak) ak.onclick=function(){ api('fleet.alerts_ack',{}).then(loadPool); }; }); }
+  document.addEventListener('change',function(e){ if(e.target&&e.target.id==='gate-on'){ var on=e.target.checked; api('fleet.referral_gate_set',{ on:on }).then(function(r){ if(!r.ok){ e.target.checked=!on; $('pool-msg').textContent=r.error||'Could not change'; } else $('pool-msg').textContent=on?'New installs must now enter a referral code.':'Referral code is no longer required.'; }); } });
   function parsePool(text, shared){ var out=[], bad=0; String(text||'').split(/\r?\n/).forEach(function(line){ line=line.trim(); if(!line) return; var t=line.split(/[\s,|;]+/).filter(Boolean);
       if(t.length===1&&/^https?:\/\//i.test(t[0])) return out.push({ mode:'m3u', url:t[0] });
       if(/^https?:\/\//i.test(t[0])&&t.length>=3) return out.push({ mode:'xtream', server:t[0], username:t[1], password:t[2], name:t.slice(3).join(' ') });

@@ -1,6 +1,6 @@
 {
-  "versionCode": 239,
-  "versionName": "3.37.54",
+  "versionCode": 240,
+  "versionName": "3.37.55",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "New: enter a salesperson referral code when you first open the app, and connections activated by a salesperson load by themselves."
+  "notes": "New installs must enter a salesperson referral code before using the app. The code box is now larger and easier to read."
 }

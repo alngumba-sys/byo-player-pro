@@ -81,7 +81,7 @@ function paintRef(){ var a=J.agent, el=$('ref');
   if($('cin')&&el.getAttribute('data-mode')==='create') return;   // keep what is being typed
   el.setAttribute('data-mode','create');
   el.innerHTML='<h2>Create your referral code</h2><div class="mut sm">Choose it carefully: you can do this <b>only once</b>. It can never be changed or deleted afterwards.</div>'+
-    '<input id="cin" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ALEX254"><div id="cmsg" class="sm mut" style="min-height:20px;margin:-4px 0 8px">4 to 20 letters or numbers.</div>'+
+    '<input id="cin" style="font-size:clamp(26px,8vw,36px);font-weight:800;letter-spacing:3px;text-align:center;padding:18px 10px;border:2px solid var(--acc)" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ALEX254"><div id="cmsg" class="sm mut" style="min-height:20px;margin:-4px 0 8px">4 to 20 letters or numbers.</div>'+
     '<button id="cgo" style="width:100%" disabled>Create my code</button>';
   var inp=$('cin'), go=$('cgo');
   inp.addEventListener('input',function(){ var v=inp.value.toUpperCase().replace(/[^A-Z0-9-]/g,''); if(inp.value!==v) inp.value=v; chk={code:v,ok:false}; go.disabled=true; go.textContent='Create my code'; go.setAttribute('data-sure','');
