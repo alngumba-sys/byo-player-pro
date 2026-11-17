@@ -1,6 +1,6 @@
 {
-  "versionCode": 244,
-  "versionName": "3.37.59",
+  "versionCode": 245,
+  "versionName": "3.37.60",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Sales can see the activation code of a waiting customer, and reactivate a customer on a new device."
+  "notes": "Smoother playback on slow internet: movies and episodes now build a bigger head start when the connection is weaker than the video, with a progress readout."
 }

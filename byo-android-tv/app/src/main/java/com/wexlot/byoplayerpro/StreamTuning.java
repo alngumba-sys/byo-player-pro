@@ -41,10 +41,10 @@ public final class StreamTuning {
 
     // VOD (movies / episodes)
     static final int VOD_MIN_BUFFER_MS = 30_000;      // keep fetching until at least 30 s is ready ahead...
-    static final int VOD_MAX_BUFFER_MS = 120_000;     // ...and keep going up to 120 s when memory allows
+    static final int VOD_MAX_BUFFER_MS = 600_000;     // ...and keep going up to 10 min; the memory budget below is the real limit
     static final int VOD_START_MS = 2_500;            // first frame after 2.5 s of media: starts quickly
     static final int VOD_RESUME_BASE_MS = 8_000;      // after a stall: rebuild at least 8 s before resuming
-    static final int VOD_RESUME_MAX_MS = 60_000;      // each further stall raises that, up to a minute (when memory allows)
+    static final int VOD_RESUME_MAX_MS = 240_000;     // each further stall raises that, up to 4 min (when memory allows)
     static final int VOD_BACK_BUFFER_MS = 15_000;     // keep the last 15 s so a short rewind needs no download
 
     // Live channels (the live edge limits how much can exist ahead of us)
@@ -105,6 +105,20 @@ public final class StreamTuning {
             if (now - lastStallAt > 180_000) resumeMs = resumeBaseMs;           // first stall in a while: base bar
             else resumeMs = Math.min(resumeMaxMs, Math.max(resumeMs + 4_000, resumeMs * 3 / 2));   // repeated stalls: raise the bar (8, 12, 18, 27, 40, 60 s)
             lastStallAt = now;
+        }
+        /**
+         * Single-quality stream on a line slower than the video: no lighter copy exists, so the only
+         * fix is arithmetic. If the line delivers fraction r of the video's bitrate, then to play the
+         * remaining D without another stall we must hold D x (1 - r) ahead before resuming. Example:
+         * 90 min left, line = 90% of the bitrate: 9 min of cushion, capped by memory (then the player
+         * plays on and rebuilds again). Only ever raises the bar; the normal ladder still applies.
+         */
+        void noteDeficit(long lineBps, long videoBps, long remainingMs) {
+            if (lineBps <= 0 || videoBps <= 0 || remainingMs <= 0 || lineBps >= videoBps) return;
+            double r = (double) lineBps / videoBps;
+            long need = (long) (remainingMs * (1.0 - r) * 1.15);
+            int v = (int) Math.max(resumeMs, Math.min(resumeMaxMs, need));
+            resumeMs = v;
         }
         /** Called after a long stretch of smooth playback, or on a new title/channel. */
         void reset() { resumeMs = resumeBaseMs; lastStallAt = 0; }

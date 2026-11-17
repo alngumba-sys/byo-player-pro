@@ -275,12 +275,14 @@ public class PlayerActivity extends Activity {
     private final Player.Listener listener = new Player.Listener() {
         @Override public void onPlaybackStateChanged(int state) {
             spinner.setVisibility(state == Player.STATE_BUFFERING ? View.VISIBLE : View.GONE);
+            if (state == Player.STATE_BUFFERING && everPlayed && !live) { h.removeCallbacks(cushionTick); h.post(cushionTick); }
+            else { h.removeCallbacks(cushionTick); if (cushionShown) { cushionShown = false; errorText.setVisibility(View.GONE); } }
             if (state == Player.STATE_READY) { everPlayed = true; retries = 0; if (waitingNet) { waitingNet = false; h.removeCallbacks(netPoll); } errorText.setVisibility(View.GONE); unavailableShown = false; bufferingSince = 0; h.removeCallbacks(stallCheck); h.removeCallbacks(startTimeout); h.removeCallbacks(slowHint); }
             if (state == Player.STATE_ENDED) { if (live) reconnect("Reconnecting…"); else if (epAdvanced < nextEps.size()) showUpNext(); else finishWith("ended"); }
             if (state == Player.STATE_BUFFERING && everPlayed) {
                 long now = System.currentTimeMillis();
                 if (now - lastSeekAt > 4000 && now - lastSwitchAt > 8000) {
-                    rebuffers.add(now); bufferingSince = now; lastStallAt = now; if (loadCtl != null) loadCtl.noteStall();
+                    rebuffers.add(now); bufferingSince = now; lastStallAt = now; if (loadCtl != null) { loadCtl.noteStall(); noteDeficit(); }
                     h.removeCallbacks(stallCheck); h.postDelayed(stallCheck, 5000);
                     int recent = 0; for (long t : rebuffers) if (now - t < 120000) recent++;
                     if (recent >= 2) stepDown();
@@ -517,6 +519,33 @@ public class PlayerActivity extends Activity {
         } else return;
         lastSwitchAt = now; if (loadCtl != null) loadCtl.reset();
         selector.setParameters(selector.buildUponParameters().setMaxVideoBitrate((int) Math.min(capBitrate, Integer.MAX_VALUE)));
+    } };
+
+    private boolean cushionShown = false;
+
+    /** After a stall on a single-quality movie: work out how big a head start the line needs. */
+    private void noteDeficit() {
+        try {
+            if (live || player == null || loadCtl == null || meter == null) return;
+            long line = meter.getBitrateEstimate();
+            Format vf = player.getVideoFormat(), af = player.getAudioFormat();
+            long vb = (vf != null && vf.bitrate > 0 ? vf.bitrate : 0) + (af != null && af.bitrate > 0 ? af.bitrate : 0);
+            long dur = player.getDuration();
+            if (dur <= 0) return;
+            loadCtl.noteDeficit(line, vb, Math.max(0, dur - player.getCurrentPosition()));
+        } catch (Exception ignored) {}
+    }
+
+    /** While waiting after a stall, show real progress instead of a bare spinner. */
+    private final Runnable cushionTick = new Runnable() { @Override public void run() {
+        if (player == null || loadCtl == null || player.getPlaybackState() != Player.STATE_BUFFERING || live) return;
+        long have = player.getTotalBufferedDuration(), need = loadCtl.resumeThresholdMs();
+        if (need >= 12_000 && have < need) {
+            int pct = (int) Math.min(99, have * 100 / Math.max(1, need));
+            errorText.setText("Weak connection. Getting ahead so it plays without stopping.\n" + pct + "% ready  \u00B7  " + (have / 1000) + "s of " + (need / 1000) + "s");
+            errorText.setVisibility(View.VISIBLE); cushionShown = true;
+        }
+        h.postDelayed(this, 1000);
     } };
 
     /** Single long stall (5 s) → act now rather than waiting for a second one. */
