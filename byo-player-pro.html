@@ -9376,10 +9376,17 @@ var Pin=(function(){
         var items=genresOf(list); var sel=S.liveGenre||'All';
         $('cat-picker-title').innerHTML=icon('i-grid')+'Choose a genre · Live TV';
         var grid=$('cat-picker-grid'); grid.innerHTML='';
-        function countFor(val){ if(val==='All') return list.length; var n=0; for(var i=0;i<list.length;i++){ if(matchGenre(list[i],val)) n++; } return n; }
+        var _cnt={};   // one pass over the channels builds every tile's count
+        for(var i=0;i<list.length;i++){ var x=list[i]; if(!x) continue; var seenK={};
+            function bump(k){ if(!seenK[k]){ seenK[k]=1; _cnt[k]=(_cnt[k]||0)+1; } }
+            var parts=splitGenres(x.tmdbGenre?x.tmdbGenre:x.genre);
+            for(var j=0;j<parts.length;j++){ if(isRealGenre(parts[j])) bump(canonGenre(parts[j]).toLowerCase()); }
+            if(x.genre){ var rk=String(x.genre).trim().toLowerCase(); if(rk) bump(rk); }
+            var rg=regionsOf(x); for(var q=0;q<rg.length;q++) bump(rg[q].toLowerCase()); }
+        function countFor(val){ if(val==='All') return list.length; return _cnt[String(val).toLowerCase()]||0; }
         var frag=document.createDocumentFragment();
         items.forEach(function(val){ var tile=document.createElement('div'); tile.className='cat-tile'+(val===sel?' sel-tile':''); tile.setAttribute('data-focusable','true'); tile.tabIndex=0;
-            tile.innerHTML='<span class="ct-ic">'+icon(genreIcon(val))+'</span><div class="ct-name">'+esc(val)+'</div><div class="ct-count">'+countFor(val)+' channel'+(countFor(val)===1?'':'s')+'</div>';
+            var _n=countFor(val); tile.innerHTML='<span class="ct-ic">'+icon(genreIcon(val))+'</span><div class="ct-name">'+esc(val)+'</div><div class="ct-count">'+_n+' channel'+(_n===1?'':'s')+'</div>';
             tile.addEventListener('click',function(){ S.liveGenre=val; S._guideCap=150; closeCatPicker(); renderLiveGenres(); renderLive(); });
             frag.appendChild(tile); });
         grid.appendChild(frag);
@@ -9401,13 +9408,29 @@ var Pin=(function(){
         var grid=$('cat-picker-grid'); grid.innerHTML='';
         var items = isChan ? channelsOf(list) : genresOf(list);
         // Count how many titles fall under each option, so tiles can show "123 titles".
-        function countFor(val){ if(val==='All') return list.length; var n=0; for(var i=0;i<list.length;i++){ if(isChan?matchChannel(list[i],val):matchGenre(list[i],val)) n++; } return n; }
+        // ONE pass over the library builds every tile's count. (It used to re-scan the whole list for each tile,
+        // twice: hundreds of channels x tens of thousands of titles, which froze a TV for many seconds.)
+        var _cnt={};
+        (function(){
+            function bump(k){ _cnt[k]=(_cnt[k]||0)+1; }
+            for(var i=0;i<list.length;i++){ var x=list[i]; if(!x) continue;
+                if(isChan){ var pv=providerOf(x); if(pv) bump(pv.toLowerCase()); }
+                else {
+                    var seenK={};
+                    var src=x.tmdbGenre?x.tmdbGenre:x.genre, parts=splitGenres(src);
+                    for(var j=0;j<parts.length;j++){ if(isRealGenre(parts[j])){ var ck=canonGenre(parts[j]).toLowerCase(); if(!seenK[ck]){ seenK[ck]=1; bump(ck); } } }
+                    if(x.genre){ var rk=String(x.genre).trim().toLowerCase(); if(rk&&!seenK[rk]){ seenK[rk]=1; bump(rk); } }
+                    var rg=regionsOf(x); for(var q=0;q<rg.length;q++){ var gk=rg[q].toLowerCase(); if(!seenK[gk]){ seenK[gk]=1; bump(gk); } }
+                }
+            }
+        })();
+        function countFor(val){ if(val==='All') return list.length; return _cnt[String(val).toLowerCase()]||0; }
         var frag=document.createDocumentFragment();
         items.forEach(function(val){ var tile=document.createElement('div'); tile.className='cat-tile'+(val===sel?' sel-tile':''); tile.setAttribute('data-focusable','true'); tile.tabIndex=0;
             var vis;
             if(isChan){ if(val==='All'){ vis='<span class="ct-logo" style="background:var(--bg-elev2);color:var(--fg)">ALL</span>'; } else { var br=providerBrand(val); vis=br?('<span class="ct-logo" style="background:'+br.bg+';color:'+br.fg+'">'+esc(br.ab)+'</span>'):('<span class="ct-logo" style="background:var(--bg-elev2);color:var(--fg)">'+esc((val||'?').replace(/[^A-Za-z0-9]/g,'').slice(0,3).toUpperCase())+'</span>'); } }
             else { vis='<span class="ct-ic">'+icon(genreIcon(val))+'</span>'; }
-            tile.innerHTML=vis+'<div class="ct-name">'+esc(val)+'</div><div class="ct-count">'+countFor(val)+' title'+(countFor(val)===1?'':'s')+'</div>';
+            var _n=countFor(val); tile.innerHTML=vis+'<div class="ct-name">'+esc(val)+'</div><div class="ct-count">'+_n+' title'+(_n===1?'':'s')+'</div>';
             tile.addEventListener('click',function(){
                 if(isChan){ if(isMovies) S.moviesChannel=val; else S.seriesChannel=val; }
                 else { if(isMovies) S.moviesGenre=val; else S.seriesGenre=val; }
