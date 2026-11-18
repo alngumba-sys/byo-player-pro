@@ -1,6 +1,6 @@
 {
-  "versionCode": 245,
-  "versionName": "3.37.60",
+  "versionCode": 246,
+  "versionName": "3.37.61",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Smoother playback on slow internet: movies and episodes now build a bigger head start when the connection is weaker than the video, with a progress readout."
+  "notes": "New genres: K-Drama, C-Drama, J-Drama, Thai, Turkish, Bollywood, Nollywood, African, Arabic and Latin."
 }
