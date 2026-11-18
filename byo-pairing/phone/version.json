@@ -1,6 +1,6 @@
 {
-  "versionCode": 246,
-  "versionName": "3.37.61",
+  "versionCode": 247,
+  "versionName": "3.37.62",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "New genres: K-Drama, C-Drama, J-Drama, Thai, Turkish, Bollywood, Nollywood, African, Arabic and Latin."
+  "notes": "Fixes Choose genre on Movies and Series (the genre list is faster and no longer loses focus on the TV)."
 }

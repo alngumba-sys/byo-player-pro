@@ -9,6 +9,9 @@ Run these steps in order, in this folder:
 5. git push
 Then tell me what was pushed. Pushing to main redeploys the web version automatically.
 
+## When I say "build" for the TV
+Build and sign the APK, then run the deploy steps above straight away, without waiting for me to say "deploy". Always, for TV builds.
+
 ## Never commit
 - Any keystore file (*.keystore, *.jks)
 - Provider logins, passwords or API keys

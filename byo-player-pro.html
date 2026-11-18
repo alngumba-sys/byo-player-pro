@@ -5093,11 +5093,15 @@ var Pin=(function(){
     ];
     REGIONS.forEach(function(r){ r.L={}; r.lang.split(',').forEach(function(c){ r.L[c]=1; }); r.C={}; r.cty.split(',').forEach(function(c){ r.C[c]=1; });
         r.P=new RegExp('^\\s*(?:'+r.cc.split(',').join('|')+')\\s*[|:\\-\\u2013]\\s','i'); });
-    function regionsOf(x){ if(!x) return [];
-        var key=(x.tmdbLang||'')+'|'+(x.tmdbCty||'')+'|'+(x.genre||'');
-        if(x.__rg!==undefined && x.__rgk===key) return x.__rg;
+    // One cheap pre-test for "could this title be regional at all?": most titles (Action, Comedy...) fail it and skip the ten checks below.
+    var REG_ANY=new RegExp(REGIONS.map(function(r){ return '(?:'+r.gt.source+')|(?:'+r.tt.source+')|(?:'+r.P.source+')'; }).join('|'),'im');
+    var _NONE=[];
+    function regionsOf(x){ if(!x) return _NONE;
+        if(x.__rg!==undefined && x.__rgl===x.tmdbLang && x.__rgc===x.tmdbCty && x.__rgg===x.genre) return x.__rg;
         var gt=String(x.genre||''), nm=String(x._origName||x.title||x.name||''), lang=String(x.tmdbLang||'').toLowerCase(), cty=String(x.tmdbCty||'').toUpperCase().split(',');
-        var out=[];
+        var out;
+        if(!lang && !x.tmdbCty && !REG_ANY.test(gt+'\n'+nm)){ try{ x.__rg=_NONE; x.__rgl=x.tmdbLang; x.__rgc=x.tmdbCty; x.__rgg=x.genre; }catch(_e){} return _NONE; }
+        out=[];
         REGIONS.forEach(function(r){
             var hit=false;
             if(lang && r.L[lang]) hit=true;
@@ -5111,7 +5115,8 @@ var Pin=(function(){
         });
         // Spanish/Portuguese-language dubs of Korean shows etc: when TMDB knows the origin, trust it over the group-title
         if(lang && lang!=='en' && out.length>1){ var primary=null; REGIONS.forEach(function(r){ if(!primary && r.L[lang]) primary=r.n; }); if(primary && out.indexOf(primary)>-1) out=[primary].concat(out.filter(function(n){ return n==='African'||n==='Nollywood'; }).filter(function(n){ return n!==primary; })); }
-        x.__rg=out; x.__rgk=key; return out; }
+        try{ x.__rg=out; x.__rgl=x.tmdbLang; x.__rgc=x.tmdbCty; x.__rgg=x.genre; }catch(_e){} return out; }
+    var _regSeen={};   // regional genres already offered in the list: the genre bar is only redrawn when a NEW one appears
     function isRegionGenre(g){ g=String(g||'').toLowerCase(); for(var i=0;i<REGIONS.length;i++) if(REGIONS[i].n.toLowerCase()===g) return true; return false; }
     // Map a genre name to one of the hand-drawn wireframe icons (gn-*). Falls back to a generic one.
     function genreIcon(name){ var k=String(name||'').toLowerCase();
@@ -5153,6 +5158,7 @@ var Pin=(function(){
     // Genres from the provider/TMDB, plus the regional ones (K-Drama, C-Drama, African...) that have at least one title.
     function genresOf(list){ var base=genresBase(list), have={}; base.forEach(function(g){ have[String(g).toLowerCase()]=1; });
         var cnt={}; (list||[]).forEach(function(x){ regionsOf(x).forEach(function(n){ cnt[n]=(cnt[n]||0)+1; }); });
+        Object.keys(cnt).forEach(function(n){ _regSeen[n]=1; });
         var extra=[]; REGIONS.forEach(function(r){ if(cnt[r.n] && !have[r.n.toLowerCase()]) extra.push(r.n); });
         return extra.length?base.concat(extra):base; }
     // "Channel" = the streaming provider/source the title belongs to — Netflix, HBO Max, Hulu, Peacock…
@@ -9171,7 +9177,7 @@ var Pin=(function(){
         if(!TMDB.enabled()) return;
         TMDB.lookupItem(item, kind, function(meta){ if(!meta) return;   // no verified match: keep the provider's art or the placeholder
             if(meta.genre&&meta.genre!==item.tmdbGenre){ item.tmdbGenre=meta.genre; scheduleGenreRefresh(kind); } if(meta.rating) item.tmdbRating=meta.rating;
-            if(meta.overview) item.tmdbOverview=meta.overview; if(meta.year&&!item.year) item.year=meta.year; if(meta.lang&&meta.lang!==item.tmdbLang){ item.tmdbLang=meta.lang; item.tmdbCty=meta.cty||''; try{ scheduleGenreRefresh(kind); }catch(_e){} }
+            if(meta.overview) item.tmdbOverview=meta.overview; if(meta.year&&!item.year) item.year=meta.year; if(meta.lang&&meta.lang!==item.tmdbLang){ var _rb=regionsOf(item).join('|'); item.tmdbLang=meta.lang; item.tmdbCty=meta.cty||''; var _ra=regionsOf(item); if(_ra.join('|')!==_rb){ var _new=false; _ra.forEach(function(n){ if(!_regSeen[n]){ _regSeen[n]=1; _new=true; } }); if(_new){ try{ scheduleGenreRefresh(kind); }catch(_e){} } } }
             var pe=card.querySelector('.poster'); if(!pe) return;
             var rb=card.querySelector('.badge'); if(rb&&meta.rating){ rb.innerHTML=icon('i-star')+esc(meta.rating); }
             if(!meta.poster) return;
