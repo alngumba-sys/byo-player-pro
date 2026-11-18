@@ -1,6 +1,6 @@
 {
-  "versionCode": 247,
-  "versionName": "3.37.62",
+  "versionCode": 248,
+  "versionName": "3.37.63",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Fixes Choose genre on Movies and Series (the genre list is faster and no longer loses focus on the TV)."
+  "notes": "Fixes Choose genre on Movies and Series (it stopped opening in 3.37.61)."
 }

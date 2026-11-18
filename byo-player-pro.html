@@ -5079,7 +5079,7 @@ var Pin=(function(){
        Providers rarely have these as genres, so a title is tagged from (1) TMDB's original language / country when known,
        (2) its provider group-title ("Korean Series", "KR | ..."), (3) strong words in its name. Country NAMES are only
        trusted in the group-title, never in a film title (so "China Girl" is not a C-Drama). ---- */
-    var REGIONS=[
+    var GENRE_REGIONS=[
         { n:'K-Drama',      lang:'ko', cty:'KR', cc:'kr', gt:/korea|k[-\s]?drama|k[-\s]?series|hallyu/i, tt:/\bkorean\b|\bk[-\s]?drama\b/i },
         { n:'C-Drama',      lang:'zh,cn,yue', cty:'CN,TW,HK', cc:'cn,tw,hk,zh', gt:/chin(a|ese)|mandarin|cantonese|taiwan|hong\s?kong|c[-\s]?drama|c[-\s]?series/i, tt:/\bchinese\b|\bmandarin\b|\bcantonese\b|\bc[-\s]?drama\b/i },
         { n:'J-Drama',      lang:'ja', cty:'JP', cc:'jp', gt:/japan|j[-\s]?drama|j[-\s]?series/i, tt:/\bjapanese\b|\bj[-\s]?drama\b/i },
@@ -5091,10 +5091,10 @@ var Pin=(function(){
         { n:'Arabic',       lang:'ar', cty:'SA,AE,QA,KW,LB,SY,JO,IQ', cc:'ar,sa,ae,qa,kw,lb,sy,jo,iq', gt:/arab|middle east|gulf|syria|lebanon|ramadan/i, tt:/\barabic\b|\bramadan\b/i },
         { n:'Latin',        lang:'es,pt', cty:'MX,BR,CO,AR,CL,PE,VE,ES,PT,CU,DO,EC,UY', cc:'mx,br,co,ar,cl,pe,ve,es,pt,lat,latino', gt:/latin|telenovela|spanish|portuguese|mexic|brazil|colombia|argentin|espa(n|ñ)ol|novela/i, tt:/\btelenovela\b|\bnovela\b|\blatino\b/i }
     ];
-    REGIONS.forEach(function(r){ r.L={}; r.lang.split(',').forEach(function(c){ r.L[c]=1; }); r.C={}; r.cty.split(',').forEach(function(c){ r.C[c]=1; });
+    GENRE_REGIONS.forEach(function(r){ r.L={}; r.lang.split(',').forEach(function(c){ r.L[c]=1; }); r.C={}; r.cty.split(',').forEach(function(c){ r.C[c]=1; });
         r.P=new RegExp('^\\s*(?:'+r.cc.split(',').join('|')+')\\s*[|:\\-\\u2013]\\s','i'); });
     // One cheap pre-test for "could this title be regional at all?": most titles (Action, Comedy...) fail it and skip the ten checks below.
-    var REG_ANY=new RegExp(REGIONS.map(function(r){ return '(?:'+r.gt.source+')|(?:'+r.tt.source+')|(?:'+r.P.source+')'; }).join('|'),'im');
+    var REG_ANY=new RegExp(GENRE_REGIONS.map(function(r){ return '(?:'+r.gt.source+')|(?:'+r.tt.source+')|(?:'+r.P.source+')'; }).join('|'),'im');
     var _NONE=[];
     function regionsOf(x){ if(!x) return _NONE;
         if(x.__rg!==undefined && x.__rgl===x.tmdbLang && x.__rgc===x.tmdbCty && x.__rgg===x.genre) return x.__rg;
@@ -5102,7 +5102,7 @@ var Pin=(function(){
         var out;
         if(!lang && !x.tmdbCty && !REG_ANY.test(gt+'\n'+nm)){ try{ x.__rg=_NONE; x.__rgl=x.tmdbLang; x.__rgc=x.tmdbCty; x.__rgg=x.genre; }catch(_e){} return _NONE; }
         out=[];
-        REGIONS.forEach(function(r){
+        GENRE_REGIONS.forEach(function(r){
             var hit=false;
             if(lang && r.L[lang]) hit=true;
             if(!hit) for(var i=0;i<cty.length;i++){ if(cty[i] && r.C[cty[i]]){ hit=true; break; } }
@@ -5114,10 +5114,10 @@ var Pin=(function(){
             if(hit) out.push(r.n);
         });
         // Spanish/Portuguese-language dubs of Korean shows etc: when TMDB knows the origin, trust it over the group-title
-        if(lang && lang!=='en' && out.length>1){ var primary=null; REGIONS.forEach(function(r){ if(!primary && r.L[lang]) primary=r.n; }); if(primary && out.indexOf(primary)>-1) out=[primary].concat(out.filter(function(n){ return n==='African'||n==='Nollywood'; }).filter(function(n){ return n!==primary; })); }
+        if(lang && lang!=='en' && out.length>1){ var primary=null; GENRE_REGIONS.forEach(function(r){ if(!primary && r.L[lang]) primary=r.n; }); if(primary && out.indexOf(primary)>-1) out=[primary].concat(out.filter(function(n){ return n==='African'||n==='Nollywood'; }).filter(function(n){ return n!==primary; })); }
         try{ x.__rg=out; x.__rgl=x.tmdbLang; x.__rgc=x.tmdbCty; x.__rgg=x.genre; }catch(_e){} return out; }
     var _regSeen={};   // regional genres already offered in the list: the genre bar is only redrawn when a NEW one appears
-    function isRegionGenre(g){ g=String(g||'').toLowerCase(); for(var i=0;i<REGIONS.length;i++) if(REGIONS[i].n.toLowerCase()===g) return true; return false; }
+    function isRegionGenre(g){ g=String(g||'').toLowerCase(); for(var i=0;i<GENRE_REGIONS.length;i++) if(GENRE_REGIONS[i].n.toLowerCase()===g) return true; return false; }
     // Map a genre name to one of the hand-drawn wireframe icons (gn-*). Falls back to a generic one.
     function genreIcon(name){ var k=String(name||'').toLowerCase();
         if(k==='all') return 'i-grid';
@@ -5159,7 +5159,7 @@ var Pin=(function(){
     function genresOf(list){ var base=genresBase(list), have={}; base.forEach(function(g){ have[String(g).toLowerCase()]=1; });
         var cnt={}; (list||[]).forEach(function(x){ regionsOf(x).forEach(function(n){ cnt[n]=(cnt[n]||0)+1; }); });
         Object.keys(cnt).forEach(function(n){ _regSeen[n]=1; });
-        var extra=[]; REGIONS.forEach(function(r){ if(cnt[r.n] && !have[r.n.toLowerCase()]) extra.push(r.n); });
+        var extra=[]; GENRE_REGIONS.forEach(function(r){ if(cnt[r.n] && !have[r.n.toLowerCase()]) extra.push(r.n); });
         return extra.length?base.concat(extra):base; }
     // "Channel" = the streaming provider/source the title belongs to — Netflix, HBO Max, Hulu, Peacock…
     // Real playlists put this in the group-title ("Netflix") OR as a prefix on the name ("Netflix | …",
@@ -5450,7 +5450,7 @@ var Pin=(function(){
             var lbl=document.createElement('div'); lbl.className='wz-or'; lbl.setAttribute('data-i18n','welcome.orChoose'); lbl.textContent=tr('welcome.orChoose','Or choose manually'); grid.appendChild(lbl);
             var cgrid=document.createElement('div'); cgrid.className='region-grid';
             var cur=Store.settings.region||'';
-            REGIONS.slice(0,9).forEach(function(r){ var o=document.createElement('button'); o.className='welcome-opt region-opt'+(cur===r.id?' picked':''); o.setAttribute('data-focusable','true'); o.tabIndex=0;
+            GENRE_REGIONS.slice(0,9).forEach(function(r){ var o=document.createElement('button'); o.className='welcome-opt region-opt'+(cur===r.id?' picked':''); o.setAttribute('data-focusable','true'); o.tabIndex=0;
                 o.innerHTML='<span class="wo-flag">'+r.flag+'</span><span class="wo-text"><span class="wo-label">'+esc(r.label)+'</span></span><span class="wo-check">'+icon('i-check')+'</span>';
                 o.addEventListener('click',function(){ Store.settings.region=r.id; Store.settings.regionAuto=false; Store.save(); TimeService.bump();
                     Array.prototype.forEach.call(cgrid.querySelectorAll('.welcome-opt'),function(x){ x.classList.remove('picked'); }); o.classList.add('picked'); }); cgrid.appendChild(o); });
