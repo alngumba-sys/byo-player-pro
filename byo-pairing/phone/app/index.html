@@ -8398,7 +8398,7 @@ var TMDB=(function(){
     function buildMeta(r,k,confidence){ if(!r) return null; var gm=genreMap[k]||{}; var gs=(r.genre_ids||[]).map(function(id){return gm[id];}).filter(Boolean);
         return { id:r.id, type:(k==='tv'?'series':'movie'),
             poster:r.poster_path?IMG+r.poster_path:'', backdrop:r.backdrop_path?('https://image.tmdb.org/t/p/w1280'+r.backdrop_path):'',
-            overview:r.overview||'', genre:gs[0]||'', genres:gs, title:(r.name||r.title||''),
+            overview:r.overview||'', genre:gs[0]||'', genres:gs, lang:r.original_language||'', cty:(r.origin_country||[]).join(','), title:(r.name||r.title||''),
             year:yearOf(r), rating:r.vote_average?(''+(Math.round(r.vote_average*10)/10)):'', confidence:confidence||0 }; }
 
     // Manual overrides: provider-title key → chosen TMDB {id,type}. Permanent, beats fuzzy search (§27).
@@ -9309,11 +9309,49 @@ var Pin=(function(){
         'thrillers':'Thriller','westerns':'Western','classics':'Classic','stand-up':'Standup','historical':'History','miniseries':'Mini-Series','mini-series':'Mini-Series' };
     function isRealGenre(g){ g=String(g||'').trim(); if(!g) return false; return !!GENRE_VOCAB[g.toLowerCase()]; }
     function canonGenre(g){ var k=String(g||'').trim().toLowerCase(); return GENRE_CANON[k]||String(g||'').trim(); }
+    /* ---- Regional genres: K-Drama, C-Drama, J-Drama, Thai Drama, Turkish Drama, Bollywood, Nollywood, African, Arabic, Latin.
+       Providers rarely have these as genres, so a title is tagged from (1) TMDB's original language / country when known,
+       (2) its provider group-title ("Korean Series", "KR | ..."), (3) strong words in its name. Country NAMES are only
+       trusted in the group-title, never in a film title (so "China Girl" is not a C-Drama). ---- */
+    var REGIONS=[
+        { n:'K-Drama',      lang:'ko', cty:'KR', cc:'kr', gt:/korea|k[-\s]?drama|k[-\s]?series|hallyu/i, tt:/\bkorean\b|\bk[-\s]?drama\b/i },
+        { n:'C-Drama',      lang:'zh,cn,yue', cty:'CN,TW,HK', cc:'cn,tw,hk,zh', gt:/chin(a|ese)|mandarin|cantonese|taiwan|hong\s?kong|c[-\s]?drama|c[-\s]?series/i, tt:/\bchinese\b|\bmandarin\b|\bcantonese\b|\bc[-\s]?drama\b/i },
+        { n:'J-Drama',      lang:'ja', cty:'JP', cc:'jp', gt:/japan|j[-\s]?drama|j[-\s]?series/i, tt:/\bjapanese\b|\bj[-\s]?drama\b/i },
+        { n:'Thai Drama',   lang:'th', cty:'TH', cc:'th', gt:/thai/i, tt:/\bthai\b/i },
+        { n:'Turkish Drama',lang:'tr', cty:'TR', cc:'tr', gt:/turk|dizi/i, tt:/\bturkish\b|\bdizi\b/i },
+        { n:'Bollywood',    lang:'hi,ta,te,ml,bn,pa,kn,mr,gu,ur', cty:'IN,PK,BD', cc:'in', gt:/india|bollywood|hindi|tamil|telugu|malayalam|punjabi|bengali|desi/i, tt:/\bbollywood\b|\bhindi\b|\btamil\b|\btelugu\b|\bmalayalam\b|\bpunjabi\b/i },
+        { n:'Nollywood',    lang:'yo,ig,ha', cty:'NG', cc:'ng', gt:/nollywood|nigeria/i, tt:/\bnollywood\b|\bnigerian\b/i },
+        { n:'African',      lang:'sw,am,zu,af,xh,sn,rw,ln,wo,so,om,ti,yo,ig,ha,st,tn,ny,mg', cty:'NG,KE,TZ,UG,ET,GH,ZA,ZM,ZW,RW,SN,CM,CI,AO,MZ,SO,SD,EG,MA,DZ,TN,CD,BW,NA,ML,BF,NE,TD,MW,SS,ER,DJ,GA,CG,LR,SL,GM,GN,MU,BJ,TG,MR,LY', cc:'ng,ke,tz,ug,et,gh,za,zm,zw,rw,sn,cm,ci,ao,mz,so,cd,bw,na', gt:/africa|swahili|kenya|tanzania|uganda|ethiopi|amharic|oromo|oromoo|ghana|nigeria|nollywood|zulu|afrikaans|yoruba|hausa|igbo|somali|zambia|zimbabwe|rwanda|senegal|cameroon|ivory|congo|mozambique|angola|tigrinya|eritrea|malawi|botswana|namibia|mauritius|sudan|bongo|gospel africa/i, tt:/\bafrican\b|\bswahili\b|\bnollywood\b|\bnigerian\b|\bkenyan\b|\bethiopian\b|\bghanaian\b|\bbongo\b|\bamharic\b|\bzulu\b/i },
+        { n:'Arabic',       lang:'ar', cty:'SA,AE,QA,KW,LB,SY,JO,IQ', cc:'ar,sa,ae,qa,kw,lb,sy,jo,iq', gt:/arab|middle east|gulf|syria|lebanon|ramadan/i, tt:/\barabic\b|\bramadan\b/i },
+        { n:'Latin',        lang:'es,pt', cty:'MX,BR,CO,AR,CL,PE,VE,ES,PT,CU,DO,EC,UY', cc:'mx,br,co,ar,cl,pe,ve,es,pt,lat,latino', gt:/latin|telenovela|spanish|portuguese|mexic|brazil|colombia|argentin|espa(n|ñ)ol|novela/i, tt:/\btelenovela\b|\bnovela\b|\blatino\b/i }
+    ];
+    REGIONS.forEach(function(r){ r.L={}; r.lang.split(',').forEach(function(c){ r.L[c]=1; }); r.C={}; r.cty.split(',').forEach(function(c){ r.C[c]=1; });
+        r.P=new RegExp('^\\s*(?:'+r.cc.split(',').join('|')+')\\s*[|:\\-\\u2013]\\s','i'); });
+    function regionsOf(x){ if(!x) return [];
+        var key=(x.tmdbLang||'')+'|'+(x.tmdbCty||'')+'|'+(x.genre||'');
+        if(x.__rg!==undefined && x.__rgk===key) return x.__rg;
+        var gt=String(x.genre||''), nm=String(x._origName||x.title||x.name||''), lang=String(x.tmdbLang||'').toLowerCase(), cty=String(x.tmdbCty||'').toUpperCase().split(',');
+        var out=[];
+        REGIONS.forEach(function(r){
+            var hit=false;
+            if(lang && r.L[lang]) hit=true;
+            if(!hit) for(var i=0;i<cty.length;i++){ if(cty[i] && r.C[cty[i]]){ hit=true; break; } }
+            if(!hit && r.gt.test(gt)) hit=true;
+            if(!hit && (r.P.test(gt)||r.P.test(nm))) hit=true;
+            if(!hit && r.tt.test(nm)) hit=true;
+            // English-language titles from TMDB are never regional by group-title alone (a "Latin Hits" rail is not a film's origin)
+            if(hit && lang==='en' && r.n!=='Bollywood' && r.n!=='Nollywood' && r.n!=='African') hit=false;
+            if(hit) out.push(r.n);
+        });
+        // Spanish/Portuguese-language dubs of Korean shows etc: when TMDB knows the origin, trust it over the group-title
+        if(lang && lang!=='en' && out.length>1){ var primary=null; REGIONS.forEach(function(r){ if(!primary && r.L[lang]) primary=r.n; }); if(primary && out.indexOf(primary)>-1) out=[primary].concat(out.filter(function(n){ return n==='African'||n==='Nollywood'; }).filter(function(n){ return n!==primary; })); }
+        x.__rg=out; x.__rgk=key; return out; }
+    function isRegionGenre(g){ g=String(g||'').toLowerCase(); for(var i=0;i<REGIONS.length;i++) if(REGIONS[i].n.toLowerCase()===g) return true; return false; }
     // Map a genre name to one of the hand-drawn wireframe icons (gn-*). Falls back to a generic one.
     function genreIcon(name){ var k=String(name||'').toLowerCase();
         if(k==='all') return 'i-grid';
         if(/action/.test(k)) return 'gn-action'; if(/adventure/.test(k)) return 'gn-adventure';
-        if(/comedy/.test(k)) return 'gn-comedy'; if(/drama/.test(k)) return 'gn-drama';
+        if(/comedy/.test(k)) return 'gn-comedy'; if(/drama/.test(k)) return 'gn-drama'; if(isRegionGenre(k)) return 'gn-drama';
         if(/horror/.test(k)) return 'gn-horror'; if(/sci|fiction/.test(k)) return 'gn-scifi';
         if(/thriller|suspense/.test(k)) return 'gn-thriller'; if(/romance|romantic/.test(k)) return 'gn-romance';
         if(/family/.test(k)) return 'gn-family'; if(/document/.test(k)) return 'gn-documentary';
@@ -9330,7 +9368,7 @@ var Pin=(function(){
     // becomes its own selectable chip.
     function splitGenres(g){ return String(g||'').split(/\s*(?:[,/|]|&| and )\s*/i).map(function(p){return p.trim();}).filter(Boolean); }
     function effGenre(x){ return (x&&x.tmdbGenre)?x.tmdbGenre:(x?x.genre:''); }
-    function genresOf(list){ var seen={},gg=['All']; list.forEach(function(x){
+    function genresBase(list){ var seen={},gg=['All']; list.forEach(function(x){
             // Prefer the precise TMDB genre; fall back to the raw group-title only when it is a real genre.
             var src = (x&&x.tmdbGenre)?x.tmdbGenre:((x&&isRealGenre(x.genre))?x.genre:'');
             splitGenres(src).forEach(function(gn){ if(gn&&isRealGenre(gn)){ var cn=canonGenre(gn); var kk=cn.toLowerCase(); if(!seen[kk]){ seen[kk]=true; gg.push(cn); } } });
@@ -9346,6 +9384,11 @@ var Pin=(function(){
             if(raw.length>gg.length) return raw;
         }
         return gg; }
+    // Genres from the provider/TMDB, plus the regional ones (K-Drama, C-Drama, African...) that have at least one title.
+    function genresOf(list){ var base=genresBase(list), have={}; base.forEach(function(g){ have[String(g).toLowerCase()]=1; });
+        var cnt={}; (list||[]).forEach(function(x){ regionsOf(x).forEach(function(n){ cnt[n]=(cnt[n]||0)+1; }); });
+        var extra=[]; REGIONS.forEach(function(r){ if(cnt[r.n] && !have[r.n.toLowerCase()]) extra.push(r.n); });
+        return extra.length?base.concat(extra):base; }
     // "Channel" = the streaming provider/source the title belongs to — Netflix, HBO Max, Hulu, Peacock…
     // Real playlists put this in the group-title ("Netflix") OR as a prefix on the name ("Netflix | …",
     // "US| Hulu: …"). providerOf() recognises it from either, mapping to a canonical brand name so chips
@@ -14459,7 +14502,7 @@ var Pin=(function(){
         if(!TMDB.enabled()) return;
         TMDB.lookupItem(item, kind, function(meta){ if(!meta) return;   // no verified match: keep the provider's art or the placeholder
             if(meta.genre&&meta.genre!==item.tmdbGenre){ item.tmdbGenre=meta.genre; scheduleGenreRefresh(kind); } if(meta.rating) item.tmdbRating=meta.rating; if(meta.genres&&meta.genres.length) item.tmdbGenres=meta.genres; if(meta.id) item.tmdbId=meta.id;
-            if(meta.overview) item.tmdbOverview=meta.overview; if(meta.year&&!item.year) item.year=meta.year;
+            if(meta.overview) item.tmdbOverview=meta.overview; if(meta.year&&!item.year) item.year=meta.year; if(meta.lang&&meta.lang!==item.tmdbLang){ item.tmdbLang=meta.lang; item.tmdbCty=meta.cty||''; try{ scheduleGenreRefresh(kind); }catch(_e){} }
             var pe=card.querySelector('.poster'); if(!pe) return;
             var rb=card.querySelector('.badge'); if(rb&&meta.rating){ rb.innerHTML=icon('i-star')+esc(meta.rating); }
             if(!meta.poster) return;
@@ -14976,6 +15019,7 @@ var Pin=(function(){
     function matchGenre(x,sel){ if(sel==='All') return true; var s=sel.toLowerCase();
         var src=(x&&x.tmdbGenre)?x.tmdbGenre:(x?x.genre:''); var parts=splitGenres(src);
         for(var i=0;i<parts.length;i++){ if(isRealGenre(parts[i]) && canonGenre(parts[i]).toLowerCase()===s) return true; }
+        if(isRegionGenre(sel)){ var rg=regionsOf(x); for(var j=0;j<rg.length;j++) if(rg[j].toLowerCase()===s) return true; }
         // Fallback mode: the selected value is a raw provider category — match the raw group-title directly.
         if(x && x.genre && String(x.genre).trim().toLowerCase()===s) return true;
         return false; }
@@ -15237,7 +15281,7 @@ var Pin=(function(){
         TMDB.lookupItem(item, kind, function(meta){ if(!meta) return;
             // Cache onto the item so the NEXT open is instantly correct (no re-fetch flicker).
             if(meta.genre) item.tmdbGenre=meta.genre; if(meta.rating) item.tmdbRating=meta.rating;
-            if(meta.overview) item.tmdbOverview=meta.overview; if(meta.year&&!item.year) item.year=meta.year;
+            if(meta.overview) item.tmdbOverview=meta.overview; if(meta.year&&!item.year) item.year=meta.year; if(meta.lang&&meta.lang!==item.tmdbLang){ item.tmdbLang=meta.lang; item.tmdbCty=meta.cty||''; }
             if(!S.currentDetail||S.currentDetail.data!==item||!$('view-detail').classList.contains('active-view')) return;
             // Re-render the plot + meta row from the now-enriched item (adds a star if there wasn't one).
             if(meta.overview) $('detail-plot').textContent=meta.overview;
