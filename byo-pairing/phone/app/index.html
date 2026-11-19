@@ -5594,6 +5594,12 @@ html:not(.android-app) #welcome #act-regen .sc-desc{ font-size:clamp(13px, 1vw, 
 
 /* Home banner: a small wide picture is shown at most 1.4x its real size, centred over a blurred copy (never stretched). */
 .h2-feat-img.wide.soft{ inset:auto !important; left:auto !important; right:7% !important; top:50% !important; transform:translateY(-50%); height:auto !important; max-height:96%; object-fit:contain; border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,.55); }
+
+/* Category sheet open: the page behind is frozen (no scrolling the movies under your finger) and the sheet takes every touch. */
+html.cs-lock, html.cs-lock body, html.cs-lock .scroll-body{ overflow:hidden !important; overscroll-behavior:none; }
+.cat-sheet .cs-scrim{ touch-action:none; }
+.cat-sheet .cs-panel{ touch-action:pan-y; }
+.cat-sheet .cs-row{ touch-action:manipulation; }
 </style>
 
 <script>
@@ -14802,7 +14808,7 @@ var Pin=(function(){
         if(m){ var k=m[1].toLowerCase(); if(CC_NAME[k] && !(k==='sport'||k==='sports')){ return { group:CC_NAME[k], short:m[2].replace(/^[|:\-–\s]+/,'').trim()||s }; } }
         var full=s.toLowerCase().split(/[\s|:\-–]+/)[0]; for(var key in CC_FLAG){ if(full===key.toLowerCase()) return { group:key, short:s.slice(full.length).replace(/^[|:\-–\s]+/,'').trim()||s }; }
         return { group:'', short:s }; }
-    function __sheetClose(){ var o=$('cat-sheet'); if(!o) return; o.classList.remove('open'); setTimeout(function(){ if(!o.classList.contains('open')) o.classList.add('hidden'); },220); var f=o._returnFocus; if(f) try{ Nav.setFocus(f); }catch(e){} }
+    function __sheetClose(){ var o=$('cat-sheet'); if(!o) return; o.classList.remove('open'); document.documentElement.classList.remove('cs-lock'); setTimeout(function(){ if(!o.classList.contains('open')) o.classList.add('hidden'); },220); var f=o._returnFocus; if(f) try{ Nav.setFocus(f); }catch(e){} }
     function __sheetOpen(){ var o=$('cat-sheet'); return !!(o&&o.classList.contains('open')); }
     function openCatSheet(opts){
         var o=$('cat-sheet'); if(!o){ o=document.createElement('div'); o.id='cat-sheet'; o.className='cat-sheet hidden';
@@ -14840,12 +14846,20 @@ var Pin=(function(){
                 other.items.sort(function(a,b){ return opts.alpha?String(a.it.label).localeCompare(b.it.label):((b.it.count||0)-(a.it.count||0)); }).forEach(function(x){ body.appendChild(row(x.it,x.short)); }); }
         }
         render(''); input.oninput=function(){ render(input.value); };
+        // The page behind must NOT scroll while the sheet is up (iPhone: a drag on a short sheet chained to the movies behind it).
+        document.documentElement.classList.add('cs-lock');
+        if(!o.__guard){ o.__guard=true; var y0=0;
+            o.addEventListener('touchstart',function(e){ y0=(e.touches&&e.touches[0])?e.touches[0].clientY:0; },{passive:true});
+            o.addEventListener('touchmove',function(e){ var b=o.querySelector('.cs-body'); var inBody=b&&b.contains(e.target);
+                if(!inBody||b.scrollHeight<=b.clientHeight+1){ if(e.cancelable) e.preventDefault(); return; }
+                var y=(e.touches&&e.touches[0])?e.touches[0].clientY:y0, dy=y-y0, top=b.scrollTop<=0, bot=b.scrollTop+b.clientHeight>=b.scrollHeight-1;
+                if((top&&dy>0)||(bot&&dy<0)){ if(e.cancelable) e.preventDefault(); } },{passive:false}); }
         o.classList.remove('hidden'); requestAnimationFrame(function(){ o.classList.add('open'); body.scrollTop=0; });
         setTimeout(function(){ var f=body.querySelector('.cs-row.on')||body.querySelector('.cs-row'); if(f) Nav.setFocus(f); },60);
     }
     function __useSheet(){ return (window.innerWidth||1920)<900; }
     function __countMap(list, keyFn){ var m={}; for(var i=0;i<list.length;i++){ var ks=keyFn(list[i]); var seen={}; for(var j=0;j<ks.length;j++){ var k=ks[j]; if(!k||seen[k]) continue; seen[k]=1; m[k]=(m[k]||0)+1; } } return m; }
-    function __genreKeys(x){ var out=[]; var src=(x&&x.tmdbGenre)?x.tmdbGenre:(x?x.genre:''); splitGenres(src).forEach(function(p){ if(isRealGenre(p)) out.push(canonGenre(p).toLowerCase()); }); if(x&&x.genre) out.push(String(x.genre).trim().toLowerCase()); return out; }
+    function __genreKeys(x){ var out=[]; var src=(x&&x.tmdbGenre)?x.tmdbGenre:(x?x.genre:''); splitGenres(src).forEach(function(p){ if(isRealGenre(p)) out.push(canonGenre(p).toLowerCase()); }); if(x&&x.genre) out.push(String(x.genre).trim().toLowerCase()); try{ regionsOf(x).forEach(function(n){ out.push(n.toLowerCase()); }); }catch(_e){} return out; }
     function openLiveCatSheet(){ var list=profFilter(S.live);
         // The playlist's own groups (what providers call categories), plus any real genres detected.
         var raw={}, canon={}; list.forEach(function(c){ var g=String(c.genre||'').trim(); if(!g) return; var k=g.toLowerCase(); raw[k]=(raw[k]||0)+1; if(!canon[k]) canon[k]=g; });

@@ -3500,3 +3500,9 @@ html:not(.android-app) #welcome #act-regen .sc-desc{ font-size:clamp(13px, 1vw, 
 
 /* Home banner: a small wide picture is shown at most 1.4x its real size, centred over a blurred copy (never stretched). */
 .h2-feat-img.wide.soft{ inset:auto !important; left:auto !important; right:7% !important; top:50% !important; transform:translateY(-50%); height:auto !important; max-height:96%; object-fit:contain; border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,.55); }
+
+/* Category sheet open: the page behind is frozen (no scrolling the movies under your finger) and the sheet takes every touch. */
+html.cs-lock, html.cs-lock body, html.cs-lock .scroll-body{ overflow:hidden !important; overscroll-behavior:none; }
+.cat-sheet .cs-scrim{ touch-action:none; }
+.cat-sheet .cs-panel{ touch-action:pan-y; }
+.cat-sheet .cs-row{ touch-action:manipulation; }
