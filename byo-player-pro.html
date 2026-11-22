@@ -4135,7 +4135,7 @@ var Net=(function(){
    The TV/AVPlay fetches TMDB directly; TMDB's API also sends CORS headers so it works in-browser too. */
 var TMDB=(function(){
     var KEY='', ENABLED=false, IMG='https://image.tmdb.org/t/p/w342';
-    var cache={}, genreMap={movie:null,tv:null}, inflight={}, queue=[], active=0, MAX=4, CKEY='byo_tmdb_cache_v2', saveT=null, failedAt={};
+    var cache={}, genreMap={movie:null,tv:null}, inflight={}, qfn={}, queue=[], active=0, MAX=4, CKEY='byo_tmdb_cache_v2', saveT=null, failedAt={};
     try{ localStorage.removeItem('byo_tmdb_cache_v1'); }catch(_e){}   // v1 was keyed by title only (no year, no id): it could hold another title's poster
     function loadCache(){ try{ var s=localStorage.getItem(CKEY); if(s) cache=JSON.parse(s)||{}; }catch(e){ cache={}; } }
     function saveCache(){ if(saveT) return; saveT=setTimeout(function(){ saveT=null; try{ localStorage.setItem(CKEY,JSON.stringify(cache)); }catch(e){} },1500); }
@@ -4231,7 +4231,7 @@ var TMDB=(function(){
 
     // Core: identify the content, return a confident match or null (never a wrong guess).
     // hints (optional): { year, tmdb, imdb } from the provider record. Ids win over titles.
-    function lookup(title,kind,cb,hints){ if(!enabled()||!title){ cb(null); return; }
+    function lookup(title,kind,cb,hints,prio){ if(!enabled()||!title){ cb(null); return; }
         hints=hints||{}; var k=(kind==='series'?'tv':'movie'); var norm=normaliseTitle(title);
         var year=hints.year||norm.year||'';
         // Cache key: media type + the strongest identifier we have (provider id, else exact title + year). Never position or title alone.
@@ -4239,7 +4239,7 @@ var TMDB=(function(){
         var ck=(ov0&&ov0.id)?('ov|'+k+'|'+ov0.id):hints.tmdb?('id|'+k+'|'+hints.tmdb):(hints.imdb?('imdb|'+k+'|'+hints.imdb):('t|'+k+'|'+normKey(norm.clean)+'|'+year));
         if(cache[ck]!==undefined){ cb(cache[ck]); return; }
         if(failedAt[ck]&&Date.now()-failedAt[ck]<5*60000){ cb(null); return; }   // service was down: try again in a few minutes
-        if(inflight[ck]){ inflight[ck].push(cb); return; }
+        if(inflight[ck]){ inflight[ck].push(cb); if(prio&&qfn[ck]){ var qi=queue.indexOf(qfn[ck]); if(qi>-1){ queue.splice(qi,1); var f0=qfn[ck]; delete qfn[ck]; f0(); } } return; }
         inflight[ck]=[cb];
         var ov=overrides[overrideKey(title,kind)];
         var info={ title:String(title), kind:(k==='tv'?'series':'movie'), year:year, key:ck };
@@ -4270,7 +4270,7 @@ var TMDB=(function(){
                 if(conf<MIN_CONFIDENCE){ finish(null,'needs-review','weak match ('+conf+'%): '+(best.title||best.name)); return; }
                 finish(buildMeta(best,k,conf),'verified','title'+(year?' + year':'')+' match '+conf+'%','title'); }
         }
-        queue.push(function(){ active++; ensureGenres(k,function(){
+        var job=function(){ delete qfn[ck]; active++; ensureGenres(k,function(){
             // Manual override wins: fetch that exact id.
             if(ov&&ov.id){ fetchById(k, ov.id, function(meta){ if(verifyFetched(meta,k)) finish(meta,'verified','manual choice','override'); else finish(null,'error','override fetch failed'); }); return; }
             // Provider TMDB id (Emby / Jellyfin give one): exact identity, no guessing.
@@ -4278,10 +4278,10 @@ var TMDB=(function(){
             // IMDb id: resolve through TMDB's find endpoint, in the right catalogue only.
             if(hints.imdb){ get('https://api.themoviedb.org/3/find/'+hints.imdb+'?external_source=imdb_id&api_key='+encodeURIComponent(KEY), function(res){
                     var r=((k==='tv'?res.tv_results:res.movie_results)||[])[0]; if(r) finish(buildMeta(r,k,100),'verified','provider IMDb id','imdb-id'); else byTitle(); }, function(){ byTitle(); }); return; }
-            byTitle(); }); });
-        runQueue();
+            byTitle(); }); };
+        if(prio){ job(); } else { qfn[ck]=job; queue.push(job); runQueue(); }
     }
-    function lookupItem(item, kind, cb){ if(!item){ cb(null); return; } lookup(item.title||item.name, kind, cb, hintsOf(item)); }
+    function lookupItem(item, kind, cb, prio){ if(!item){ cb(null); return; } lookup(item.title||item.name, kind, cb, hintsOf(item), prio); }
     function clearArtCache(){ cache={}; failedAt={}; diag={}; try{ localStorage.removeItem(CKEY); localStorage.removeItem(DKEY); }catch(e){} }
     // Return scored candidate list for the "Fix artwork" picker (correct catalogue only, §26).
     function candidates(title,kind,cb){ if(!enabled()||!title){ cb([]); return; } var k=(kind==='series'?'tv':'movie'); var norm=normaliseTitle(title);
@@ -4294,21 +4294,21 @@ var TMDB=(function(){
     var PFACE='https://image.tmdb.org/t/p/w185', BG='https://image.tmdb.org/t/p/w1280';
     // Cast for the detail page's "Starring" row — real credits for one exact, already-matched title
     // (kind + confirmed TMDB id), never a guess. Cached per title so re-opening is instant.
-    var creditsCache={};
+    var creditsCache={}; try{ creditsCache=JSON.parse(localStorage.getItem('byo_tmdb_credits_v1')||'{}')||{}; }catch(_e){} var _ccT=null; function saveCredits(){ if(_ccT) return; _ccT=setTimeout(function(){ _ccT=null; try{ var ks=Object.keys(creditsCache); if(ks.length>300) ks.slice(0,ks.length-300).forEach(function(k){ delete creditsCache[k]; }); localStorage.setItem('byo_tmdb_credits_v1',JSON.stringify(creditsCache)); }catch(e){} },2000); }
     function credits(kind,id,cb){ if(!enabled()||!id){ cb([]); return; } var k=(kind==='series'?'tv':'movie'); var ck=k+':'+id;
         if(creditsCache[ck]){ cb(creditsCache[ck]); return; }
         get('https://api.themoviedb.org/3/'+k+'/'+id+'/credits?api_key='+encodeURIComponent(KEY), function(r){
             var cast=(r.cast||[]).slice(0,8).map(function(c){ return { name:c.name||'', character:c.character||'', photo:c.profile_path?(PFACE+c.profile_path):'' }; }).filter(function(c){ return c.name; });
-            creditsCache[ck]=cast; cb(cast);
+            creditsCache[ck]=cast; saveCredits(); cb(cast);
         }, function(){ cb([]); }); }
     // Title logo (the clean wordmark studios publish) for a matched title: English first, else any.
-    var logoCache={};
+    var logoCache={}; try{ logoCache=JSON.parse(localStorage.getItem('byo_tmdb_logos_v1')||'{}')||{}; }catch(_e){} var _lcT=null; function saveLogos(){ if(_lcT) return; _lcT=setTimeout(function(){ _lcT=null; try{ var ks=Object.keys(logoCache); if(ks.length>400) ks.slice(0,ks.length-400).forEach(function(k){ delete logoCache[k]; }); localStorage.setItem('byo_tmdb_logos_v1',JSON.stringify(logoCache)); }catch(e){} },2000); }
     function titleLogo(kind,id,cb){ if(!enabled()||!id){ cb(''); return; } var k=(kind==='series'?'tv':'movie'); var ck=k+':'+id;
         if(logoCache[ck]!==undefined){ cb(logoCache[ck]); return; }
         get('https://api.themoviedb.org/3/'+k+'/'+id+'/images?api_key='+encodeURIComponent(KEY)+'&include_image_language=en,null', function(r){
             var L=(r.logos||[]).filter(function(x){ return x.file_path; });
             L.sort(function(a,b){ return ((b.iso_639_1==='en')-(a.iso_639_1==='en')) || (/\.svg$/i.test(a.file_path)-/\.svg$/i.test(b.file_path)) || ((b.vote_average||0)-(a.vote_average||0)); });
-            var u=L.length?('https://image.tmdb.org/t/p/w500'+L[0].file_path):''; logoCache[ck]=u; cb(u);
+            var u=L.length?('https://image.tmdb.org/t/p/w500'+L[0].file_path):''; logoCache[ck]=u; saveLogos(); cb(u);
         }, function(){ cb(''); }); }
     function popularFaces(cb){ if(!enabled()){ cb([]); return; }
         var out=[], pages=2, got=0;
@@ -9625,7 +9625,7 @@ var Pin=(function(){
         var kind=(x.seasons!==undefined)?'series':'movie';
         if((!x._bd||!x._logoUrl) && !x._bdTried && __byoTmdbOn()){ x._bdTried=true; try{ TMDB.lookupItem(x,kind,function(r){ if(!r) return;
             if(r.backdrop&&!x._bd){ x._bd=r.backdrop; var pre=new Image(); pre.onload=function(){ show(x._bd,true); }; pre.src=x._bd; }
-            if(r.id&&!x._logoUrl&&TMDB.titleLogo){ TMDB.titleLogo(kind,r.id,function(u){ if(!u) return; x._logoUrl=u; var pl=new Image(); pl.onload=function(){ if(S.currentDetail&&S.currentDetail.data===x) setTitleLogo(u); }; pl.src=u; }); } }); }catch(e){} } }
+            if(r.id&&!x._logoUrl&&TMDB.titleLogo){ TMDB.titleLogo(kind,r.id,function(u){ if(!u) return; x._logoUrl=u; var pl=new Image(); pl.onload=function(){ if(S.currentDetail&&S.currentDetail.data===x) setTitleLogo(u); }; pl.src=u; }); } },true); }catch(e){} } }
     // Title logo (wordmark) in place of the plain text title when the studio art exists.
     function setTitleLogo(url){ var view=$('view-detail'), h=$('detail-title'); if(!view||!h) return; var lg=$('detail-logo');
         if(!lg){ lg=document.createElement('img'); lg.id='detail-logo'; lg.className='detail-logo'; lg.alt=''; h.parentNode.insertBefore(lg,h); }
@@ -9705,7 +9705,7 @@ var Pin=(function(){
                 if(!S.currentDetail||S.currentDetail.data!==item||!$('view-detail').classList.contains('active-view')) return;
                 if(cast && cast.length) renderCastSection(cast);
             }); }
-        });
+        },true);
     }
     // "Fix artwork" — opens a picker of scored candidate matches (correct catalogue only). Choosing one
     // sets a permanent manual override so the right poster is used everywhere from then on.

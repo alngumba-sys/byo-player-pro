@@ -1,6 +1,6 @@
 {
-  "versionCode": 250,
-  "versionName": "3.37.65",
+  "versionCode": 251,
+  "versionName": "3.37.66",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "The selected tile in Choose a genre / Choose a channel is no longer cut off at the top and left."
+  "notes": "Title pages (movies and series) now show their artwork, logo and cast much faster."
 }
