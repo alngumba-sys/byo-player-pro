@@ -3506,3 +3506,8 @@ html.cs-lock, html.cs-lock body, html.cs-lock .scroll-body{ overflow:hidden !imp
 .cat-sheet .cs-scrim{ touch-action:none; }
 .cat-sheet .cs-panel{ touch-action:pan-y; }
 .cat-sheet .cs-row{ touch-action:manipulation; }
+
+/* Genre/channel picker (TV): the focus ring + glow + 5% zoom of the first row / first column was clipped by the scrolling grid.
+   Give the grid room on every side (and keep the focused tile that far from the edge when it scrolls into view). */
+.cat-picker-grid{ padding:clamp(22px,1.9vw,40px) clamp(22px,1.9vw,40px) calc(env(safe-area-inset-bottom, 0px) + 40px) !important;
+                  scroll-padding:clamp(22px,1.9vw,40px); }

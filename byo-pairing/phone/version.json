@@ -1,6 +1,6 @@
 {
-  "versionCode": 249,
-  "versionName": "3.37.64",
+  "versionCode": 250,
+  "versionName": "3.37.65",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Choose genre and Choose channel open much faster on big libraries."
+  "notes": "The selected tile in Choose a genre / Choose a channel is no longer cut off at the top and left."
 }
