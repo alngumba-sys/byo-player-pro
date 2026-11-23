@@ -2533,6 +2533,7 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                             <h3><span class="ic"><svg><use href="#i-power"/></svg></span>Startup</h3>
                             <p class="sec-sub">Choose what happens when the app opens.</p>
                             <div class="toggle-row"><button class="toggle" id="su-resume" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Resume last channel on start</span></div>
+                            <div class="toggle-row"><button class="toggle" id="su-hotel" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Hotel mode: show a welcome screen to the guest when the front desk checks them in (TV wakes up straight into this app)</span></div>
                             <div class="toggle-row"><button class="toggle" id="su-direct" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Play straight away when a channel, movie or series is opened (off: show its page first)</span></div>
                         </div>
 
@@ -11336,8 +11337,31 @@ var Pin=(function(){
     }
 
     /* ---- startup ---- */
-    function renderStartup(){ $('su-resume').classList.toggle('on', !!(Store.cfg||{}).resumeLast); var sd=$('su-direct'); if(sd) sd.classList.toggle('on', directPlay()); }
-    function wireStartup(){ $('su-resume').addEventListener('click',function(){ Store.cfg.resumeLast=!Store.cfg.resumeLast; Store.save(); renderStartup(); });
+    /* ---- Hotel mode: welcome screen shown when the check-in system launches the app (adb / API) ---- */
+    var _wlcAt=0, _wlcName='';
+    window.__byoWelcome=function(name){
+        name=String(name||'').slice(0,40);
+        if(typeof Store==='undefined'||!Store||!Store.settings||!Store.settings.hotelMode) return;      // only when Settings > Hotel mode is on
+        var now=Date.now(); if(name===_wlcName && now-_wlcAt<20000) return; _wlcAt=now; _wlcName=name;
+        try{ if(typeof closeAllOverlays==='function') closeAllOverlays(); }catch(e){}
+        var old=document.getElementById('hotel-welcome'); if(old) old.remove();
+        var d=document.createElement('div'); d.id='hotel-welcome';
+        d.style.cssText='position:absolute;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at 50% 40%,#1b2a4a 0%,#070b14 70%);color:#fff;font-family:inherit;opacity:0;transition:opacity .8s;';
+        d.innerHTML='<div style="font-size:30px;letter-spacing:.35em;text-transform:uppercase;opacity:.7;margin-bottom:34px">Welcome</div>'
+            +'<div style="font-size:104px;font-weight:700;line-height:1.1;max-width:84%;margin-bottom:30px">'+(name?esc(name):'Dear guest')+'</div>'
+            +'<div style="font-size:34px;opacity:.85;margin-bottom:70px">We hope you enjoy your stay.</div>'
+            +'<button id="hotel-welcome-go" data-focusable="true" tabindex="0" style="font-size:32px;padding:20px 64px;border-radius:60px;border:0;background:#fff;color:#0a0d13;font-weight:700;cursor:pointer">Start watching</button>';
+        (document.getElementById('app')||document.body).appendChild(d);
+        requestAnimationFrame(function(){ d.style.opacity='1'; });
+        var go=document.getElementById('hotel-welcome-go');
+        function close(){ d.style.opacity='0'; setTimeout(function(){ d.remove(); try{ Nav.focusFirst(); }catch(e){} },500); }
+        go.addEventListener('click',close);
+        setTimeout(function(){ try{ Nav.setFocus(go); }catch(e){} go.focus(); },60);
+        try{ showView('home'); }catch(e){}
+    };
+    function renderStartup(){ var sh=$('su-hotel'); if(sh) sh.classList.toggle('on', !!(Store.settings||{}).hotelMode); $('su-resume').classList.toggle('on', !!(Store.cfg||{}).resumeLast); var sd=$('su-direct'); if(sd) sd.classList.toggle('on', directPlay()); }
+    function wireStartup(){ var sh=$('su-hotel'); if(sh) sh.addEventListener('click',function(){ Store.settings.hotelMode=!Store.settings.hotelMode; Store.save(); renderStartup(); setToast(Store.settings.hotelMode?'Hotel mode on: guests are welcomed when checked in.':'Hotel mode off.'); });
+        $('su-resume').addEventListener('click',function(){ Store.cfg.resumeLast=!Store.cfg.resumeLast; Store.save(); renderStartup(); });
         var sd=$('su-direct'); if(sd) sd.addEventListener('click',function(){ Store.settings.openAutoplay=!directPlay(); Store.save(); renderStartup(); }); }
 
     /* ---- Personalisation settings (spec #45/#46/#47) ---- */

@@ -62,6 +62,7 @@ public class MainActivity extends Activity {
         buildWebView(afterUpdate);
         if (afterUpdate) announceUpdated();
         handleUpdateIntent(getIntent());
+        handleWelcomeIntent(getIntent(), true);
     }
 
     static final String ACTION_UPDATE_STATUS = "com.wexlot.byoplayerpro.UPDATE_STATUS";
@@ -81,7 +82,31 @@ public class MainActivity extends Activity {
         try { String v = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             android.widget.Toast.makeText(this, "BYO Player updated to " + v, android.widget.Toast.LENGTH_LONG).show(); } catch (Exception ignored) {}
     }
-    @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); handleUpdateIntent(intent); }
+    @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); handleUpdateIntent(intent); handleWelcomeIntent(intent, false); }
+    // Hotel mode: a check-in system (or adb from a laptop) launches us with --es byo_welcome "<guest name>".
+    // We light the screen, bring the app forward and ask the page to show its welcome screen (the page
+    // ignores it unless Settings > Hotel mode is on).
+    private String pendingWelcome = null;
+    private void handleWelcomeIntent(Intent i, boolean cold) {
+        if (i == null || !i.hasExtra("byo_welcome")) return;
+        String n = i.getStringExtra("byo_welcome"); if (n == null) n = "";
+        n = n.replaceAll("[^\\p{L}\\p{N} .'-]", "").trim(); if (n.length() > 40) n = n.substring(0, 40);
+        i.removeExtra("byo_welcome");
+        try { getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD); } catch (Exception ignored) {}
+        try { android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            android.os.PowerManager.WakeLock wl = pm.newWakeLock(android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP, "byo:welcome");
+            wl.acquire(10000); } catch (Exception ignored) {}
+        pendingWelcome = n;
+        if (!cold) deliverWelcome();
+    }
+    private void deliverWelcome() {
+        final String n = pendingWelcome; if (n == null || webView == null) return;
+        final String js = "window.__byoWelcome&&window.__byoWelcome('" + n.replace("\\", "").replace("'", "\\'") + "')";
+        pendingWelcome = null;
+        int[] delays = {0, 2500, 6000};
+        for (int d : delays) webView.postDelayed(new Runnable() { public void run() { try { if (webView != null) webView.evaluateJavascript(js, null); } catch (Exception ignored) {} } }, d);
+    }
+
     // Result of our installer session: ask the user to confirm when Android needs it, or report failure.
     private void handleUpdateIntent(Intent i) {
         if (i == null || !ACTION_UPDATE_STATUS.equals(i.getAction())) return;
@@ -291,6 +316,7 @@ public class MainActivity extends Activity {
                         "var dh=document.querySelector('.dev-head');if(dh)dh.style.display='none';" +
                         "var rh=document.querySelector('.remote-help');if(rh)rh.style.display='none';", null);
                 }
+                if (pendingWelcome != null && view == webView) deliverWelcome();
                 if (pendingResultJs != null && view == webView) {
                     final String js = pendingResultJs; pendingResultJs = null;
                     view.postDelayed(new Runnable() { public void run() { if (webView != null) webView.evaluateJavascript(js, null); } }, 4000);

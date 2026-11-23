@@ -1,6 +1,6 @@
 {
-  "versionCode": 251,
-  "versionName": "3.37.66",
+  "versionCode": 252,
+  "versionName": "3.37.67",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Title pages (movies and series) now show their artwork, logo and cast much faster."
+  "notes": "Hotel mode (Settings > Startup): the app can be woken and opened on a welcome screen for a checked-in guest."
 }
