@@ -10,6 +10,14 @@
     <!-- Android 12+: lets later self-updates install without a confirm screen -->
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
+    <!-- Hotel mode: keep listening while the TV is asleep, wake it for a guest welcome -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Android TV: app does NOT require a touchscreen (it's remote-driven) -->
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -64,6 +72,16 @@
         <!-- Reopens the app on Home right after it updates itself -->
         <receiver android:name=".UpdateReceiver" android:exported="false">
             <intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter>
+        </receiver>
+
+        <service android:name=".HotelService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="hotel_guest_welcome_listener" />
+        </service>
+        <receiver android:name=".HotelBootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
         </receiver>
 
         <!-- Serves the downloaded update APK to the system installer via a content:// URI -->

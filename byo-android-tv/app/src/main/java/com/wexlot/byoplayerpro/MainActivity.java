@@ -333,6 +333,22 @@ public class MainActivity extends Activity {
 
         // Bridge so the web app's own "Exit" button can close the Android app.
         webView.addJavascriptInterface(new Object() {
+            // Hotel mode: the page tells us the Supabase address, the room code and whether Hotel mode is on.
+            @android.webkit.JavascriptInterface public String hotelConfigure(String url, String key, String room, boolean on) {
+                try {
+                    String r = room == null ? "" : room.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9-]", "");
+                    getSharedPreferences(HotelService.PREFS, MODE_PRIVATE).edit().putString("url", url).putString("key", key)
+                        .putString("room", r).putBoolean("enabled", on).apply();
+                    HotelService.apply(MainActivity.this);
+                    if (on && android.os.Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(MainActivity.this)) {
+                        Intent perm = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getPackageName()));
+                        perm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        try { startActivity(perm); } catch (Exception ignored) {}
+                        return "needs_overlay";
+                    }
+                    return on ? "on" : "off";
+                } catch (Throwable t) { return "error"; } }
+
             // Same as fetchToFile, with request headers (JSON object). Used for MAG / Stalker portals,
             // which need a set-top-box User-Agent, a mac cookie and a bearer token.
             @JavascriptInterface

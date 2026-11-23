@@ -1,6 +1,6 @@
 {
-  "versionCode": 252,
-  "versionName": "3.37.67",
+  "versionCode": 253,
+  "versionName": "3.37.68",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode (Settings > Startup): the app can be woken and opened on a welcome screen for a checked-in guest."
+  "notes": "Hotel mode: the TV listens in the background and wakes up for a guest welcome (set a room code in Settings > Startup)."
 }

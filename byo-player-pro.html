@@ -2534,6 +2534,7 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                             <p class="sec-sub">Choose what happens when the app opens.</p>
                             <div class="toggle-row"><button class="toggle" id="su-resume" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Resume last channel on start</span></div>
                             <div class="toggle-row"><button class="toggle" id="su-hotel" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Hotel mode: show a welcome screen to the guest when the front desk checks them in (TV wakes up straight into this app)</span></div>
+                            <div class="f-field" id="su-hotel-room-row"><label for="su-hotel-room">Hotel mode: this TV's room code (e.g. savanna-demo-101)</label><input id="su-hotel-room" type="text" placeholder="savanna-demo-101" data-focusable="true" tabindex="0" autocomplete="off" autocapitalize="none"/></div>
                             <div class="toggle-row"><button class="toggle" id="su-direct" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Play straight away when a channel, movie or series is opened (off: show its page first)</span></div>
                         </div>
 
@@ -11337,6 +11338,15 @@ var Pin=(function(){
     }
 
     /* ---- startup ---- */
+    // Tell the Android app (its background service) which room this TV is and whether Hotel mode is on.
+    function hotelSync(toast){ try{ var s=Store.settings||{}; if(!(window.ByoAndroid&&ByoAndroid.hotelConfigure)){ if(toast) setToast(s.hotelMode?'Hotel mode on (the background wake-up works in the Android TV app only).':'Hotel mode off.'); return; }
+        var r=ByoAndroid.hotelConfigure(BYO_BACKEND.url,BYO_BACKEND.anon,s.hotelRoom||'',!!s.hotelMode);
+        if(!toast) return;
+        if(!s.hotelMode) setToast('Hotel mode off.');
+        else if(!s.hotelRoom) setToast('Hotel mode on. Now enter this TV\'s room code.');
+        else if(r==='needs_overlay') setToast('Allow "Display over other apps" for BYO Player, then come back.');
+        else setToast('Hotel mode on for room '+s.hotelRoom+'. This TV will wake up when a guest is checked in.'); }catch(e){} }
+    setTimeout(function(){ hotelSync(false); },4000);
     /* ---- Hotel mode: welcome screen shown when the check-in system launches the app (adb / API) ---- */
     var _wlcAt=0, _wlcName='';
     window.__byoWelcome=function(name){
@@ -11359,8 +11369,9 @@ var Pin=(function(){
         setTimeout(function(){ try{ Nav.setFocus(go); }catch(e){} go.focus(); },60);
         try{ showView('home'); }catch(e){}
     };
-    function renderStartup(){ var sh=$('su-hotel'); if(sh) sh.classList.toggle('on', !!(Store.settings||{}).hotelMode); $('su-resume').classList.toggle('on', !!(Store.cfg||{}).resumeLast); var sd=$('su-direct'); if(sd) sd.classList.toggle('on', directPlay()); }
-    function wireStartup(){ var sh=$('su-hotel'); if(sh) sh.addEventListener('click',function(){ Store.settings.hotelMode=!Store.settings.hotelMode; Store.save(); renderStartup(); setToast(Store.settings.hotelMode?'Hotel mode on: guests are welcomed when checked in.':'Hotel mode off.'); });
+    function renderStartup(){ var sh=$('su-hotel'); if(sh) sh.classList.toggle('on', !!(Store.settings||{}).hotelMode); var shr=$('su-hotel-room'); if(shr){ if(document.activeElement!==shr) shr.value=(Store.settings||{}).hotelRoom||''; $('su-hotel-room-row').style.display=(Store.settings||{}).hotelMode?'':'none'; } $('su-resume').classList.toggle('on', !!(Store.cfg||{}).resumeLast); var sd=$('su-direct'); if(sd) sd.classList.toggle('on', directPlay()); }
+    function wireStartup(){ var sh=$('su-hotel'); if(sh) sh.addEventListener('click',function(){ Store.settings.hotelMode=!Store.settings.hotelMode; Store.save(); renderStartup(); hotelSync(true); });
+        var shr=$('su-hotel-room'); if(shr){ var hsv=function(){ Store.settings.hotelRoom=String(shr.value||'').toLowerCase().replace(/[^a-z0-9-]/g,''); Store.save(); hotelSync(true); }; shr.addEventListener('change',hsv); shr.addEventListener('blur',hsv); }
         $('su-resume').addEventListener('click',function(){ Store.cfg.resumeLast=!Store.cfg.resumeLast; Store.save(); renderStartup(); });
         var sd=$('su-direct'); if(sd) sd.addEventListener('click',function(){ Store.settings.openAutoplay=!directPlay(); Store.save(); renderStartup(); }); }
 
