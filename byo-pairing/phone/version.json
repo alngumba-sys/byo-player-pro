@@ -1,6 +1,6 @@
 {
-  "versionCode": 256,
-  "versionName": "3.37.71",
+  "versionCode": 257,
+  "versionName": "3.37.72",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode: Start watching opens the Sky channel (name set in Settings > Startup)."
+  "notes": "Hotel mode: redesigned welcome screen with hotel logo, background, Wi-Fi QR and guest services, set from HotelierUp."
 }

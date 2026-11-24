@@ -11358,22 +11358,114 @@ var Pin=(function(){
         return best; }
     /* ---- Hotel mode: welcome screen shown when the check-in system launches the app (adb / API) ---- */
     var _wlcAt=0, _wlcName='';
+    var HW_DEFAULT={ greeting:'Welcome', subtitle:'We hope you enjoy your stay.', button:'Start watching', accent:'#D4C3A3',
+        wifi:{ssid:'',password:''}, services:['Housekeeping','Wake-up call','Extra towels and amenities','Maintenance','Call me from the front desk'],
+        dining:'', guide:'', checkout:'To check out, tap the button below and the front desk will prepare your bill.' };
+    function hwCfgGet(){ try{ return JSON.parse(localStorage.getItem('byo_hotel_cfg')||'null')||{}; }catch(e){ return {}; } }
+    function hwFetchCfg(room,cb){ if(!room){ cb(null); return; }
+        try{ fetch(BYO_BACKEND.url+'/rest/v1/rpc/byo_hotel_get_config',{method:'POST',headers:{'apikey':BYO_BACKEND.anon,'Authorization':'Bearer '+BYO_BACKEND.anon,'Content-Type':'application/json'},body:JSON.stringify({p_room:room})})
+            .then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&typeof j==='object'){ try{ localStorage.setItem('byo_hotel_cfg',JSON.stringify(j)); }catch(e){} } cb(j&&typeof j==='object'?j:null); }).catch(function(){ cb(null); }); }catch(e){ cb(null); } }
+    function hwSendRequest(room,kind,note,done){ try{ fetch(BYO_BACKEND.url+'/rest/v1/rpc/byo_hotel_request',{method:'POST',headers:{'apikey':BYO_BACKEND.anon,'Authorization':'Bearer '+BYO_BACKEND.anon,'Content-Type':'application/json'},body:JSON.stringify({p_room:room,p_kind:kind,p_note:note||''})})
+            .then(function(r){ return r.ok?r.json():{ok:false}; }).then(function(j){ done(!!(j&&j.ok)); }).catch(function(){ done(false); }); }catch(e){ done(false); } }
+    var HW_ICONS={
+        services:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 34h32"/><path d="M11 34c0-8 5-14 13-14s13 6 13 14"/><path d="M24 20v-4"/><path d="M20 16h8"/><path d="M6 38h36"/></svg>',
+        dining:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6v12a4 4 0 0 0 8 0V6"/><path d="M18 6v36"/><path d="M34 42V6c-5 3-7 9-7 15 0 4 2 6 7 6"/></svg>',
+        wifi:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c10-9 28-9 38 0"/><path d="M11 26c7-6 19-6 26 0"/><path d="M17 33c4-3 10-3 14 0"/><circle cx="24" cy="39" r="1.8" fill="currentColor"/></svg>',
+        guide:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l12-4 12 4 12-4v26l-12 4-12-4-12 4z"/><path d="M18 10v26"/><path d="M30 14v26"/><path d="M24 8a5 5 0 0 1 5 5c0 4-5 9-5 9s-5-5-5-9a5 5 0 0 1 5-5z" fill="#0b0d12"/><circle cx="24" cy="13" r="1.6" fill="currentColor"/></svg>',
+        checkout:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 42V8l18-3v37"/><path d="M10 42h26"/><path d="M28 12h8v30"/><circle cx="23" cy="25" r="1.4" fill="currentColor"/><circle cx="38" cy="18" r="3"/><path d="M41 21l5 5M44 24l2-2"/></svg>' };
+    var HW_CSS='#hotel-welcome{position:absolute;inset:0;z-index:9999;overflow:hidden;color:#F3F4F6;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;opacity:0;transition:opacity .8s}'
+     +'#hotel-welcome .hw-bg{position:absolute;inset:-3%;background-size:cover;background-position:center;filter:blur(7px) saturate(1.05);transform:scale(1.04)}'
+     +'#hotel-welcome .hw-vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,rgba(10,12,18,.35) 0%,rgba(10,12,18,.75) 100%),rgba(10,12,18,.55)}'
+     +'#hotel-welcome .hw-top{position:absolute;left:5%;top:6%;display:flex;align-items:center;gap:22px}'
+     +'#hotel-welcome .hw-logo{max-height:96px;max-width:360px;object-fit:contain;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}'
+     +'#hotel-welcome .hw-hname{font-family:"Playfair Display","Cormorant Garamond",Georgia,serif;font-size:34px;letter-spacing:.04em;color:#FFFDF9}'
+     +'#hotel-welcome .hw-hero{position:absolute;left:0;right:0;top:20%;text-align:center;display:flex;flex-direction:column;align-items:center}'
+     +'#hotel-welcome .hw-eye{font-size:16px;letter-spacing:.25em;text-transform:uppercase;color:#E5E0D8;margin-bottom:22px}'
+     +'#hotel-welcome .hw-name{font-family:"Playfair Display","Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:84px;line-height:1.15;max-width:80%;padding:0 .1em .08em;background:linear-gradient(180deg,#FFFDF9,#E6D5B8);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 18px rgba(0,0,0,.55))}'
+     +'#hotel-welcome .hw-sub{font-size:22px;color:#F3F4F6;margin:20px 0 38px;text-shadow:0 2px 10px rgba(0,0,0,.6)}'
+     +'#hotel-welcome .hw-cta{font:600 24px Inter,system-ui,sans-serif;padding:16px 58px;border-radius:9999px;border:1.5px solid var(--hw-acc,#D4C3A3);color:#1E2025;cursor:pointer;background:linear-gradient(180deg,#F4EEE2 0%,#D9CFBB 55%,#C9BEA6 100%);box-shadow:0 6px 22px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.7);transition:transform .15s,box-shadow .15s}'
+     +'#hotel-welcome .hw-tiles{position:absolute;left:8%;right:8%;bottom:15%;display:grid;grid-template-columns:repeat(5,1fr);gap:26px}'
+     +'#hotel-welcome .hw-tile{display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 10px 18px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:#F5EFE6;font:500 16px Inter,system-ui,sans-serif;cursor:pointer;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:transform .15s,box-shadow .15s,background .15s}'
+     +'#hotel-welcome .hw-tile svg{width:44px !important;height:44px !important;min-width:44px;flex:none;display:block}'
+     +'#hotel-welcome .hw-foot{position:absolute;left:5%;right:5%;bottom:4.5%;display:flex;justify-content:space-between;align-items:center;font-size:16px}'
+     +'#hotel-welcome .hw-room{position:absolute;left:0;right:0;text-align:center;color:#D1D5DB}'
+     +'#hotel-welcome .hw-time{margin-left:auto;color:#F3F4F6}'
+     +'#hotel-welcome .focused,#hotel-welcome :focus{outline:none}'
+     +'#hotel-welcome .hw-cta.focused{transform:scale(1.05);box-shadow:0 0 0 3px rgba(230,213,184,.55),0 0 36px 8px rgba(230,200,140,.45),0 6px 22px rgba(0,0,0,.4)}'
+     +'#hotel-welcome .hw-tile.focused{transform:scale(1.05);background:rgba(255,255,255,.16);border-color:#E6D5B8;box-shadow:0 0 0 2px rgba(230,213,184,.7),0 0 30px 4px rgba(230,200,140,.35)}'
+     +'#hotel-welcome .hw-panel{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(6,8,12,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}'
+     +'#hotel-welcome .hw-card{width:min(900px,80%);max-height:80%;overflow:auto;padding:44px 52px;border-radius:28px;background:rgba(28,30,36,.78);border:1px solid rgba(230,213,184,.35);box-shadow:0 20px 60px rgba(0,0,0,.55);text-align:center}'
+     +'#hotel-welcome .hw-card h2{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:600;font-size:46px;margin:0 0 22px;color:#FFFDF9}'
+     +'#hotel-welcome .hw-card p,#hotel-welcome .hw-card .hw-line{font-size:24px;line-height:1.5;color:#F3F4F6;white-space:pre-wrap;margin:8px 0}'
+     +'#hotel-welcome .hw-card .hw-k{color:#CDBF9F;font-size:16px;letter-spacing:.2em;text-transform:uppercase;margin-top:18px}'
+     +'#hotel-welcome .hw-card .hw-v{font-size:38px;font-weight:600;color:#FFFDF9;margin:4px 0 6px;word-break:break-all}'
+     +'#hotel-welcome .hw-qr{width:230px;height:230px;margin:22px auto 6px;padding:12px;background:#fff;border-radius:16px}'
+     +'#hotel-welcome .hw-qr svg{width:100%;height:100%}'
+     +'#hotel-welcome .hw-opts{display:flex;flex-direction:column;gap:14px;margin-top:8px}'
+     +'#hotel-welcome .hw-btn{font:500 24px Inter,system-ui,sans-serif;padding:16px 28px;border-radius:9999px;border:1.5px solid rgba(230,213,184,.5);background:rgba(255,255,255,.08);color:#F5EFE6;cursor:pointer;transition:transform .15s,box-shadow .15s}'
+     +'#hotel-welcome .hw-btn.focused{transform:scale(1.04);background:linear-gradient(180deg,#F4EEE2,#D9CFBB);color:#1E2025;box-shadow:0 0 28px 4px rgba(230,200,140,.45)}'
+     +'#hotel-welcome .hw-note{margin-top:16px;font-size:20px;color:#E6D5B8;min-height:28px}';
     window.__byoWelcome=function(name){
         name=String(name||'').slice(0,40);
         if(typeof Store==='undefined'||!Store||!Store.settings||!Store.settings.hotelMode) return;      // only when Settings > Hotel mode is on
         var now=Date.now(); if(name===_wlcName && now-_wlcAt<20000) return; _wlcAt=now; _wlcName=name;
         try{ if(typeof closeAllOverlays==='function') closeAllOverlays(); }catch(e){}
-        var old=document.getElementById('hotel-welcome'); if(old) old.remove();
+        var old=document.getElementById('hotel-welcome'); if(old){ if(old._hwStop) old._hwStop(); old.remove(); }
+        if(!document.getElementById('hw-style')){ var st=document.createElement('style'); st.id='hw-style'; st.textContent=HW_CSS; document.head.appendChild(st);
+            var fl=document.createElement('link'); fl.rel='stylesheet'; fl.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@1,600&display=swap'; document.head.appendChild(fl); }
+        var room=(Store.settings&&Store.settings.hotelRoom)||'';
+        var cfg=Object.assign({},HW_DEFAULT,hwCfgGet());
         var d=document.createElement('div'); d.id='hotel-welcome';
-        d.style.cssText='position:absolute;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at 50% 40%,#1b2a4a 0%,#070b14 70%);color:#fff;font-family:inherit;opacity:0;transition:opacity .8s;';
-        d.innerHTML='<div style="font-size:30px;letter-spacing:.35em;text-transform:uppercase;opacity:.7;margin-bottom:34px">Welcome</div>'
-            +'<div style="font-size:104px;font-weight:700;line-height:1.1;max-width:84%;margin-bottom:30px">'+(name?esc(name):'Dear guest')+'</div>'
-            +'<div style="font-size:34px;opacity:.85;margin-bottom:70px">We hope you enjoy your stay.</div>'
-            +'<button id="hotel-welcome-go" data-focusable="true" tabindex="0" style="font-size:32px;padding:20px 64px;border-radius:60px;border:0;background:#fff;color:#0a0d13;font-weight:700;cursor:pointer">Start watching</button>';
+        d.innerHTML='<div class="hw-bg"></div><div class="hw-vig"></div>'
+          +'<div class="hw-top"><img class="hw-logo" alt="" style="display:none"/><div class="hw-hname"></div></div>'
+          +'<div class="hw-hero"><div class="hw-eye"></div><div class="hw-name"></div><div class="hw-sub"></div><button id="hotel-welcome-go" class="hw-cta" data-focusable="true" tabindex="0"></button></div>'
+          +'<div class="hw-tiles">'+[['services','Hotel Services'],['dining','Dining'],['wifi','Wi-Fi Access'],['guide','Local Guide'],['checkout','Checkout']].map(function(t){ return '<button class="hw-tile" data-hw="'+t[0]+'" data-focusable="true" tabindex="0">'+HW_ICONS[t[0]]+'<span>'+t[1]+'</span></button>'; }).join('')+'</div>'
+          +'<div class="hw-foot"><div class="hw-room"></div><div class="hw-time"></div></div>';
+        var $q=function(s){ return d.querySelector(s); };
+        function paint(c){ cfg=Object.assign({},HW_DEFAULT,c||{});
+            var bg=$q('.hw-bg'), url=cfg.background||'';
+            bg.style.backgroundImage=url?('url("'+String(url).replace(/"/g,'%22')+'")'):'linear-gradient(180deg,#232845 0%,#4a3552 34%,#b8674a 62%,#f0a95e 76%,#2d2733 77%,#171923 100%)';
+            var lg=$q('.hw-logo'); if(cfg.logo){ lg.src=cfg.logo; lg.style.display=''; $q('.hw-hname').style.display='none'; } else { lg.style.display='none'; var hn=cfg.hotelName||''; $q('.hw-hname').textContent=hn; $q('.hw-hname').style.display=hn?'':'none'; }
+            $q('.hw-eye').textContent=cfg.greeting; $q('.hw-sub').textContent=cfg.subtitle; $q('.hw-cta').textContent=cfg.button;
+            d.style.setProperty('--hw-acc',cfg.accent||'#D4C3A3'); }
+        var first=String(name||'').trim().split(/\s+/)[0]||'Guest'; $q('.hw-name').textContent=first;
+        function roomLabel(){ var r=String(room||''); var hc=cfg.hotelCode; if(hc&&r.indexOf(hc+'-')===0) r=r.slice(hc.length+1); return r; }
+        function tick(){ var t=new Date(); $q('.hw-time').textContent=t.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+', '+t.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); var rl=roomLabel(); $q('.hw-room').textContent=rl?('Room '+rl):''; }
+        paint(hwCfgGet()); tick();
+        var timer=setInterval(tick,20000);
         (document.getElementById('app')||document.body).appendChild(d);
         requestAnimationFrame(function(){ d.style.opacity='1'; });
-        var go=document.getElementById('hotel-welcome-go');
-        function close(){ d.style.opacity='0'; setTimeout(function(){ d.remove(); var ch=null; try{ ch=hotelWelcomeChannel(); }catch(e){} if(ch){ try{ playLiveByChannel(ch); return; }catch(e){} } try{ Nav.focusFirst(); }catch(e){} },500); }
+        hwFetchCfg(room,function(j){ if(j&&document.getElementById('hotel-welcome')===d){ paint(j); tick(); } });
+        // ---- panels (Hotel Services, Dining, Wi-Fi, Local Guide, Checkout) ----
+        var panel=null;
+        function setMainFocusable(on){ [].forEach.call(d.querySelectorAll('.hw-cta,.hw-tile'),function(e){ e.setAttribute('data-focusable',on?'true':'false'); }); }
+        function closePanel(){ if(!panel) return; var k=panel.getAttribute('data-k'); panel.remove(); panel=null; setMainFocusable(true); var t=d.querySelector('.hw-tile[data-hw="'+k+'"]'); try{ Nav.setFocus(t||$q('.hw-cta')); }catch(e){} }
+        function openPanel(kind){
+            var h=''; var btns=[];
+            if(kind==='wifi'){ var w=cfg.wifi||{}; h='<h2>Wi-Fi Access</h2>'+(w.ssid?('<div class="hw-k">Network</div><div class="hw-v">'+esc(w.ssid)+'</div>'+(w.password?('<div class="hw-k">Password</div><div class="hw-v">'+esc(w.password)+'</div>'):'<div class="hw-line">No password needed.</div>')+'<div class="hw-qr" id="hw-qr"></div><div class="hw-line" style="font-size:18px;color:#CDBF9F">Scan with your phone camera to connect.</div>'):'<p>Ask the front desk for the Wi-Fi details.</p>'); }
+            else if(kind==='dining'){ h='<h2>Dining</h2><p>'+(cfg.dining?esc(cfg.dining):'Please contact the front desk for our menu and restaurant hours.')+'</p>'; btns.push(['Order in-room dining','dining','In-room dining order requested']); }
+            else if(kind==='guide'){ h='<h2>Local Guide</h2><p>'+(cfg.guide?esc(cfg.guide):'Ask the front desk for recommendations, transport and local attractions.')+'</p>'; }
+            else if(kind==='checkout'){ h='<h2>Checkout</h2><p>'+esc(cfg.checkout||'')+'</p>'; btns.push(['Request express checkout','checkout','Express checkout requested']); }
+            else { h='<h2>Hotel Services</h2><div class="hw-opts" id="hw-opts"></div>'; (cfg.services||[]).slice(0,8).forEach(function(s){ btns.push([String(s),'services',String(s)]); }); }
+            var p=document.createElement('div'); p.className='hw-panel'; p.setAttribute('data-k',kind);
+            p.innerHTML='<div class="hw-card">'+h+'<div class="hw-opts" id="hw-acts"></div><div class="hw-note" id="hw-note"></div><div class="hw-opts" style="margin-top:22px"><button class="hw-btn" id="hw-close" data-focusable="true" tabindex="0">Close</button></div></div>';
+            d.appendChild(p); panel=p; setMainFocusable(false);
+            var host=(kind==='services')?p.querySelector('#hw-opts'):p.querySelector('#hw-acts');
+            btns.forEach(function(b){ var el=document.createElement('button'); el.className='hw-btn'; el.textContent=b[0]; el.setAttribute('data-focusable','true'); el.tabIndex=0;
+                el.addEventListener('click',function(){ var n=p.querySelector('#hw-note'); n.textContent='Sending...'; hwSendRequest(room,b[1],b[2],function(ok){ n.textContent=ok?'Done. The front desk has your request.':'Could not send. Please call the front desk.'; }); });
+                host.appendChild(el); });
+            if(kind==='wifi'&&(cfg.wifi||{}).ssid){ try{ var w2=cfg.wifi, esc2=function(s){ return String(s||'').replace(/([\\\;,:"])/g,'\\\\$1'); }; var q=QRCode.make('WIFI:T:'+(w2.password?'WPA':'nopass')+';S:'+esc2(w2.ssid)+';P:'+esc2(w2.password)+';;'); p.querySelector('#hw-qr').innerHTML=QRCode.toSVG(q,10,1); }catch(e){} }
+            p.querySelector('#hw-close').addEventListener('click',closePanel);
+            setTimeout(function(){ try{ Nav.setFocus(p.querySelector('.hw-btn')); }catch(e){} },30);
+        }
+        [].forEach.call(d.querySelectorAll('.hw-tile'),function(t){ t.addEventListener('click',function(){ openPanel(t.getAttribute('data-hw')); }); });
+        // Back / Esc closes an open panel first
+        function onKey(e){ var k=e.keyCode; if(panel&&(k===27||k===10009||e.key==='Escape'||e.key==='GoBack'||e.key==='BrowserBack'||k===4)){ e.preventDefault(); e.stopPropagation(); closePanel(); } }
+        document.addEventListener('keydown',onKey,true);
+        function stop(){ clearInterval(timer); document.removeEventListener('keydown',onKey,true); }
+        d._hwStop=stop;
+        var go=$q('#hotel-welcome-go');
+        function close(){ stop(); d.style.opacity='0'; setTimeout(function(){ d.remove(); var ch=null; try{ ch=hotelWelcomeChannel(); }catch(e){} if(ch){ try{ playLiveByChannel(ch); return; }catch(e){} } try{ Nav.focusFirst(); }catch(e){} },500); }
         go.addEventListener('click',close);
         setTimeout(function(){ try{ Nav.setFocus(go); }catch(e){} go.focus(); },60);
         try{ showView('home'); }catch(e){}
