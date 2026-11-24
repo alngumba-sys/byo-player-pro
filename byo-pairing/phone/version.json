@@ -1,6 +1,6 @@
 {
-  "versionCode": 257,
-  "versionName": "3.37.72",
+  "versionCode": 258,
+  "versionName": "3.37.73",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode: redesigned welcome screen with hotel logo, background, Wi-Fi QR and guest services, set from HotelierUp."
+  "notes": "Hotel mode: the app stays hidden until the welcome screen is ready, so no start-up screens flash first."
 }

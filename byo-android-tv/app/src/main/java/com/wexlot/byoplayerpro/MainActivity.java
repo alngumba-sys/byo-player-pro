@@ -97,14 +97,24 @@ public class MainActivity extends Activity {
             android.os.PowerManager.WakeLock wl = pm.newWakeLock(android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP, "byo:welcome");
             wl.acquire(10000); } catch (Exception ignored) {}
         pendingWelcome = n;
+        // Keep the app's own start-up screens (splash, Home) out of sight until the welcome is up: the page is
+        // hidden (not stopped) and revealed when the welcome exists, or after a few seconds whatever happens
+        // (Hotel mode off, page slow), so the app can never stay blank.
+        try {
+            root.setBackgroundColor(0xFF0B1120);
+            if (webView != null) { webView.setAlpha(0f); webView.postDelayed(new Runnable() { public void run() { revealWebView(); } }, 9000); }
+        } catch (Exception ignored) {}
         if (!cold) deliverWelcome();
+    }
+    private void revealWebView() {
+        try { if (webView != null && webView.getAlpha() < 1f) webView.animate().alpha(1f).setDuration(250).start(); } catch (Exception ignored) {}
     }
     private void deliverWelcome() {
         final String n = pendingWelcome; if (n == null || webView == null) return;
         final String js = "window.__byoWelcome&&window.__byoWelcome('" + n.replace("\\", "").replace("'", "\\'") + "')";
         pendingWelcome = null;
-        int[] delays = {0, 2500, 6000};
-        for (int d : delays) webView.postDelayed(new Runnable() { public void run() { try { if (webView != null) webView.evaluateJavascript(js, null); } catch (Exception ignored) {} } }, d);
+        int[] delays = {0, 300, 700, 1200, 1800, 2500, 3500, 5000, 6500};
+        for (int d : delays) webView.postDelayed(new Runnable() { public void run() { try { if (webView != null) webView.evaluateJavascript(js + ";document.getElementById('hotel-welcome')?'1':'0'", new android.webkit.ValueCallback<String>() { public void onReceiveValue(String v) { if (v != null && v.contains("1")) revealWebView(); } }); } catch (Exception ignored) {} } }, d);
     }
 
     // Result of our installer session: ask the user to confirm when Android needs it, or report failure.
