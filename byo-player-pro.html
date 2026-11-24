@@ -2535,6 +2535,7 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                             <div class="toggle-row"><button class="toggle" id="su-resume" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Resume last channel on start</span></div>
                             <div class="toggle-row"><button class="toggle" id="su-hotel" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Hotel mode: show a welcome screen to the guest when the front desk checks them in (TV wakes up straight into this app)</span></div>
                             <div class="f-field" id="su-hotel-room-row" style="width:320px;max-width:100%;margin:0 0 12px 0"><label for="su-hotel-room">Hotel mode: this TV's room code (e.g. savanna-demo-101)</label><input id="su-hotel-room" style="width:100%" type="text" placeholder="savanna-demo-101" data-focusable="true" tabindex="0" autocomplete="off" autocapitalize="none"/></div>
+                            <div class="f-field" id="su-hotel-chan-row" style="width:320px;max-width:100%;margin:0 0 12px 0"><label for="su-hotel-chan">Hotel mode: channel opened after welcome (name contains)</label><input id="su-hotel-chan" style="width:100%" type="text" placeholder="Sky" data-focusable="true" tabindex="0" autocomplete="off"/></div>
                             <div class="toggle-row"><button class="toggle" id="su-direct" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Play straight away when a channel, movie or series is opened (off: show its page first)</span></div>
                         </div>
 
@@ -11347,6 +11348,14 @@ var Pin=(function(){
         else if(r==='needs_overlay') setToast('Allow "Display over other apps" for BYO Player, then come back.');
         else setToast('Hotel mode on for room '+s.hotelRoom+'. This TV will wake up when a guest is checked in.'); }catch(e){} }
     setTimeout(function(){ hotelSync(false); },4000);
+    // The channel a guest lands on after "Start watching": the best live channel whose name matches Settings > Hotel mode > channel (default Sky).
+    function hotelWelcomeChannel(){ var q=String((Store.settings||{}).hotelChannel||'Sky').trim().toLowerCase(); if(!q) return null;
+        var list=[]; try{ list=liveChannels()||[]; }catch(e){ list=S.live||[]; }
+        var best=null, bs=1e9;
+        list.forEach(function(c){ var n=String(c.name||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim(); if(!n) return;
+            var s; if(n===q) s=0; else if(n.indexOf(q+' ')===0||n.indexOf(q)===0) s=10+n.length; else if(n.indexOf(q)>-1) s=100+n.length; else return;
+            if(s<bs){ bs=s; best=c; } });
+        return best; }
     /* ---- Hotel mode: welcome screen shown when the check-in system launches the app (adb / API) ---- */
     var _wlcAt=0, _wlcName='';
     window.__byoWelcome=function(name){
@@ -11364,14 +11373,15 @@ var Pin=(function(){
         (document.getElementById('app')||document.body).appendChild(d);
         requestAnimationFrame(function(){ d.style.opacity='1'; });
         var go=document.getElementById('hotel-welcome-go');
-        function close(){ d.style.opacity='0'; setTimeout(function(){ d.remove(); try{ Nav.focusFirst(); }catch(e){} },500); }
+        function close(){ d.style.opacity='0'; setTimeout(function(){ d.remove(); var ch=null; try{ ch=hotelWelcomeChannel(); }catch(e){} if(ch){ try{ playLiveByChannel(ch); return; }catch(e){} } try{ Nav.focusFirst(); }catch(e){} },500); }
         go.addEventListener('click',close);
         setTimeout(function(){ try{ Nav.setFocus(go); }catch(e){} go.focus(); },60);
         try{ showView('home'); }catch(e){}
     };
-    function renderStartup(){ var sh=$('su-hotel'); if(sh) sh.classList.toggle('on', !!(Store.settings||{}).hotelMode); var shr=$('su-hotel-room'); if(shr){ if(document.activeElement!==shr) shr.value=(Store.settings||{}).hotelRoom||''; $('su-hotel-room-row').style.display=(Store.settings||{}).hotelMode?'':'none'; } $('su-resume').classList.toggle('on', !!(Store.cfg||{}).resumeLast); var sd=$('su-direct'); if(sd) sd.classList.toggle('on', directPlay()); }
+    function renderStartup(){ var sh=$('su-hotel'); if(sh) sh.classList.toggle('on', !!(Store.settings||{}).hotelMode); var shr=$('su-hotel-room'); if(shr){ if(document.activeElement!==shr) shr.value=(Store.settings||{}).hotelRoom||''; $('su-hotel-room-row').style.display=(Store.settings||{}).hotelMode?'':'none'; var shc=$('su-hotel-chan'); if(shc){ if(document.activeElement!==shc) shc.value=(Store.settings||{}).hotelChannel||''; $('su-hotel-chan-row').style.display=(Store.settings||{}).hotelMode?'':'none'; } } $('su-resume').classList.toggle('on', !!(Store.cfg||{}).resumeLast); var sd=$('su-direct'); if(sd) sd.classList.toggle('on', directPlay()); }
     function wireStartup(){ var sh=$('su-hotel'); if(sh) sh.addEventListener('click',function(){ Store.settings.hotelMode=!Store.settings.hotelMode; Store.save(); renderStartup(); hotelSync(true); });
         var shr=$('su-hotel-room'); if(shr){ var hsv=function(){ Store.settings.hotelRoom=String(shr.value||'').toLowerCase().replace(/[^a-z0-9-]/g,''); Store.save(); hotelSync(true); }; shr.addEventListener('change',hsv); shr.addEventListener('blur',hsv);
+            var shc=$('su-hotel-chan'); if(shc){ shc.addEventListener('click',function(){ openFieldKeyboard(shc,{label:'Channel name (e.g. Sky)',returnFocus:shc,onDone:function(v){ Store.settings.hotelChannel=String(v||'').trim().slice(0,40); Store.save(); shc.value=Store.settings.hotelChannel; }}); }); }
             shr.addEventListener('click',function(){ openFieldKeyboard(shr,{label:'Room code (letters, numbers and - only)',returnFocus:shr,onDone:function(){ hsv(); shr.value=Store.settings.hotelRoom||''; }}); }); }
         $('su-resume').addEventListener('click',function(){ Store.cfg.resumeLast=!Store.cfg.resumeLast; Store.save(); renderStartup(); });
         var sd=$('su-direct'); if(sd) sd.addEventListener('click',function(){ Store.settings.openAutoplay=!directPlay(); Store.save(); renderStartup(); }); }
@@ -12263,7 +12273,7 @@ var Pin=(function(){
                 return;
             }
             if(k===Nav.KEY.ENTER){ var c=Nav.current; if(c&&c.tagName==='INPUT'&&(c.id==='am-name'||c.id==='mv-preset-name')){ openFieldKeyboard(c,{label:(c.id==='am-name'?'Profile name':'Preset name'),returnFocus:c}); e.preventDefault(); return; }
-                if(c&&c.id==='su-hotel-room'){ c.click(); e.preventDefault(); return; } }
+                if(c&&(c.id==='su-hotel-room'||c.id==='su-hotel-chan')){ c.click(); e.preventDefault(); return; } }
         }, true);
         document.addEventListener('keydown',function(e){ if(!$('view-mvplay').classList.contains('active-view')) return;
             if(tileMenuOpen()||!$('mv-picker').classList.contains('hidden')) return; // overlays use generic Nav
