@@ -1,6 +1,6 @@
 {
-  "versionCode": 254,
-  "versionName": "3.37.69",
+  "versionCode": 255,
+  "versionName": "3.37.70",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode: the room code can now be typed with the TV remote (on-screen keyboard)."
+  "notes": "Hotel mode: the room code box can now be reached with the remote."
 }
