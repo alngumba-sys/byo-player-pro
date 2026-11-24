@@ -1,6 +1,6 @@
 {
-  "versionCode": 260,
-  "versionName": "3.37.75",
+  "versionCode": 261,
+  "versionName": "3.37.76",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode: new editorial welcome screen (left hero, live weather, six-card dock)."
+  "notes": "Hotel mode: welcome screen sized for TV viewing distance, closer mountain framing, stronger dark gradients, bolder icons."
 }
