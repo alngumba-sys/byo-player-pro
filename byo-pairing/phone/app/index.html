@@ -17201,7 +17201,16 @@ var Pin=(function(){
 
     /* ---- startup ---- */
     // Tell the Android app (its background service) which room this TV is and whether Hotel mode is on.
-    function hotelSync(toast){ try{ var s=Store.settings||{}; if(!(window.ByoAndroid&&ByoAndroid.hotelConfigure)){ if(toast) setToast(s.hotelMode?'Hotel mode on (the background wake-up works in the Android TV app only).':'Hotel mode off.'); return; }
+    var _hwPoll=null, _hwPollRoom='';
+    // Samsung, LG and web builds have no background service: while the app is open they ask the same service every few seconds.
+    function hotelPollSync(){ var s=Store.settings||{}; var want=!!(s.hotelMode&&s.hotelRoom); var room=String(s.hotelRoom||'').toLowerCase().trim();
+        if(!want){ if(_hwPoll){ clearInterval(_hwPoll); _hwPoll=null; } _hwPollRoom=''; return; }
+        if(_hwPoll&&_hwPollRoom===room) return; if(_hwPoll) clearInterval(_hwPoll); _hwPollRoom=room;
+        var busy=false;
+        _hwPoll=setInterval(function(){ if(busy) return; busy=true;
+            try{ fetch(BYO_BACKEND.url+'/rest/v1/rpc/byo_hotel_poll',{method:'POST',headers:{'apikey':BYO_BACKEND.anon,'Authorization':'Bearer '+BYO_BACKEND.anon,'Content-Type':'application/json'},body:JSON.stringify({p_room:room})})
+                .then(function(r){ return r.ok?r.json():null; }).then(function(j){ busy=false; if(j&&typeof j==='object'&&j.name!=null){ try{ window.__byoWelcome(j.name||'Guest'); }catch(e){} } }).catch(function(){ busy=false; }); }catch(e){ busy=false; } },5000); }
+    function hotelSync(toast){ try{ var s=Store.settings||{}; if(!(window.ByoAndroid&&ByoAndroid.hotelConfigure)){ hotelPollSync(); if(toast) setToast(s.hotelMode?(s.hotelRoom?'Hotel mode on. The welcome appears while BYO Player is open on this TV.':'Hotel mode on. Now enter this TV\'s room code.'):'Hotel mode off.'); return; }
         var r=ByoAndroid.hotelConfigure(BYO_BACKEND.url,BYO_BACKEND.anon,s.hotelRoom||'',!!s.hotelMode);
         if(!toast) return;
         if(!s.hotelMode) setToast('Hotel mode off.');
