@@ -1,6 +1,6 @@
 {
-  "versionCode": 259,
-  "versionName": "3.37.74",
+  "versionCode": 260,
+  "versionName": "3.37.75",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode: the welcome screen stays put and the remote only moves between its own buttons."
+  "notes": "Hotel mode: new editorial welcome screen (left hero, live weather, six-card dock)."
 }

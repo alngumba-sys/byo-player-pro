@@ -11376,27 +11376,34 @@ var Pin=(function(){
         dining:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6v12a4 4 0 0 0 8 0V6"/><path d="M18 6v36"/><path d="M34 42V6c-5 3-7 9-7 15 0 4 2 6 7 6"/></svg>',
         wifi:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c10-9 28-9 38 0"/><path d="M11 26c7-6 19-6 26 0"/><path d="M17 33c4-3 10-3 14 0"/><circle cx="24" cy="39" r="1.8" fill="currentColor"/></svg>',
         guide:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l12-4 12 4 12-4v26l-12 4-12-4-12 4z"/><path d="M18 10v26"/><path d="M30 14v26"/><path d="M24 8a5 5 0 0 1 5 5c0 4-5 9-5 9s-5-5-5-9a5 5 0 0 1 5-5z" fill="#0b0d12"/><circle cx="24" cy="13" r="1.6" fill="currentColor"/></svg>',
+        tv:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="10" width="36" height="24" rx="3"/><path d="M16 40h16"/><path d="M24 34v6"/><path d="M21 18l9 4-9 4z"/></svg>',
+        spa:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M24 38c-8-3-13-9-13-18 6 0 11 3 13 8 2-5 7-8 13-8 0 9-5 15-13 18z"/><path d="M24 38V24"/></svg>',
+        cast:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v20a4 4 0 0 1-4 4H26"/><path d="M8 30a8 8 0 0 1 8 8"/><path d="M8 22a16 16 0 0 1 16 16"/><circle cx="9" cy="37" r="1.2"/></svg>',
         checkout:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 42V8l18-3v37"/><path d="M10 42h26"/><path d="M28 12h8v30"/><circle cx="23" cy="25" r="1.4" fill="currentColor"/><circle cx="38" cy="18" r="3"/><path d="M41 21l5 5M44 24l2-2"/></svg>' };
     var HW_CSS='#hotel-welcome{position:fixed;inset:0;z-index:9999;background:#0A0C12;overflow:hidden;color:#F3F4F6;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;opacity:0;transition:opacity .8s}'
-     +'#hotel-welcome .hw-bg{position:absolute;inset:-3%;background-size:cover;background-position:center;filter:blur(7px) saturate(1.05);transform:scale(1.04)}'
-     +'#hotel-welcome .hw-vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,rgba(10,12,18,.35) 0%,rgba(10,12,18,.75) 100%),rgba(10,12,18,.55)}'
-     +'#hotel-welcome .hw-top{position:absolute;left:5%;top:6%;display:flex;align-items:center;gap:22px}'
-     +'#hotel-welcome .hw-logo{max-height:96px;max-width:360px;object-fit:contain;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}'
-     +'#hotel-welcome .hw-hname{font-family:"Playfair Display","Cormorant Garamond",Georgia,serif;font-size:34px;letter-spacing:.04em;color:#FFFDF9}'
-     +'#hotel-welcome .hw-hero{position:absolute;left:0;right:0;top:20%;text-align:center;display:flex;flex-direction:column;align-items:center}'
-     +'#hotel-welcome .hw-eye{font-size:16px;letter-spacing:.25em;text-transform:uppercase;color:#E5E0D8;margin-bottom:22px}'
-     +'#hotel-welcome .hw-name{font-family:"Playfair Display","Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:84px;line-height:1.15;max-width:80%;padding:0 .1em .08em;background:linear-gradient(180deg,#FFFDF9,#E6D5B8);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 18px rgba(0,0,0,.55))}'
-     +'#hotel-welcome .hw-sub{font-size:22px;color:#F3F4F6;margin:20px 0 38px;text-shadow:0 2px 10px rgba(0,0,0,.6)}'
-     +'#hotel-welcome .hw-cta{font:600 24px Inter,system-ui,sans-serif;padding:16px 58px;border-radius:9999px;border:1.5px solid var(--hw-acc,#D4C3A3);color:#1E2025;cursor:pointer;background:linear-gradient(180deg,#F4EEE2 0%,#D9CFBB 55%,#C9BEA6 100%);box-shadow:0 6px 22px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.7);transition:transform .15s,box-shadow .15s}'
-     +'#hotel-welcome .hw-tiles{position:absolute;left:8%;right:8%;bottom:15%;display:grid;grid-template-columns:repeat(5,1fr);gap:26px}'
-     +'#hotel-welcome .hw-tile{display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 10px 18px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:#F5EFE6;font:500 16px Inter,system-ui,sans-serif;cursor:pointer;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:transform .15s,box-shadow .15s,background .15s}'
-     +'#hotel-welcome .hw-tile svg{width:44px !important;height:44px !important;min-width:44px;flex:none;display:block}'
-     +'#hotel-welcome .hw-foot{position:absolute;left:5%;right:5%;bottom:4.5%;display:flex;justify-content:space-between;align-items:center;font-size:16px}'
-     +'#hotel-welcome .hw-room{position:absolute;left:0;right:0;text-align:center;color:#D1D5DB}'
-     +'#hotel-welcome .hw-time{margin-left:auto;color:#F3F4F6}'
+     +'#hotel-welcome .hw-bg{position:absolute;inset:0;background-size:cover;background-position:center}'
+     +'#hotel-welcome .hw-vig{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,10,16,.82) 0%,rgba(8,10,16,.45) 48%,rgba(8,10,16,.05) 100%),linear-gradient(0deg,rgba(8,10,16,.88) 0%,rgba(8,10,16,.35) 35%,transparent 65%)}'
+     +'#hotel-welcome .hw-top{position:absolute;left:5%;top:5%;display:flex;align-items:center;justify-content:center;min-width:92px;min-height:92px;padding:12px 16px;border-radius:16px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15)}'
+     +'#hotel-welcome .hw-logo{max-height:70px;max-width:240px;object-fit:contain}'
+     +'#hotel-welcome .hw-hname{font-family:"Playfair Display","Cormorant Garamond",Georgia,serif;font-size:26px;letter-spacing:.04em;color:#FFFDF9}'
+     +'#hotel-welcome .hw-status{position:absolute;right:5%;top:6%;display:flex;align-items:center;gap:18px;font-size:16px;color:#F3F4F6;text-shadow:0 2px 10px rgba(0,0,0,.6)}'
+     +'#hotel-welcome .hw-wx{display:flex;align-items:center;gap:9px}'
+     +'#hotel-welcome .hw-wx svg{width:22px;height:22px;flex:none}'
+     +'#hotel-welcome .hw-div{width:1px;height:22px;background:rgba(255,255,255,.3)}'
+     +'#hotel-welcome .hw-hero{position:absolute;left:5%;top:25%;max-width:60%;display:flex;flex-direction:column;align-items:flex-start;text-align:left}'
+     +'#hotel-welcome .hw-eye{font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:#E6C994;margin-bottom:18px;font-weight:500}'
+     +'#hotel-welcome .hw-name{font-family:"Playfair Display","Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:72px;line-height:1.12;color:#fff;text-shadow:0 4px 22px rgba(0,0,0,.55)}'
+     +'#hotel-welcome .hw-sub{font-size:19px;color:#E5E7EB;margin:18px 0 32px;text-shadow:0 2px 10px rgba(0,0,0,.6)}'
+     +'#hotel-welcome .hw-row{display:flex;gap:18px;align-items:center}'
+     +'#hotel-welcome .hw-cta{font:500 16px Inter,system-ui,sans-serif;padding:14px 28px;border-radius:9999px;border:1px solid transparent;background:linear-gradient(135deg,#E8CFA0,#CBB07A);color:#181A20;cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s;box-shadow:0 6px 20px rgba(0,0,0,.35)}'
+     +'#hotel-welcome .hw-cta.hw-sec{background:rgba(20,24,34,.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.25);color:#fff;box-shadow:none}'
+     +'#hotel-welcome .hw-tiles{position:absolute;left:5%;right:5%;bottom:7%;display:grid;grid-template-columns:repeat(6,1fr);gap:16px}'
+     +'#hotel-welcome .hw-tile{display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 12px;border-radius:16px;background:rgba(18,22,32,.7);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15);color:#F5EFE6;cursor:pointer;font:500 14px Inter,system-ui,sans-serif;transition:transform .18s,box-shadow .18s,border-color .18s}'
+     +'#hotel-welcome .hw-tile svg{width:34px !important;height:34px !important;min-width:34px;flex:none;display:block}'
+     +'#hotel-welcome .hw-tile span{white-space:nowrap;color:#fff}'
      +'#hotel-welcome .focused,#hotel-welcome :focus{outline:none}'
-     +'#hotel-welcome .hw-cta.focused{transform:scale(1.05);box-shadow:0 0 0 3px rgba(230,213,184,.55),0 0 36px 8px rgba(230,200,140,.45),0 6px 22px rgba(0,0,0,.4)}'
-     +'#hotel-welcome .hw-tile.focused{transform:scale(1.05);background:rgba(255,255,255,.16);border-color:#E6D5B8;box-shadow:0 0 0 2px rgba(230,213,184,.7),0 0 30px 4px rgba(230,200,140,.35)}'
+     +'#hotel-welcome .hw-cta.focused{transform:scale(1.05);border-color:#E6C994;box-shadow:0 0 0 2px #E6C994,0 0 30px 6px rgba(230,201,148,.4),0 6px 22px rgba(0,0,0,.4)}'
+     +'#hotel-welcome .hw-tile.focused{transform:scale(1.05);background:rgba(28,32,44,.85);border-color:#E6C994;box-shadow:0 0 0 2px #E6C994,0 0 28px 4px rgba(230,201,148,.35)}'
      +'#hotel-welcome .hw-panel{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(6,8,12,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}'
      +'#hotel-welcome .hw-card{width:min(900px,80%);max-height:80%;overflow:auto;padding:44px 52px;border-radius:28px;background:rgba(28,30,36,.78);border:1px solid rgba(230,213,184,.35);box-shadow:0 20px 60px rgba(0,0,0,.55);text-align:center}'
      +'#hotel-welcome .hw-card h2{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:600;font-size:46px;margin:0 0 22px;color:#FFFDF9}'
@@ -11420,37 +11427,48 @@ var Pin=(function(){
         var room=(Store.settings&&Store.settings.hotelRoom)||'';
         var cfg=Object.assign({},HW_DEFAULT,hwCfgGet());
         var d=document.createElement('div'); d.id='hotel-welcome';
+        var LAB=Object.assign({tv:'Live TV & Apps',dining:'In-Room Dining',guide:'Spa & Bush Excursions',services:'Resort Concierge',wifi:'Wi-Fi & Casting',checkout:'Express Folio'},cfg.labels||{});
+        var TILES=[['tv','tv'],['dining','dining'],['guide','spa'],['services','services'],['wifi','cast'],['checkout','checkout']];
         d.innerHTML='<div class="hw-bg"></div><div class="hw-vig"></div>'
           +'<div class="hw-top"><img class="hw-logo" alt="" style="display:none"/><div class="hw-hname"></div></div>'
-          +'<div class="hw-hero"><div class="hw-eye"></div><div class="hw-name"></div><div class="hw-sub"></div><button id="hotel-welcome-go" class="hw-cta" data-focusable="true" tabindex="0"></button></div>'
-          +'<div class="hw-tiles">'+[['services','Hotel Services'],['dining','Dining'],['wifi','Wi-Fi Access'],['guide','Local Guide'],['checkout','Checkout']].map(function(t){ return '<button class="hw-tile" data-hw="'+t[0]+'" data-focusable="true" tabindex="0">'+HW_ICONS[t[0]]+'<span>'+t[1]+'</span></button>'; }).join('')+'</div>'
-          +'<div class="hw-foot"><div class="hw-room"></div><div class="hw-time"></div></div>';
+          +'<div class="hw-status"><div class="hw-wx" style="display:none"></div><div class="hw-div" style="display:none"></div><div class="hw-time"></div></div>'
+          +'<div class="hw-hero"><div class="hw-eye"></div><div class="hw-name"></div><div class="hw-sub"></div><div class="hw-row"><button id="hotel-welcome-go" class="hw-cta" data-focusable="true" tabindex="0"></button><button id="hotel-welcome-wifi" class="hw-cta hw-sec" data-focusable="true" tabindex="0"></button></div></div>'
+          +'<div class="hw-tiles">'+TILES.map(function(t){ return '<button class="hw-tile" data-hw="'+t[0]+'" data-focusable="true" tabindex="0">'+HW_ICONS[t[1]]+'<span>'+esc(LAB[t[0]])+'</span></button>'; }).join('')+'</div>';
         var $q=function(s){ return d.querySelector(s); };
         function paint(c){ cfg=Object.assign({},HW_DEFAULT,c||{});
             var bg=$q('.hw-bg'), url=cfg.background||'';
             bg.style.backgroundImage=url?('url("'+String(url).replace(/"/g,'%22')+'")'):'linear-gradient(180deg,#232845 0%,#4a3552 34%,#b8674a 62%,#f0a95e 76%,#2d2733 77%,#171923 100%)';
             var lg=$q('.hw-logo'); if(cfg.logo){ lg.src=cfg.logo; lg.style.display=''; $q('.hw-hname').style.display='none'; } else { lg.style.display='none'; var hn=cfg.hotelName||''; $q('.hw-hname').textContent=hn; $q('.hw-hname').style.display=hn?'':'none'; }
-            $q('.hw-eye').textContent=cfg.greeting; $q('.hw-sub').textContent=cfg.subtitle; $q('.hw-cta').textContent=cfg.button;
+            var hnm=String(cfg.hotelName||'').trim(); $q('.hw-eye').textContent=(cfg.greeting&&cfg.greeting!=='Welcome')?cfg.greeting:(hnm?('Karibu to '+hnm):'Welcome');
+            $q('.hw-sub').textContent=cfg.subtitle; $q('#hotel-welcome-go').textContent=(!cfg.button||cfg.button==='Start watching')?'Explore Entertainment':cfg.button; $q('#hotel-welcome-wifi').textContent=cfg.button2||'Quick Wi-Fi'; tick();
             d.style.setProperty('--hw-acc',cfg.accent||'#D4C3A3'); }
-        var first=String(name||'').trim().split(/\s+/)[0]||'Guest'; $q('.hw-name').textContent=first;
+        var first=String(name||'').trim().split(/\s+/)[0]||'Guest'; $q('.hw-name').textContent='Welcome, '+first;
         function roomLabel(){ var r=String(room||''); var hc=cfg.hotelCode; if(hc&&r.indexOf(hc+'-')===0) r=r.slice(hc.length+1); return r; }
-        function tick(){ var t=new Date(); $q('.hw-time').textContent=t.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+', '+t.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); var rl=roomLabel(); $q('.hw-room').textContent=rl?('Room '+rl):''; }
-        paint(hwCfgGet()); tick();
+        function tick(){ var t=new Date(); $q('.hw-time').textContent=t.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+' • '+t.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+            var rl=roomLabel(); rl=rl?rl.charAt(0).toUpperCase()+rl.slice(1):''; if($q('.hw-sub')) $q('.hw-sub').textContent=rl?('Room '+rl+(cfg.checkout_date?(' \u2022 Check-out '+cfg.checkout_date):'')):cfg.subtitle; }
+        function wxText(c){ if(c===0) return 'Clear Sky'; if(c<=2) return 'Partly Cloudy'; if(c===3) return 'Cloudy'; if(c===45||c===48) return 'Fog'; if(c>=51&&c<=57) return 'Drizzle'; if(c>=61&&c<=67) return 'Rain'; if(c>=71&&c<=77) return 'Snow'; if(c>=80&&c<=82) return 'Showers'; if(c>=95) return 'Thunderstorm'; return 'Fair'; }
+        function wxIcon(c,day){ var moon='<path d="M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/>', sun='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', cloud='<path d="M7 18a4 4 0 0 1-.5-8 6 6 0 0 1 11.5 1.5A3.5 3.5 0 0 1 17.5 18z"/>';
+            return '<svg viewBox="0 0 24 24" fill="none" stroke="#F5EFE6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+((c>=3)?cloud:(day?sun:moon))+'</svg>'; }
+        function paintWx(w){ try{ if(!w) return; var el=$q('.hw-wx'); el.innerHTML=wxIcon(w.code,w.day)+'<span>'+Math.round(w.temp)+'°C • '+wxText(w.code)+'</span>'; el.style.display=''; $q('.hw-div').style.display=''; }catch(e){} }
+        function loadWx(){ var wc=cfg.weather||{}, la=(wc.lat!=null?wc.lat:0.0167), lo=(wc.lon!=null?wc.lon:37.0722);
+            try{ paintWx(JSON.parse(localStorage.getItem('byo_hotel_wx')||'null')); }catch(e){}
+            try{ fetch('https://api.open-meteo.com/v1/forecast?latitude='+la+'&longitude='+lo+'&current=temperature_2m,weather_code,is_day').then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&j.current&&document.getElementById('hotel-welcome')===d){ var w={temp:j.current.temperature_2m,code:j.current.weather_code,day:!!j.current.is_day}; try{ localStorage.setItem('byo_hotel_wx',JSON.stringify(w)); }catch(e){} paintWx(w); } }).catch(function(){}); }catch(e){} }
+        paint(hwCfgGet()); tick(); loadWx();
         var timer=setInterval(tick,20000);
         (document.getElementById('app')||document.body).appendChild(d);
         requestAnimationFrame(function(){ d.style.opacity='1'; });
-        hwFetchCfg(room,function(j){ if(j&&document.getElementById('hotel-welcome')===d){ paint(j); tick(); } });
+        hwFetchCfg(room,function(j){ if(j&&document.getElementById('hotel-welcome')===d){ paint(j); tick(); loadWx(); } });
         // ---- panels (Hotel Services, Dining, Wi-Fi, Local Guide, Checkout) ----
         var panel=null;
         function setMainFocusable(on){ [].forEach.call(d.querySelectorAll('.hw-cta,.hw-tile'),function(e){ e.setAttribute('data-focusable',on?'true':'false'); }); }
         function closePanel(){ if(!panel) return; var k=panel.getAttribute('data-k'); panel.remove(); panel=null; setMainFocusable(true); var t=d.querySelector('.hw-tile[data-hw="'+k+'"]'); try{ Nav.setFocus(t||$q('.hw-cta')); }catch(e){} }
         function openPanel(kind){
             var h=''; var btns=[];
-            if(kind==='wifi'){ var w=cfg.wifi||{}; h='<h2>Wi-Fi Access</h2>'+(w.ssid?('<div class="hw-k">Network</div><div class="hw-v">'+esc(w.ssid)+'</div>'+(w.password?('<div class="hw-k">Password</div><div class="hw-v">'+esc(w.password)+'</div>'):'<div class="hw-line">No password needed.</div>')+'<div class="hw-qr" id="hw-qr"></div><div class="hw-line" style="font-size:18px;color:#CDBF9F">Scan with your phone camera to connect.</div>'):'<p>Ask the front desk for the Wi-Fi details.</p>'); }
-            else if(kind==='dining'){ h='<h2>Dining</h2><p>'+(cfg.dining?esc(cfg.dining):'Please contact the front desk for our menu and restaurant hours.')+'</p>'; btns.push(['Order in-room dining','dining','In-room dining order requested']); }
-            else if(kind==='guide'){ h='<h2>Local Guide</h2><p>'+(cfg.guide?esc(cfg.guide):'Ask the front desk for recommendations, transport and local attractions.')+'</p>'; }
-            else if(kind==='checkout'){ h='<h2>Checkout</h2><p>'+esc(cfg.checkout||'')+'</p>'; btns.push(['Request express checkout','checkout','Express checkout requested']); }
-            else { h='<h2>Hotel Services</h2><div class="hw-opts" id="hw-opts"></div>'; (cfg.services||[]).slice(0,8).forEach(function(s){ btns.push([String(s),'services',String(s)]); }); }
+            if(kind==='wifi'){ var w=cfg.wifi||{}; h='<h2>'+esc(LAB.wifi)+'</h2>'+(w.ssid?('<div class="hw-k">Network</div><div class="hw-v">'+esc(w.ssid)+'</div>'+(w.password?('<div class="hw-k">Password</div><div class="hw-v">'+esc(w.password)+'</div>'):'<div class="hw-line">No password needed.</div>')+'<div class="hw-qr" id="hw-qr"></div><div class="hw-line" style="font-size:18px;color:#CDBF9F">Scan with your phone camera to connect.</div>'):'<p>Ask the front desk for the Wi-Fi details.</p>'); }
+            else if(kind==='dining'){ h='<h2>'+esc(LAB.dining)+'</h2><p>'+(cfg.dining?esc(cfg.dining):'Please contact the front desk for our menu and restaurant hours.')+'</p>'; btns.push(['Order in-room dining','dining','In-room dining order requested']); }
+            else if(kind==='guide'){ h='<h2>'+esc(LAB.guide)+'</h2><p>'+(cfg.guide?esc(cfg.guide):'Ask the front desk for recommendations, transport and local attractions.')+'</p>'; }
+            else if(kind==='checkout'){ h='<h2>'+esc(LAB.checkout)+'</h2><p>'+esc(cfg.checkout||'')+'</p>'; btns.push(['Request express checkout','checkout','Express checkout requested']); }
+            else { h='<h2>'+esc(LAB.services)+'</h2><div class="hw-opts" id="hw-opts"></div>'; (cfg.services||[]).slice(0,8).forEach(function(s){ btns.push([String(s),'services',String(s)]); }); }
             var p=document.createElement('div'); p.className='hw-panel'; p.setAttribute('data-k',kind);
             p.innerHTML='<div class="hw-card">'+h+'<div class="hw-opts" id="hw-acts"></div><div class="hw-note" id="hw-note"></div><div class="hw-opts" style="margin-top:22px"><button class="hw-btn" id="hw-close" data-focusable="true" tabindex="0">Close</button></div></div>';
             d.appendChild(p); panel=p; setMainFocusable(false);
@@ -11462,15 +11480,16 @@ var Pin=(function(){
             p.querySelector('#hw-close').addEventListener('click',closePanel);
             setTimeout(function(){ try{ Nav.setFocus(p.querySelector('.hw-btn')); }catch(e){} },30);
         }
-        [].forEach.call(d.querySelectorAll('.hw-tile'),function(t){ t.addEventListener('click',function(){ openPanel(t.getAttribute('data-hw')); }); });
+        [].forEach.call(d.querySelectorAll('.hw-tile'),function(t){ t.addEventListener('click',function(){ var k=t.getAttribute('data-hw'); if(k==='tv'){ close(true); } else openPanel(k); }); });
         // Back / Esc closes an open panel first
         function onKey(e){ var k=e.keyCode; if(panel&&(k===27||k===10009||e.key==='Escape'||e.key==='GoBack'||e.key==='BrowserBack'||k===4)){ e.preventDefault(); e.stopPropagation(); closePanel(); } }
         document.addEventListener('keydown',onKey,true);
         function stop(){ clearInterval(timer); document.removeEventListener('keydown',onKey,true); }
         d._hwStop=stop;
         var go=$q('#hotel-welcome-go');
-        function close(){ stop(); d.style.opacity='0'; setTimeout(function(){ d.remove(); var ch=null; try{ ch=hotelWelcomeChannel(); }catch(e){} if(ch){ try{ playLiveByChannel(ch); return; }catch(e){} } try{ Nav.focusFirst(); }catch(e){} },500); }
-        go.addEventListener('click',close);
+        function close(live){ stop(); d.style.opacity='0'; setTimeout(function(){ d.remove(); var ch=null; if(live){ try{ ch=hotelWelcomeChannel(); }catch(e){} } if(ch){ try{ playLiveByChannel(ch); return; }catch(e){} } try{ Nav.focusFirst(); }catch(e){} },500); }
+        go.addEventListener('click',function(){ close(false); });
+        $q('#hotel-welcome-wifi').addEventListener('click',function(){ openPanel('wifi'); });
         setTimeout(function(){ try{ Nav.setFocus(go); }catch(e){} go.focus(); },60);
         try{ showView('home'); }catch(e){}
     };
