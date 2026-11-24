@@ -10351,7 +10351,7 @@ var Pin=(function(){
     /* ---- Generic on-screen keyboard for any text field (profile name, etc.) ---- */
     // On a real TV a focused <input> does NOT pop a keyboard; this gives every field one.
     var FKB={ input:null, buf:'', cap:true, onDone:null, returnFocus:null };
-    var FKB_ROWS=[ '1 2 3 4 5 6 7 8 9 0', 'q w e r t y u i o p', 'a s d f g h j k l', 'z x c v b n m' ];
+    var FKB_ROWS=[ '1 2 3 4 5 6 7 8 9 0', 'q w e r t y u i o p', 'a s d f g h j k l', 'z x c v b n m -' ];
     function openFieldKeyboard(inputEl, opts){ opts=opts||{};
         FKB.input=inputEl; FKB.buf=String(inputEl&&inputEl.value||''); FKB.cap=(FKB.buf.length===0); FKB.onDone=opts.onDone||null; FKB.digits=!!opts.digits;
         FKB.returnFocus=opts.returnFocus||inputEl;
@@ -11371,7 +11371,8 @@ var Pin=(function(){
     };
     function renderStartup(){ var sh=$('su-hotel'); if(sh) sh.classList.toggle('on', !!(Store.settings||{}).hotelMode); var shr=$('su-hotel-room'); if(shr){ if(document.activeElement!==shr) shr.value=(Store.settings||{}).hotelRoom||''; $('su-hotel-room-row').style.display=(Store.settings||{}).hotelMode?'':'none'; } $('su-resume').classList.toggle('on', !!(Store.cfg||{}).resumeLast); var sd=$('su-direct'); if(sd) sd.classList.toggle('on', directPlay()); }
     function wireStartup(){ var sh=$('su-hotel'); if(sh) sh.addEventListener('click',function(){ Store.settings.hotelMode=!Store.settings.hotelMode; Store.save(); renderStartup(); hotelSync(true); });
-        var shr=$('su-hotel-room'); if(shr){ var hsv=function(){ Store.settings.hotelRoom=String(shr.value||'').toLowerCase().replace(/[^a-z0-9-]/g,''); Store.save(); hotelSync(true); }; shr.addEventListener('change',hsv); shr.addEventListener('blur',hsv); }
+        var shr=$('su-hotel-room'); if(shr){ var hsv=function(){ Store.settings.hotelRoom=String(shr.value||'').toLowerCase().replace(/[^a-z0-9-]/g,''); Store.save(); hotelSync(true); }; shr.addEventListener('change',hsv); shr.addEventListener('blur',hsv);
+            shr.addEventListener('click',function(){ openFieldKeyboard(shr,{label:'Room code (letters, numbers and - only)',returnFocus:shr,onDone:function(){ hsv(); shr.value=Store.settings.hotelRoom||''; }}); }); }
         $('su-resume').addEventListener('click',function(){ Store.cfg.resumeLast=!Store.cfg.resumeLast; Store.save(); renderStartup(); });
         var sd=$('su-direct'); if(sd) sd.addEventListener('click',function(){ Store.settings.openAutoplay=!directPlay(); Store.save(); renderStartup(); }); }
 
@@ -12261,7 +12262,8 @@ var Pin=(function(){
                 }
                 return;
             }
-            if(k===Nav.KEY.ENTER){ var c=Nav.current; if(c&&c.tagName==='INPUT'&&(c.id==='am-name'||c.id==='mv-preset-name')){ openFieldKeyboard(c,{label:(c.id==='am-name'?'Profile name':'Preset name'),returnFocus:c}); e.preventDefault(); return; } }
+            if(k===Nav.KEY.ENTER){ var c=Nav.current; if(c&&c.tagName==='INPUT'&&(c.id==='am-name'||c.id==='mv-preset-name')){ openFieldKeyboard(c,{label:(c.id==='am-name'?'Profile name':'Preset name'),returnFocus:c}); e.preventDefault(); return; }
+                if(c&&c.id==='su-hotel-room'){ c.click(); e.preventDefault(); return; } }
         }, true);
         document.addEventListener('keydown',function(e){ if(!$('view-mvplay').classList.contains('active-view')) return;
             if(tileMenuOpen()||!$('mv-picker').classList.contains('hidden')) return; // overlays use generic Nav

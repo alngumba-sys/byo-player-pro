@@ -1,6 +1,6 @@
 {
-  "versionCode": 253,
-  "versionName": "3.37.68",
+  "versionCode": 254,
+  "versionName": "3.37.69",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode: the TV listens in the background and wakes up for a guest welcome (set a room code in Settings > Startup)."
+  "notes": "Hotel mode: the room code can now be typed with the TV remote (on-screen keyboard)."
 }
