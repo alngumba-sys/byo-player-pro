@@ -11362,13 +11362,19 @@ var Pin=(function(){
         else setToast('Hotel mode on for room '+s.hotelRoom+'. This TV will wake up when a guest is checked in.'); }catch(e){} }
     setTimeout(function(){ hotelSync(false); },4000);
     // The channel a guest lands on after "Start watching": the best live channel whose name matches Settings > Hotel mode > channel (default Sky).
-    function hotelWelcomeChannel(){ var q=String((Store.settings||{}).hotelChannel||'Sky').trim().toLowerCase(); if(!q) return null;
+    function hotelWelcomeChannel(){ var q=String((Store.settings||{}).hotelChannel||'Sky').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim(); if(!q) return null;
         var list=[]; try{ list=liveChannels()||[]; }catch(e){ list=S.live||[]; }
         var best=null, bs=1e9;
         list.forEach(function(c){ var n=String(c.name||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim(); if(!n) return;
             var s; if(n===q) s=0; else if(n.indexOf(q+' ')===0||n.indexOf(q)===0) s=10+n.length; else if(n.indexOf(q)>-1) s=100+n.length; else return;
             if(s<bs){ bs=s; best=c; } });
         return best; }
+    // After the welcome: start the live channel set in Settings > Startup (waits a few seconds if the channel list is still loading).
+    function hotelOpenChannel(n){ var ch=null; try{ ch=hotelWelcomeChannel(); }catch(e){}
+        if(ch){ try{ playLiveByChannel(ch); return; }catch(e){} }
+        var have=0; try{ have=(liveChannels()||[]).length; }catch(e){}
+        if(!have&&n<10){ setTimeout(function(){ hotelOpenChannel(n+1); },1000); return; }
+        try{ setToast('No live channel matches "'+String((Store.settings||{}).hotelChannel||'Sky')+'". Change it in Settings, Startup.'); }catch(e){} try{ Nav.focusFirst(); }catch(e){} }
     /* ---- Hotel mode: welcome screen shown when the check-in system launches the app (adb / API) ---- */
     var _wlcAt=0, _wlcName='';
     var HW_DEFAULT={ greeting:'Welcome', subtitle:'We hope you enjoy your stay.', button:'Start watching', accent:'#D4C3A3',
@@ -11496,7 +11502,7 @@ var Pin=(function(){
         function stop(){ clearInterval(timer); document.removeEventListener('keydown',onKey,true); }
         d._hwStop=stop;
         var go=$q('#hotel-welcome-go');
-        function close(live){ stop(); d.style.opacity='0'; setTimeout(function(){ d.remove(); var ch=null; if(live){ try{ ch=hotelWelcomeChannel(); }catch(e){} } if(ch){ try{ playLiveByChannel(ch); return; }catch(e){} } try{ Nav.focusFirst(); }catch(e){} },500); }
+        function close(live){ stop(); d.style.opacity='0'; setTimeout(function(){ d.remove(); if(live){ hotelOpenChannel(0); } else { try{ Nav.focusFirst(); }catch(e){} } },500); }
         go.addEventListener('click',function(){ close(false); });
         $q('#hotel-welcome-wifi').addEventListener('click',function(){ openPanel('wifi'); });
         setTimeout(function(){ try{ Nav.setFocus(go); }catch(e){} go.focus(); },60);

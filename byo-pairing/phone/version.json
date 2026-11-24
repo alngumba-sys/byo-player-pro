@@ -1,6 +1,6 @@
 {
-  "versionCode": 261,
-  "versionName": "3.37.76",
+  "versionCode": 262,
+  "versionName": "3.37.77",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode: welcome screen sized for TV viewing distance, closer mountain framing, stronger dark gradients, bolder icons."
+  "notes": "Hotel mode: Live TV opens the channel named in Settings, Startup (waits for the channel list, tells you if nothing matches)."
 }
