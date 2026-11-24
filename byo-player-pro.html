@@ -4895,6 +4895,8 @@ var Nav={ KEY:{LEFT:37,UP:38,RIGHT:39,DOWN:40,ENTER:13,RETURN:10009,BACK_KB:8,ES
         MEDIA_PLAY:415, MEDIA_PAUSE:19, MEDIA_PLAY_PAUSE:10252, MEDIA_STOP:413,
         MEDIA_REWIND:412, MEDIA_FF:417, MEDIA_PREV:10232, MEDIA_NEXT:10233 }, current:null,onBack:null,onEnter:null,
     focusables:function(){
+        // The hotel welcome owns the remote while it is up: only its own buttons are reachable.
+        try{ var _hw=document.getElementById('hotel-welcome'); if(_hw) return Array.prototype.slice.call(_hw.querySelectorAll('[data-focusable="true"]')).filter(function(el){ return el.offsetParent!==null||getComputedStyle(el).position==='fixed'; }); }catch(_e){}
         try{ if(typeof Support!=='undefined'){ var _sup=Support.scope(); if(_sup) return Array.prototype.slice.call(_sup.querySelectorAll('[data-focusable="true"]')).filter(function(el){ return el.offsetParent!==null; }); } }catch(_e){}
         var fkb=document.getElementById('field-kb'); if(fkb&&!fkb.classList.contains('hidden')) return Array.prototype.slice.call(fkb.querySelectorAll('[data-focusable="true"]')).filter(function(el){ return el.offsetParent!==null; });
         // The payment / paused screen is on top: keep the remote inside it.
@@ -4937,6 +4939,8 @@ var Nav={ KEY:{LEFT:37,UP:38,RIGHT:39,DOWN:40,ENTER:13,RETURN:10009,BACK_KB:8,ES
         try{ if(typeof Support!=='undefined'){ var _sc=Support.scope(); if(_sc&&!_sc.contains(el)){ var _f=_sc.querySelector('[data-focusable="true"]'); if(!_f) return; el=_f; } } }catch(_e){}
         if(this.current) this.current.classList.remove('focused'); this.current=el; el.classList.add('focused');
         try{ el.dispatchEvent(new CustomEvent('navfocus',{bubbles:true})); }catch(_e){}
+        // The hotel welcome is a fixed full-screen layer: never scroll the page underneath it.
+        if(el.closest && el.closest('#hotel-welcome')) return;
         // When focus lands on the top hero (Play / More Info / sound), scroll its scroll-body all the
         // way to the top so the full preview is revealed — 'nearest' alone leaves the preview clipped.
         var inHero = el.closest && el.closest('.hero');
@@ -11373,7 +11377,7 @@ var Pin=(function(){
         wifi:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c10-9 28-9 38 0"/><path d="M11 26c7-6 19-6 26 0"/><path d="M17 33c4-3 10-3 14 0"/><circle cx="24" cy="39" r="1.8" fill="currentColor"/></svg>',
         guide:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l12-4 12 4 12-4v26l-12 4-12-4-12 4z"/><path d="M18 10v26"/><path d="M30 14v26"/><path d="M24 8a5 5 0 0 1 5 5c0 4-5 9-5 9s-5-5-5-9a5 5 0 0 1 5-5z" fill="#0b0d12"/><circle cx="24" cy="13" r="1.6" fill="currentColor"/></svg>',
         checkout:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 42V8l18-3v37"/><path d="M10 42h26"/><path d="M28 12h8v30"/><circle cx="23" cy="25" r="1.4" fill="currentColor"/><circle cx="38" cy="18" r="3"/><path d="M41 21l5 5M44 24l2-2"/></svg>' };
-    var HW_CSS='#hotel-welcome{position:absolute;inset:0;z-index:9999;overflow:hidden;color:#F3F4F6;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;opacity:0;transition:opacity .8s}'
+    var HW_CSS='#hotel-welcome{position:fixed;inset:0;z-index:9999;background:#0A0C12;overflow:hidden;color:#F3F4F6;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;opacity:0;transition:opacity .8s}'
      +'#hotel-welcome .hw-bg{position:absolute;inset:-3%;background-size:cover;background-position:center;filter:blur(7px) saturate(1.05);transform:scale(1.04)}'
      +'#hotel-welcome .hw-vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,rgba(10,12,18,.35) 0%,rgba(10,12,18,.75) 100%),rgba(10,12,18,.55)}'
      +'#hotel-welcome .hw-top{position:absolute;left:5%;top:6%;display:flex;align-items:center;gap:22px}'

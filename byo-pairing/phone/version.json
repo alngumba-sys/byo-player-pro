@@ -1,6 +1,6 @@
 {
-  "versionCode": 258,
-  "versionName": "3.37.73",
+  "versionCode": 259,
+  "versionName": "3.37.74",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode: the app stays hidden until the welcome screen is ready, so no start-up screens flash first."
+  "notes": "Hotel mode: the welcome screen stays put and the remote only moves between its own buttons."
 }
