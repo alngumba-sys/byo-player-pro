@@ -1,6 +1,6 @@
 {
-  "versionCode": 262,
-  "versionName": "3.37.77",
+  "versionCode": 263,
+  "versionName": "3.37.78",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Hotel mode: Live TV opens the channel named in Settings, Startup (waits for the channel list, tells you if nothing matches)."
+  "notes": "Live channels named NO EVENT are hidden everywhere."
 }

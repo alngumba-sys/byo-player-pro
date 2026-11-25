@@ -5062,6 +5062,10 @@ var Pin=(function(){
         replaySel:0, overlayTimer:null, prevView:'home', mode:'xtream', xtream:null,
         playerType:'live', aspect:'contain', msgTimer:null, lastPlay:null, lastPlayUrl:'', toastTimer:null, replayView:[], connTimer:null, heroHls:null, remPopTimer:null, reminderTimer:null, deviceHb:null, remoteRt:null, remotePoll:null };
     function $(id){ return document.getElementById(id); }
+    // Live channels whose name says there is no event on ("NFHS Network 02: NO EVENT") are never shown. Every way the
+    // channel list gets filled (M3U, Xtream, Emby, saved copy) goes through this, so the groups and counts drop them too.
+    var NO_EVENT_RE=/\bno[\s_-]*events?\b/i;
+    (function(){ var _live=[]; try{ Object.defineProperty(S,'live',{ enumerable:true, configurable:true, get:function(){ return _live; }, set:function(v){ _live=Array.isArray(v)?v.filter(function(c){ return !(c&&c.name&&NO_EVENT_RE.test(String(c.name))); }):v; } }); }catch(e){} })();
     function esc(s){ return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
     // Effective genre for filtering: prefer the richer TMDB genre (resolved lazily as cards enrich)
     // over the raw M3U group-title, which is often a single generic bucket like "Movies" or "VOD".
