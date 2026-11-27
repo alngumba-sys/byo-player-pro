@@ -2283,6 +2283,7 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                     <div class="row-title">Downloading</div>
                     <div id="dl-active" class="history-list"></div>
                     <p id="dl-active-empty" class="section-empty hidden"><span class="ic"><svg><use href="#i-info"/></svg></span>Nothing downloading. Open a film or an episode and press Download.</p>
+                    <p id="dl-bg-note" class="section-empty hidden"><span class="ic"><svg><use href="#i-info"/></svg></span>Keep this app open until these finish. Closing it pauses them, and they carry on from where they stopped next time.</p>
                     <div class="row-title" style="margin-top:30px">Ready to watch offline</div>
                     <div id="dl-done" class="history-list"></div>
                     <p id="dl-done-empty" class="section-empty hidden"><span class="ic"><svg><use href="#i-info"/></svg></span>Nothing downloaded yet. Anything here plays with the internet off.</p>
@@ -9158,20 +9159,24 @@ var Pin=(function(){
     var Dl=(function(){
         var A=null, rows={}, timer=null;
         function br(){ if(A===null){ try{ A=(window.ByoAndroid&&typeof window.ByoAndroid.dlSupported==='function'&&window.ByoAndroid.dlSupported())?window.ByoAndroid:false; }catch(_e){ A=false; } } return A; }
+        function useWeb(){ return !br() && WebDl.can(); }
+        function supported(){ return !!br() || WebDl.can(); }
         function idFor(kind,id){ return (kind==='movie'?'mv_':'ep_')+String(id==null?'':id).replace(/[^A-Za-z0-9]/g,''); }
         function refresh(){
-            var b=br(); if(!b){ rows={}; return rows; }
-            var list=[]; try{ list=JSON.parse(b.dlList()||'[]')||[]; }catch(_e){ list=[]; }
-            var next={}; for(var i=0;i<list.length;i++) next[list[i].id]=list[i];
-            rows=next;
-            // A file the user wiped from outside the app leaves a note behind; drop it.
+            var b=br();
+            if(b){ var list=[]; try{ list=JSON.parse(b.dlList()||'[]')||[]; }catch(_e){ list=[]; }
+                var next={}; for(var i=0;i<list.length;i++) next[list[i].id]=list[i]; rows=next; }
+            else if(useWeb()) rows=WebDl.all();
+            else { rows={}; return rows; }
+            // A copy wiped from outside the app leaves a note behind; drop it.
             var meta=Store.downloads||{}, changed=false;
             for(var k in meta){ if(!rows[k]){ delete meta[k]; changed=true; } }
             if(changed) Store.saveDownloads();
             return rows;
         }
-        function busy(){ for(var k in rows){ if(rows[k].status==='running'||rows[k].status==='paused') return true; } return false; }
-        // Poll only while something is actually moving, so an idle TV does no work.
+        function busy(){ if(useWeb()) return WebDl.busy();
+            for(var k in rows){ if(rows[k].status==='running'||rows[k].status==='paused') return true; } return false; }
+        // Poll only while something is actually moving, so an idle device does no work.
         function tick(){
             if(timer) return;
             timer=setInterval(function(){
@@ -9182,38 +9187,207 @@ var Pin=(function(){
             },1500);
         }
         function start(kind,item,url,title,sub){
-            var b=br(); if(!b) return false;
+            if(!supported()) return false;
             if(!url){ setToast('No file to download for this one.'); return false; }
             if(/\.m3u8(\?|$)/i.test(url)){ setToast('This one is a live stream and cannot be downloaded.'); return false; }
-            var dlid=idFor(kind,item.id), r='err';
-            try{ r=b.dlStart(dlid,url,title||''); }catch(_e){}
+            var dlid=idFor(kind,item.id), r='err', b=br();
+            if(b){ try{ r=b.dlStart(dlid,url,title||''); }catch(_e){} }
+            else r=WebDl.start(dlid,url,title||'');
             if(r==='already'){ setToast('Already in Downloads.'); return false; }
             if(r!=='ok'){ setToast('Could not start that download.'); return false; }
             Store.downloads[dlid]={ kind:kind, key:(kind==='movie'?'movie:':'ep:')+item.id, title:title||'', sub:sub||'', gi:(item.gi||0), at:Date.now() };
             Store.saveDownloads();
-            setToast('Downloading. It carries on if you leave this screen.');
+            setToast(b?'Downloading. It carries on if you leave this screen.':'Downloading. Keep the app open until it finishes.');
             refresh(); tick(); return true;
         }
         function drop(dlid){
-            var b=br(); if(b){ try{ b.dlDelete(dlid); }catch(_e){} }
+            var b=br(); if(b){ try{ b.dlDelete(dlid); }catch(_e){} } else if(useWeb()) WebDl.drop(dlid);
             if(Store.downloads[dlid]){ delete Store.downloads[dlid]; Store.saveDownloads(); }
             refresh();
         }
-        return { supported:function(){ return !!br(); }, idFor:idFor, refresh:refresh, tick:tick, start:start, drop:drop,
+        // A browser download stops dead when the app is closed; this picks it back up.
+        function resume(dlid){ if(useWeb()){ WebDl.resume(dlid); refresh(); tick(); } }
+        function init(){
+            if(br()){ refresh(); if(busy()) tick(); return; }
+            if(!WebDl.can()) return;
+            WebDl.measure();
+            var paint=function(){ refresh(); if(curSection()==='downloads') renderDownloads(true); repaintDlButtons(); };
+            WebDl.init(paint, paint);
+        }
+        return { supported:supported, idFor:idFor, refresh:refresh, tick:tick, start:start, drop:drop, resume:resume, init:init,
+            // True only where a download survives the app being closed. Changes what we promise.
+            background:function(){ return !!br(); },
             all:function(){ return rows; },
             get:function(dlid){ return rows[dlid]||null; },
-            freeMb:function(){ var b=br(); if(!b) return -1; try{ return b.dlFreeMb(); }catch(_e){ return -1; } },
-            // The local file for a catalogue item, once it has finished. Null otherwise.
+            freeMb:function(){ var b=br(); if(b){ try{ return b.dlFreeMb(); }catch(_e){ return -1; } } return useWeb()?WebDl.freeMb():-1; },
+            // The local copy of a catalogue item, once it has finished. Null otherwise.
             fileFor:function(kind,id){ var r=rows[idFor(kind,id)]; return (r&&r.status==='done'&&r.uri)?r.uri:null; } };
     })();
 
+    /* ---- Downloads in the browser (phone, tablet, installed web app) ----
+       No Android bridge here, so the page does the work itself. The file is pulled down in
+       4 MB pieces and each piece is written straight into IndexedDB, so a two hour film never
+       sits in memory. To play it the pieces are stitched into one Blob, which WebKit and Blink
+       keep on disk rather than in RAM, and handed to the video element as a blob: URL. Seeking
+       works because the Blob is a real file as far as the player is concerned.
+       Two things can stop this and both are reported plainly rather than failing quietly:
+       a provider that sends no CORS header (the page may play the stream but may not read it),
+       and a device that will not grant the space. */
+    var WebDl=(function(){
+        var CH=4*1024*1024, DB=null, rows={}, running={}, onChange=null;
+        function can(){ return !!(window.indexedDB && window.Blob && window.URL && URL.createObjectURL); }
+        function db(cb){
+            if(DB) return cb(DB);
+            var rq;
+            try{ rq=indexedDB.open('byo_downloads',1); }catch(_e){ return cb(null); }
+            rq.onupgradeneeded=function(){ var d=rq.result;
+                if(!d.objectStoreNames.contains('items')) d.createObjectStore('items',{keyPath:'id'});
+                if(!d.objectStoreNames.contains('chunks')) d.createObjectStore('chunks'); };
+            rq.onsuccess=function(){ DB=rq.result; cb(DB); };
+            rq.onerror=function(){ cb(null); };
+        }
+        function putItem(it){ db(function(d){ if(!d) return; try{ d.transaction('items','readwrite').objectStore('items').put(it); }catch(_e){} }); }
+        function delAll(id,n){ db(function(d){ if(!d) return; try{ var t=d.transaction(['items','chunks'],'readwrite');
+            t.objectStore('items').delete(id); var c=t.objectStore('chunks');
+            for(var i=0;i<n+2;i++) c.delete(id+':'+i); }catch(_e){} }); }
+        function putChunk(id,i,blob,cb){ db(function(d){ if(!d) return cb(false);
+            try{ var t=d.transaction('chunks','readwrite'); t.objectStore('chunks').put(blob,id+':'+i);
+                t.oncomplete=function(){ cb(true); }; t.onerror=function(){ cb(false); }; }catch(_e){ cb(false); } }); }
+        // Stitch the pieces back into one Blob and hand out a blob: URL. The parts stay on disk.
+        function assemble(it,cb){ db(function(d){ if(!d) return cb(null);
+            var parts=[], i=0; try{ var st=d.transaction('chunks','readonly').objectStore('chunks');
+                (function next(){ if(i>=it.chunks){ try{ cb(URL.createObjectURL(new Blob(parts,{type:it.mime||'video/mp4'}))); }catch(_b){ cb(null); } return; }
+                    var r=st.get(it.id+':'+i); r.onsuccess=function(){ if(r.result) parts.push(r.result); i++; next(); }; r.onerror=function(){ cb(null); }; })();
+            }catch(_e){ cb(null); } }); }
+        function row(it){ return { id:it.id, title:it.title||'', at:it.at||0, status:it.status,
+            bytes:it.got||0, total:it.total||0, uri:it.uri||null, err:it.err||'' }; }
+        function sync(){ var o={}; for(var k in rows) o[k]=row(rows[k]); return o; }
+        function changed(){ if(onChange) try{ onChange(); }catch(_e){} }
+        function load(cb){
+            db(function(d){ if(!d){ if(cb) cb(); return; }
+                var out={};
+                try{ var rq=d.transaction('items','readonly').objectStore('items').getAll();
+                    rq.onsuccess=function(){ (rq.result||[]).forEach(function(it){
+                            // Anything cut off mid-flight last time is resumable, not finished.
+                            if(it.status==='running') it.status='paused';
+                            out[it.id]=it; });
+                        rows=out;
+                        var done=[]; for(var k in rows) if(rows[k].status==='done') done.push(rows[k]);
+                        (function nx(){ var it=done.shift(); if(!it){ changed(); if(cb) cb(); return; }
+                            assemble(it,function(u){ it.uri=u; nx(); }); })();
+                    };
+                    rq.onerror=function(){ if(cb) cb(); };
+                }catch(_e){ if(cb) cb(); } });
+        }
+        function fail(it,why){
+            // A dropped connection when part of the file is already on disk is not a dead end:
+            // park it as paused so the next try carries on instead of starting over. Out of space,
+            // a refusal from the provider or a server that will not resume are real failures.
+            var soft = (it.got>0) && !/no-space|uota|range-lost|http-4|http-5/.test(String(why));
+            it.status = soft ? 'paused' : 'failed';
+            it.err=why; delete running[it.id]; putItem(it); changed();
+        }
+        function finish(it){ it.status='done'; delete running[it.id]; if(!it.total) it.total=it.got;
+            putItem(it); assemble(it,function(u){ it.uri=u; changed(); }); changed(); }
+        // Server supports Range: ask for one piece at a time, which also makes it resumable.
+        function pullRanged(it){
+            (function step(){
+                if(!running[it.id]) return;
+                if(it.total && it.got>=it.total) return finish(it);
+                var from=it.got, to=from+CH-1; if(it.total) to=Math.min(to,it.total-1);
+                fetch(it.url,{headers:{Range:'bytes='+from+'-'+to}}).then(function(r){
+                    if(r.status!==206) throw new Error('range-lost');
+                    if(!it.mime) it.mime=r.headers.get('Content-Type')||'video/mp4';
+                    if(!it.total){ var cr=r.headers.get('Content-Range'), m=cr&&/\/(\d+)\s*$/.exec(cr); if(m) it.total=+m[1]; }
+                    return r.blob();
+                }).then(function(b){
+                    if(!running[it.id]) return;
+                    if(!b||!b.size) return finish(it);
+                    var short=(b.size<(to-from+1));
+                    putChunk(it.id,it.chunks,b,function(ok){
+                        if(!ok) return fail(it,'no-space');
+                        it.chunks++; it.got+=b.size; putItem(it); changed();
+                        // Either we have the whole length, or a short piece says that was the end.
+                        if((it.total && it.got>=it.total) || (!it.total && short)) finish(it); else step();
+                    });
+                }).catch(function(e){ fail(it, String((e&&e.message)||e)); });
+            })();
+        }
+        // No Range: read the body as it arrives and cut it into pieces. Not resumable.
+        function pullStream(it){
+            fetch(it.url).then(function(r){
+                if(!r.ok) throw new Error('http-'+r.status);
+                if(!it.mime) it.mime=r.headers.get('Content-Type')||'video/mp4';
+                var cl=r.headers.get('Content-Length'); if(cl) it.total=+cl;
+                if(!r.body||!r.body.getReader) throw new Error('no-stream');
+                var rd=r.body.getReader(), buf=[], n=0;
+                (function pump(){
+                    rd.read().then(function(res){
+                        if(!running[it.id]){ try{ rd.cancel(); }catch(_c){} return; }
+                        if(res.done){ if(n){ putChunk(it.id,it.chunks,new Blob(buf),function(ok){
+                                if(!ok) return fail(it,'no-space'); it.chunks++; it.got+=n; finish(it); }); }
+                            else finish(it); return; }
+                        buf.push(res.value); n+=res.value.byteLength;
+                        if(n>=CH){ var b=new Blob(buf); buf=[]; var sz=n; n=0;
+                            putChunk(it.id,it.chunks,b,function(ok){
+                                if(!ok) return fail(it,'no-space');
+                                it.chunks++; it.got+=sz; putItem(it); changed(); pump(); });
+                        } else pump();
+                    }).catch(function(e){ fail(it, String((e&&e.message)||e)); });
+                })();
+            }).catch(function(e){ fail(it, String((e&&e.message)||e)); });
+        }
+        function begin(it){
+            running[it.id]=true; it.status='running'; putItem(it); changed();
+            // One tiny probe tells us whether we can resume later, and catches a provider
+            // that blocks cross-origin reads before we have written anything.
+            fetch(it.url,{headers:{Range:'bytes=0-1'}}).then(function(r){
+                if(r.status===206) pullRanged(it);
+                else if(r.ok){ try{ if(r.body&&r.body.cancel) r.body.cancel(); }catch(_c){}
+                    if(it.got>0) fail(it,'range-lost'); else pullStream(it); }
+                else throw new Error('http-'+r.status);
+            }).catch(function(e){ fail(it, String((e&&e.message)||e)); });
+        }
+        return {
+            can:can,
+            init:function(cb,notify){ onChange=notify; if(!can()){ if(cb) cb(); return; } load(cb); },
+            all:sync,
+            start:function(id,url,title){
+                if(rows[id]) return 'already';
+                // Without this the browser treats the films as throwaway cache and may bin them.
+                try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(_p){}
+                var it={ id:id, url:url, title:title||'', at:Date.now(), status:'running', got:0, total:0, chunks:0, mime:'' };
+                rows[id]=it; begin(it); return 'ok';
+            },
+            resume:function(id){ var it=rows[id]; if(!it||running[id]||it.status==='done') return; begin(it); },
+            drop:function(id){ var it=rows[id]; if(!it) return; delete running[id];
+                if(it.uri){ try{ URL.revokeObjectURL(it.uri); }catch(_u){} }
+                delAll(id,it.chunks||0); delete rows[id]; changed(); },
+            busy:function(){ for(var k in running) if(running[k]) return true; return false; },
+            // How much room the browser says is left, in MB. -1 when it will not say.
+            freeMb:function(){ return (WebDl._free==null?-1:WebDl._free); },
+            measure:function(){ try{ if(navigator.storage&&navigator.storage.estimate)
+                navigator.storage.estimate().then(function(e){ if(e&&e.quota!=null) WebDl._free=Math.max(0,(e.quota-(e.usage||0))/1048576); }); }catch(_e){} }
+        };
+    })();
+
     function dlPct(r){ return (r&&r.total>0)?Math.min(99,Math.floor((r.bytes/r.total)*100)):0; }
+    // A download in a browser fails for reasons the user can act on, so name them.
+    function dlWhyFailed(r){
+        var e=String((r&&r.err)||'');
+        if(/no-space|uota/.test(e)) return 'Not enough room left on this device. Delete something and try again.';
+        if(/range-lost/.test(e)) return 'Your provider will not resume a part-finished download. Delete this one and start it over.';
+        if(/Failed to fetch|NetworkError|TypeError|CORS|Load failed/i.test(e)) return 'Your provider does not allow downloads in a browser. The Android app can still do it.';
+        if(/http-40[13]/.test(e)) return 'Your provider refused that file. Check the subscription is still active.';
+        if(/^http-/.test(e)) return 'Your provider returned an error for that file ('+e+').';
+        return 'That download failed. Delete it and start it again.';
+    }
     function paintDlButton(b){
         var r=Dl.get(b.getAttribute('data-dlid'));
         if(!r) b.innerHTML=icon('i-download')+'Download';
         else if(r.status==='done') b.innerHTML=icon('i-dl-done')+'Downloaded';
-        else if(r.status==='failed') b.innerHTML=icon('i-download')+'Failed — try again';
-        else if(r.status==='paused') b.innerHTML=icon('i-download')+'Paused '+dlPct(r)+'%';
+        else if(r.status==='failed') b.innerHTML=icon('i-download')+'Failed, try again';
+        else if(r.status==='paused') b.innerHTML=icon('i-download')+'Resume '+dlPct(r)+'%';
         else b.innerHTML=icon('i-download')+'Downloading '+dlPct(r)+'%';
     }
     function repaintDlButtons(){ var a=document.querySelectorAll('[data-dlid]'); for(var i=0;i<a.length;i++) paintDlButton(a[i]); }
@@ -9227,6 +9401,7 @@ var Pin=(function(){
             e.stopPropagation();
             var id=b.getAttribute('data-dlid'), r=Dl.get(id);
             if(r&&r.status==='done'){ goTo('downloads'); return; }
+            if(r&&r.status==='paused'){ Dl.resume(id); paintDlButton(b); return; }
             if(r&&r.status==='failed'){ Dl.drop(id); Dl.start(kind,item,url,title,sub); paintDlButton(b); return; }
             if(r){ Dl.drop(id); setToast('Download stopped and removed.'); paintDlButton(b); return; }
             Dl.start(kind,item,url,title,sub); paintDlButton(b);
@@ -9252,8 +9427,9 @@ var Pin=(function(){
                 playContent(r.uri, meta.title||r.title||'', (meta.sub?meta.sub+' · ':'')+'Offline',
                     {type:(meta.kind==='movie'?'movie':'episode'), key:meta.key, poster:g(meta.gi||2), startAt:res?res.pos:0, from:'downloads'});
             }
-            else if(r.status==='failed') setToast('That download failed. Delete it and start it again.');
-            else setToast('Still downloading — '+pct+'% done.');
+            else if(r.status==='paused'){ Dl.resume(r.id); setToast('Picking that download back up.'); renderDownloads(); }
+            else if(r.status==='failed') setToast(dlWhyFailed(r));
+            else setToast('Still downloading, '+pct+'% done.');
         });
         return row;
     }
@@ -9266,6 +9442,9 @@ var Pin=(function(){
         var d=$('dl-done'); d.innerHTML=''; $('dl-done-empty').classList.toggle('hidden',done.length>0); done.forEach(function(r){ d.appendChild(dlRow(r)); });
         var free=Dl.freeMb();
         $('dl-storage').textContent=(used?fmtBytes(used)+' on this device':'Nothing stored yet')+(free>=0?' · '+(free/1024).toFixed(1)+' GB free':'');
+        // In a browser the transfer stops the moment the app is closed, so say so rather than
+        // letting someone walk away from a half-finished film.
+        var note=$('dl-bg-note'); if(note) note.classList.toggle('hidden', Dl.background()||!act.length);
         if(act.length) Dl.tick();
     }
 
@@ -12751,9 +12930,8 @@ var Pin=(function(){
         // Downloads survive the app closing, so find out where they got to, and keep the
         // menu entry off builds that cannot download at all.
         try{
-            Dl.refresh();
             if(!Dl.supported()){ var dnav=document.querySelector('.nav-dd-item[data-view="downloads"]'); if(dnav) dnav.classList.add('hidden'); }
-            else Dl.tick();
+            else Dl.init();
         }catch(_dl){}
         Player.init({ onBuffering:function(){ if(S.playerExiting) return; $('player-spinner').classList.remove('hidden'); $('player-state').innerHTML='Buffering...'; },
             onPlaying:function(){ if(S.playerExiting) return; $('player-spinner').classList.add('hidden');
