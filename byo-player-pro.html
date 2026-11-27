@@ -9376,6 +9376,19 @@ var Pin=(function(){
         };
     })();
 
+    /* How many titles are in a container this device cannot open. Worth showing, because it is
+       the difference between "a few films will not play here" and "none of them will", and the
+       answer is different for every provider. */
+    function blockedCount(list){
+        if(!APPLE_WEB||!list||!list.length) return 0;
+        var n=0; for(var i=0;i<list.length;i++){ var u=list[i]&&list[i].url; if(u&&NO_PLAY_EXT.test(u)) n++; }
+        return n;
+    }
+    function countWithBlocked(total, list, word){
+        var b=blockedCount(list);
+        if(!b) return total+' '+word;
+        return total+' '+word+' · '+b+' will not play on this device';
+    }
     function dlPct(r){ return (r&&r.total>0)?Math.min(99,Math.floor((r.bytes/r.total)*100)):0; }
     // A download in a browser fails for reasons the user can act on, so name them.
     function dlWhyFailed(r){
@@ -9831,7 +9844,7 @@ var Pin=(function(){
         // honour the chosen sort.
         if(S.moviesFav){ var fsm=favSet('movies'); list=list.filter(function(m){ return fsm.has(m); }); }
         vodSortInit(); list=sortList(list,S.moviesSort,S.moviesDir);   // the chosen sort applies everywhere, "All" included
-        var grid=$('movies-grid'); grid.innerHTML=''; var total=list.length; $('movies-count').textContent=total+' movies'; $('movies-empty').classList.toggle('hidden',total>0); $('movies-empty').textContent=S.moviesFav?'No favourite movies yet. Open one and choose Add to favorites.':'No movies matched.';
+        var grid=$('movies-grid'); grid.innerHTML=''; var total=list.length; $('movies-count').textContent=countWithBlocked(total,list,'movies'); $('movies-empty').classList.toggle('hidden',total>0); $('movies-empty').textContent=S.moviesFav?'No favourite movies yet. Open one and choose Add to favorites.':'No movies matched.';
         progressiveGrid(grid, list, moviePoster); }
 
     /* ---- SERIES ---- */

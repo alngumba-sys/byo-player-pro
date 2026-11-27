@@ -1,6 +1,6 @@
 {
-  "versionCode": 266,
-  "versionName": "3.37.81",
+  "versionCode": 267,
+  "versionName": "3.37.82",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "MKV handling on iPhone and iPad, plus offline downloads."
+  "notes": "Movies screen says how many titles this device cannot play."
 }
