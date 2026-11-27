@@ -403,6 +403,12 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
 .detail-resume .dr-bar { height:7px; background:rgba(255,255,255,.16); border-radius:4px; overflow:hidden; }
 .detail-resume .dr-bar > i { display:block; height:100%; background:var(--accent-2); border-radius:4px; }
 .detail-actions { display:flex; gap:16px; margin-top:26px; flex-wrap:wrap; }
+/* Download control on an episode row. Same furniture as the delete button on a recording,
+   so it reads at TV distance and takes focus the same way. */
+.ep-dl { background:var(--bg-elev); border:none; color:var(--fg-dim); height:52px; padding:0 20px; border-radius:10px; cursor:pointer;
+         font-size:19px; font-weight:600; display:inline-flex; align-items:center; gap:9px; white-space:nowrap; flex:0 0 auto; align-self:center; margin-left:16px; }
+.ep-dl .ic { font-size:21px; }
+.ep-dl.focused { color:var(--fg); box-shadow:0 0 0 2px #04101f, 0 0 0 5px var(--focus-ring), 0 0 16px rgba(91,157,255,.5); }
 .detail-body { padding:30px 66px 24px; flex:1; overflow-y:auto; }
 .play-btn { height:74px; padding:0 42px; background:var(--accent); color:#04101f; border:none; border-radius:12px; font-size:25px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:12px; }
 .ghost-btn { height:74px; padding:0 32px; background:var(--bg-elev); color:var(--fg); border:none; border-radius:12px; font-size:23px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:11px; }
@@ -1925,6 +1931,8 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
           <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path stroke="currentColor" d="M5 3v4h4"/><path stroke="currentColor" d="M12 7.5v5l3.2 1.9"/></symbol>
           <symbol id="i-trend" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" d="m3 16 5-5 4 4 7-8"/><path stroke="currentColor" d="M15 7h4v4"/></symbol>
           <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13"/></symbol>
+          <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" d="M12 3v11m0 0l-4.5-4.5M12 14l4.5-4.5M4 20h16"/></symbol>
+          <symbol id="i-dl-done" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" d="M4 20h16M5 11.5l4.5 4.5L19 6"/></symbol>
           <symbol id="i-chev-l" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" d="m15 5-7 7 7 7"/></symbol>
           <symbol id="i-chev-r" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" d="m9 5 7 7-7 7"/></symbol>
           <symbol id="i-chev-d" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" d="m5 9 7 7 7-7"/></symbol>
@@ -2048,6 +2056,7 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                             <button class="nav-dd-item" data-view="guide"  data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-guide"/></svg></span><span data-i18n="nav.tvGuide">TV Guide</span></button>
                             <button class="nav-dd-item" data-view="replay" data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-replay"/></svg></span><span data-i18n="nav.replay">Replay</span></button>
                             <button class="nav-dd-item" data-view="dvr"    data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-dvr"/></svg></span><span data-i18n="nav.recordings">Recordings</span></button>
+                            <button class="nav-dd-item" data-view="downloads" data-focusable="true" tabindex="0"><span class="ic"><svg><use href="#i-download"/></svg></span><span data-i18n="nav.downloads">Downloads</span></button>
                         </div>
                     </div>
                 </div>
@@ -2261,6 +2270,22 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                     <div class="row-title" style="margin-top:30px">Recorded</div>
                     <div id="dvr-recorded" class="history-list"></div>
                     <p id="dvr-rec-empty" class="section-empty hidden"><span class="ic"><svg><use href="#i-info"/></svg></span>No recordings yet.</p>
+                </div>
+            </section>
+
+            <section id="view-downloads" class="view">
+                <div class="filter-row">
+                    <span class="count-tag" style="font-size:23px;color:var(--fg);display:inline-flex;align-items:center;gap:10px"><span class="ic" style="font-size:24px;color:var(--accent)"><svg><use href="#i-download"/></svg></span>Downloads</span>
+                    <span style="flex:1"></span>
+                    <span id="dl-storage" class="count-tag"></span>
+                </div>
+                <div class="scroll-body">
+                    <div class="row-title">Downloading</div>
+                    <div id="dl-active" class="history-list"></div>
+                    <p id="dl-active-empty" class="section-empty hidden"><span class="ic"><svg><use href="#i-info"/></svg></span>Nothing downloading. Open a film or an episode and press Download.</p>
+                    <div class="row-title" style="margin-top:30px">Ready to watch offline</div>
+                    <div id="dl-done" class="history-list"></div>
+                    <p id="dl-done-empty" class="section-empty hidden"><span class="ic"><svg><use href="#i-info"/></svg></span>Nothing downloaded yet. Anything here plays with the internet off.</p>
                 </div>
             </section>
 
@@ -3048,6 +3073,10 @@ var Store=(function(){
     var obj={
         cfg:get('byo_cfg',{}), parental:get('byo_parental',{enabled:false,pin:'',lockSettings:false,genres:{}}),
         profiles:profiles, activeId:activeId, all:all, recordings:get('byo_recordings',[]),
+        // Offline downloads: the Android side owns the bytes, this owns what the catalogue knows
+        // about each one (title, poster tint, the resume key) keyed by download id.
+        downloads:get('byo_downloads',{}),
+        saveDownloads:function(){ set('byo_downloads',this.downloads); },
         theme:get('byo_theme',{accent:'cyan',mode:'dark',appName:'BYO Player'}),
         subs:get('byo_subs',{size:'medium',color:'white',bg:'semi'}),
         reminders:get('byo_reminders',[]),
@@ -8329,7 +8358,7 @@ var Pin=(function(){
         S.prevView=name;
         // Leaving the Multi-View flow entirely via nav — release any grid streams + clear return state.
         if(name!=='mvplay'&&name!=='multiview'&&name!=='player'){ if(MV.session&&!$('view-mvplay').classList.contains('active-view')){ } S.mvReturn=null; S.mvFullScreenReturn=false; }
-        if(name==='home') renderHome(); if(name==='mytv') renderMyTV(); if(name==='history') renderHistory(); if(name==='guide'){ S._guideCap=150; renderGuide(); } if(name==='dvr') renderDVR(); if(name==='ask') renderAskHome(); if(name==='settings') showSetPage('connection'); if(name==='sports'){ renderSports(); }
+        if(name==='home') renderHome(); if(name==='mytv') renderMyTV(); if(name==='history') renderHistory(); if(name==='guide'){ S._guideCap=150; renderGuide(); } if(name==='dvr') renderDVR(); if(name==='downloads') renderDownloads(); if(name==='ask') renderAskHome(); if(name==='settings') showSetPage('connection'); if(name==='sports'){ renderSports(); }
         if(name==='now'){ NowPlaying.invalidate(); var b=$('won-body'); if(b) b.dataset.first=''; renderWhatsOn(); startWonRefresh(); } else stopWonRefresh();
         showView(name); setTimeout(function(){ Nav.setFocus($('view-'+name).querySelector('[data-focusable="true"]:not(.hidden)')); },30); }
 
@@ -8690,7 +8719,7 @@ var Pin=(function(){
             S._heroUrl=m.url;
             // Kept playing (looped) for as long as Home stays open -- no rotation to interrupt it.
             if(heroPreviewAllowed()){ requestAnimationFrame(function(){ startHeroPreview(m.url); setTimeout(function(){ startHeroPreview(m.url); },120); }); } else stopHeroPreview(); }
-        el.querySelector('.h2-btn-play').addEventListener('click',function(){ stopHeroPreview(); playContent(m.url,m.title,(m.genre||'')+(m.year?' \u00b7 '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); });
+        el.querySelector('.h2-btn-play').addEventListener('click',function(){ stopHeroPreview(); playContent(Dl.fileFor('movie',m.id)||m.url,m.title,(m.genre||'')+(m.year?' \u00b7 '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); });
         render();
         if(S._h2Rot){ clearInterval(S._h2Rot); S._h2Rot=null; }
         return el; }
@@ -8723,7 +8752,7 @@ var Pin=(function(){
             el.querySelector('.h2-feat-meta').innerHTML=meta.join('<span class="h2-sep">\u2022</span>');
             S._heroUrl=m.url;
             if(heroPreviewAllowed()){ requestAnimationFrame(function(){ startHeroPreview(m.url); setTimeout(function(){ startHeroPreview(m.url); },120); }); } else stopHeroPreview(); }
-        el.querySelector('.h2-btn-play').addEventListener('click',function(e){ e.stopPropagation(); stopHeroPreview(); playContent(m.url,m.title,(m.genre||'')+(m.year?' \u00b7 '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); });
+        el.querySelector('.h2-btn-play').addEventListener('click',function(e){ e.stopPropagation(); stopHeroPreview(); playContent(Dl.fileFor('movie',m.id)||m.url,m.title,(m.genre||'')+(m.year?' \u00b7 '+m.year:''),{type:'movie',key:'movie:'+m.id,poster:m.logo||g(m.gi),from:'home'}); });
         el.addEventListener('click',function(e){ if(e.target.closest('.h2-btn')) return; stopHeroPreview(); h2Open(m); });
         render();
         if(S._h2Rot){ clearInterval(S._h2Rot); S._h2Rot=null; }
@@ -9118,6 +9147,126 @@ var Pin=(function(){
             gi:(channel.order||0), url:channel.url, status:(Date.now()>=end?'recorded':(Date.now()>=start?'recording':'scheduled')) };
         Store.addRecording(r);
         setToast(r.status==='recorded'?'Saved to Recordings.':(r.status==='recording'?'Recording now.':'Recording scheduled.'));
+    }
+
+    /* ---- Offline downloads ----
+       A movie or an episode from an Xtream provider is a plain file, so a download is one HTTP
+       GET that can be resumed. Android's DownloadManager owns the transfer and the bytes on
+       disk; this side owns what the catalogue knows, because the bridge has never heard of a
+       poster or a resume point. Live channels are deliberately left out: HLS with no end.
+       Without the Android bridge (browser, Tizen) nothing here shows at all. */
+    var Dl=(function(){
+        var A=null, rows={}, timer=null;
+        function br(){ if(A===null){ try{ A=(window.ByoAndroid&&typeof window.ByoAndroid.dlSupported==='function'&&window.ByoAndroid.dlSupported())?window.ByoAndroid:false; }catch(_e){ A=false; } } return A; }
+        function idFor(kind,id){ return (kind==='movie'?'mv_':'ep_')+String(id==null?'':id).replace(/[^A-Za-z0-9]/g,''); }
+        function refresh(){
+            var b=br(); if(!b){ rows={}; return rows; }
+            var list=[]; try{ list=JSON.parse(b.dlList()||'[]')||[]; }catch(_e){ list=[]; }
+            var next={}; for(var i=0;i<list.length;i++) next[list[i].id]=list[i];
+            rows=next;
+            // A file the user wiped from outside the app leaves a note behind; drop it.
+            var meta=Store.downloads||{}, changed=false;
+            for(var k in meta){ if(!rows[k]){ delete meta[k]; changed=true; } }
+            if(changed) Store.saveDownloads();
+            return rows;
+        }
+        function busy(){ for(var k in rows){ if(rows[k].status==='running'||rows[k].status==='paused') return true; } return false; }
+        // Poll only while something is actually moving, so an idle TV does no work.
+        function tick(){
+            if(timer) return;
+            timer=setInterval(function(){
+                refresh();
+                if(curSection()==='downloads') renderDownloads(true);
+                repaintDlButtons();
+                if(!busy()){ clearInterval(timer); timer=null; }
+            },1500);
+        }
+        function start(kind,item,url,title,sub){
+            var b=br(); if(!b) return false;
+            if(!url){ setToast('No file to download for this one.'); return false; }
+            if(/\.m3u8(\?|$)/i.test(url)){ setToast('This one is a live stream and cannot be downloaded.'); return false; }
+            var dlid=idFor(kind,item.id), r='err';
+            try{ r=b.dlStart(dlid,url,title||''); }catch(_e){}
+            if(r==='already'){ setToast('Already in Downloads.'); return false; }
+            if(r!=='ok'){ setToast('Could not start that download.'); return false; }
+            Store.downloads[dlid]={ kind:kind, key:(kind==='movie'?'movie:':'ep:')+item.id, title:title||'', sub:sub||'', gi:(item.gi||0), at:Date.now() };
+            Store.saveDownloads();
+            setToast('Downloading. It carries on if you leave this screen.');
+            refresh(); tick(); return true;
+        }
+        function drop(dlid){
+            var b=br(); if(b){ try{ b.dlDelete(dlid); }catch(_e){} }
+            if(Store.downloads[dlid]){ delete Store.downloads[dlid]; Store.saveDownloads(); }
+            refresh();
+        }
+        return { supported:function(){ return !!br(); }, idFor:idFor, refresh:refresh, tick:tick, start:start, drop:drop,
+            all:function(){ return rows; },
+            get:function(dlid){ return rows[dlid]||null; },
+            freeMb:function(){ var b=br(); if(!b) return -1; try{ return b.dlFreeMb(); }catch(_e){ return -1; } },
+            // The local file for a catalogue item, once it has finished. Null otherwise.
+            fileFor:function(kind,id){ var r=rows[idFor(kind,id)]; return (r&&r.status==='done'&&r.uri)?r.uri:null; } };
+    })();
+
+    function dlPct(r){ return (r&&r.total>0)?Math.min(99,Math.floor((r.bytes/r.total)*100)):0; }
+    function paintDlButton(b){
+        var r=Dl.get(b.getAttribute('data-dlid'));
+        if(!r) b.innerHTML=icon('i-download')+'Download';
+        else if(r.status==='done') b.innerHTML=icon('i-dl-done')+'Downloaded';
+        else if(r.status==='failed') b.innerHTML=icon('i-download')+'Failed — try again';
+        else if(r.status==='paused') b.innerHTML=icon('i-download')+'Paused '+dlPct(r)+'%';
+        else b.innerHTML=icon('i-download')+'Downloading '+dlPct(r)+'%';
+    }
+    function repaintDlButtons(){ var a=document.querySelectorAll('[data-dlid]'); for(var i=0;i<a.length;i++) paintDlButton(a[i]); }
+    // One button that covers every state: start, show progress, retry, or jump to the finished file.
+    function downloadBtn(kind,item,url,title,sub){
+        if(!Dl.supported()) return null;
+        var b=document.createElement('button'); b.className='ghost-btn'; b.setAttribute('data-focusable','true'); b.tabIndex=0;
+        b.setAttribute('data-dlid',Dl.idFor(kind,item.id));
+        paintDlButton(b);
+        b.addEventListener('click',function(e){
+            e.stopPropagation();
+            var id=b.getAttribute('data-dlid'), r=Dl.get(id);
+            if(r&&r.status==='done'){ goTo('downloads'); return; }
+            if(r&&r.status==='failed'){ Dl.drop(id); Dl.start(kind,item,url,title,sub); paintDlButton(b); return; }
+            if(r){ Dl.drop(id); setToast('Download stopped and removed.'); paintDlButton(b); return; }
+            Dl.start(kind,item,url,title,sub); paintDlButton(b);
+        });
+        return b;
+    }
+    function dlRow(r){
+        var meta=(Store.downloads||{})[r.id]||{};
+        var row=document.createElement('div'); row.className='history-row'; row.setAttribute('data-focusable','true'); row.tabIndex=0;
+        var pct=dlPct(r);
+        var right = r.status==='done' ? fmtBytes(r.bytes)
+                  : r.status==='failed' ? '<span class="rec-pill"><span class="dot"></span>FAILED</span>'
+                  : (r.total>0 ? pct+'% · '+fmtBytes(r.bytes)+' of '+fmtBytes(r.total) : fmtBytes(r.bytes));
+        row.innerHTML='<div class="h-thumb" style="background:'+g(meta.gi||2)+'">'+icon(r.status==='done'?'i-dl-done':'i-download')+'</div>'+
+            '<div class="h-main"><div class="h-title">'+esc(meta.title||r.title||'Download')+'</div><div class="h-sub">'+esc(meta.sub||'')+'</div></div>'+
+            '<div class="h-when">'+right+'</div>';
+        var del=document.createElement('button'); del.className='dvr-del'; del.setAttribute('data-focusable','true'); del.tabIndex=0; del.innerHTML=icon('i-trash');
+        del.addEventListener('click',function(e){ e.stopPropagation(); Dl.drop(r.id); renderDownloads(); Nav.focusFirst(); });
+        row.appendChild(del);
+        row.addEventListener('click',function(){
+            if(r.status==='done'&&r.uri){
+                var res=meta.key?Store.getResume(meta.key):null;
+                playContent(r.uri, meta.title||r.title||'', (meta.sub?meta.sub+' · ':'')+'Offline',
+                    {type:(meta.kind==='movie'?'movie':'episode'), key:meta.key, poster:g(meta.gi||2), startAt:res?res.pos:0, from:'downloads'});
+            }
+            else if(r.status==='failed') setToast('That download failed. Delete it and start it again.');
+            else setToast('Still downloading — '+pct+'% done.');
+        });
+        return row;
+    }
+    function renderDownloads(skipRefresh){
+        if(!skipRefresh) Dl.refresh();
+        var rows=Dl.all(), act=[], done=[], used=0, k;
+        for(k in rows){ used+=(+rows[k].bytes||0); (rows[k].status==='done'?done:act).push(rows[k]); }
+        var byNew=function(a,b){ return (b.at||0)-(a.at||0); }; act.sort(byNew); done.sort(byNew);
+        var a=$('dl-active'); a.innerHTML=''; $('dl-active-empty').classList.toggle('hidden',act.length>0); act.forEach(function(r){ a.appendChild(dlRow(r)); });
+        var d=$('dl-done'); d.innerHTML=''; $('dl-done-empty').classList.toggle('hidden',done.length>0); done.forEach(function(r){ d.appendChild(dlRow(r)); });
+        var free=Dl.freeMb();
+        $('dl-storage').textContent=(used?fmtBytes(used)+' on this device':'Nothing stored yet')+(free>=0?' · '+(free/1024).toFixed(1)+' GB free':'');
+        if(act.length) Dl.tick();
     }
 
     /* ---- card builders ---- */
@@ -9769,10 +9918,11 @@ var Pin=(function(){
         var acts=$('detail-actions'); acts.innerHTML='';
         var play=document.createElement('button'); play.className='play-btn'; play.setAttribute('data-focusable','true'); play.tabIndex=0;
         play.innerHTML=icon('i-play')+(r?('Resume from '+fmtTime(r.pos)+' ('+Math.round((r.pct||0)*100)+'%)'):'Play');
-        play.addEventListener('click',function(){ playContent(m.url,m.title,m.genre+' · '+m.year,{type:'movie',key:'movie:'+m.id,poster:g(m.gi),startAt:r?r.pos:0,from:'detail',embyId:m.embyId,embyContainer:m.embyContainer}); }); acts.appendChild(play);
+        play.addEventListener('click',function(){ playContent(Dl.fileFor('movie',m.id)||m.url,m.title,m.genre+' · '+m.year,{type:'movie',key:'movie:'+m.id,poster:g(m.gi),startAt:r?r.pos:0,from:'detail',embyId:m.embyId,embyContainer:m.embyContainer}); }); acts.appendChild(play);
         if(r){ var restart=document.createElement('button'); restart.className='ghost-btn'; restart.setAttribute('data-focusable','true'); restart.tabIndex=0; restart.innerHTML=icon('i-restart')+'Start over';
-            restart.addEventListener('click',function(){ Store.clearResume('movie:'+m.id); playContent(m.url,m.title,m.genre+' · '+m.year,{type:'movie',key:'movie:'+m.id,poster:g(m.gi),startAt:0,from:'detail',embyId:m.embyId,embyContainer:m.embyContainer}); }); acts.appendChild(restart); }
+            restart.addEventListener('click',function(){ Store.clearResume('movie:'+m.id); playContent(Dl.fileFor('movie',m.id)||m.url,m.title,m.genre+' · '+m.year,{type:'movie',key:'movie:'+m.id,poster:g(m.gi),startAt:0,from:'detail',embyId:m.embyId,embyContainer:m.embyContainer}); }); acts.appendChild(restart); }
         acts.appendChild(favButton('movies',m.id,{id:m.id,title:m.title,genre:m.genre,year:m.year,rating:m.rating,gi:m.gi,url:m.url,plot:m.plot,order:m.order,dur:m.dur}));
+        var mdl=downloadBtn('movie',m,m.url,m.title,[m.genre,m.year].filter(Boolean).join(' \u00b7 ')); if(mdl) acts.appendChild(mdl);
         acts.appendChild(feedbackBtns(m,'movie'));
         var fab=fixArtworkBtn(m,'movie'); if(fab) acts.appendChild(fab);
         var db=$('detail-body'); db.innerHTML=''; appendSimilarRow(db,m); showView('detail'); enrichDetail(m,'movie'); setTimeout(function(){ Nav.setFocus(play); },30);
@@ -9818,7 +9968,11 @@ var Pin=(function(){
             var status=''; if(watched) status='<span class="ep-status watched">'+icon('i-check')+' Watched</span>';
                 else if(r) status='<span class="ep-status resume">'+pct+'% watched</span>';
             row.innerHTML=thumb+'<div class="ep-main"><div class="ep-title">'+esc(ep.title)+status+'</div><div class="ep-desc">'+esc(ep.desc)+'</div></div><div class="ep-dur">'+esc(ep.dur)+'</div>';
-            row.addEventListener('click',function(){ playEpisode(s,S.currentSeason,epIdx); }); lw.appendChild(row); });
+            row.addEventListener('click',function(){ playEpisode(s,S.currentSeason,epIdx); });
+            var edl=downloadBtn('episode',{id:ep.id,gi:(s.gi||0)+ep.n}, ep.url,
+                s.title+' \u00b7 S'+s.seasons[S.currentSeason].n+' E'+ep.n+' \u00b7 '+ep.title, s.title);
+            if(edl){ edl.className='ep-dl'; row.appendChild(edl); }
+            lw.appendChild(row); });
         body.appendChild(lw); }
 
     // LIVE detail (read-more before playing)
@@ -10333,7 +10487,7 @@ var Pin=(function(){
     function buildItemActions(it,container,primaryFirst){
         function b(label,iconId,primary,fn){ var btn=document.createElement('button'); btn.className=primary?'play-btn':'ghost-btn'; btn.setAttribute('data-focusable','true'); btn.tabIndex=0; btn.innerHTML=icon(iconId)+esc(label); btn.addEventListener('click',fn); container.appendChild(btn); }
         if(it.type==='channel'){ b(tr('action.watchLive','Watch live'),'i-play',true,function(){ playLiveByChannel(it._ref); }); b(tr('action.openGuide','Open guide'),'i-guide',false,function(){ goTo('guide'); }); }
-        else if(it.type==='movie'){ b(tr('action.play','Play'),'i-play',true,function(){ var m=it._ref; playContent(m.url,m.title,m.genre+' · '+m.year,{type:'movie',key:'movie:'+m.id,poster:g(m.gi),from:'search'}); }); b(tr('action.moreInfo','More info'),'i-info',false,function(){ openMovie(it._ref); }); }
+        else if(it.type==='movie'){ b(tr('action.play','Play'),'i-play',true,function(){ var m=it._ref; playContent(Dl.fileFor('movie',m.id)||m.url,m.title,m.genre+' · '+m.year,{type:'movie',key:'movie:'+m.id,poster:g(m.gi),from:'search'}); }); b(tr('action.moreInfo','More info'),'i-info',false,function(){ openMovie(it._ref); }); }
         else if(it.type==='series'){ b(tr('action.open','Open'),'i-play',true,function(){ openSeries(it._ref); }); }
         else if(it.type==='sportsEvent'){ if(it.isLive){ b(tr('action.watchLive','Watch live'),'i-play',true,function(){ openSearchItem(it); }); } else { b(tr('action.details','Details'),'i-info',true,function(){ openSearchItem(it); }); } }
     }
@@ -10441,7 +10595,7 @@ var Pin=(function(){
     function playEpisode(s,seasonIdx,epIdx){
         var ep=s.seasons[seasonIdx].episodes[epIdx]; if(!ep) return;
         var r=Store.getResume('ep:'+ep.id);
-        playContent(ep.url, s.title, 'S'+s.seasons[seasonIdx].n+' · '+ep.title,
+        playContent(Dl.fileFor('episode',ep.id)||ep.url, s.title, 'S'+s.seasons[seasonIdx].n+' · '+ep.title,
             {type:'episode',key:'ep:'+ep.id,poster:g(s.gi),startAt:r?r.pos:0,from:'detail',seriesId:s.id,seasonIdx:seasonIdx,epIdx:epIdx,
              embyId:ep.embyId,embyContainer:ep.embyContainer,
              nextEpisode:nextEpisodeOf(s,seasonIdx,epIdx)});
@@ -11289,7 +11443,7 @@ var Pin=(function(){
         else if(en.kind==='soon'){ acts.appendChild(acBtn('Set reminder','i-bell',true,function(){ if(!Store.hasReminder(en.channel.id,en.slot.title,+en.slot.start)){ Store.addReminder({channelId:en.channel.id,channelName:en.channel.name,title:en.slot.title,start:+en.slot.start,end:+en.slot.end,url:en.channel.url,order:en.channel.order||0,fired:false}); setToast('Reminder set.'); } else setToast('Already reminded.'); }));
             acts.appendChild(acBtn('Watch channel','i-live',false,function(){ playLiveByChannel(en.channel); })); }
         else if(en.kind==='resume'){ var r=en.data; acts.appendChild(acBtn('Continue','i-play',true,function(){ playContent(r.url,r.title,r.sub,{type:r.type,key:r._key,poster:r.poster,startAt:r.pos,from:'ask'}); })); }
-        else if(en.kind==='movie'){ var m=en.data; acts.appendChild(acBtn('Play','i-play',true,function(){ playContent(m.url,m.title,m.genre+' · '+m.year,{type:'movie',key:'movie:'+m.id,poster:g(m.gi),from:'ask'}); }));
+        else if(en.kind==='movie'){ var m=en.data; acts.appendChild(acBtn('Play','i-play',true,function(){ playContent(Dl.fileFor('movie',m.id)||m.url,m.title,m.genre+' · '+m.year,{type:'movie',key:'movie:'+m.id,poster:g(m.gi),from:'ask'}); }));
             acts.appendChild(acBtn(Store.isFav('movies',m.id)?'In list':'My list','i-plus2',false,function(e2){ Store.toggleFav('movies',m.id,{id:m.id,title:m.title,genre:m.genre,year:m.year,rating:m.rating,gi:m.gi,url:m.url,plot:m.plot,order:m.order,dur:m.dur}); setToast(Store.isFav('movies',m.id)?'Added to My List.':'Removed.'); })); }
         else if(en.kind==='series'){ var s=en.data; acts.appendChild(acBtn('View','i-play',true,function(){ openSeries(s); }));
             acts.appendChild(acBtn(Store.isFav('series',s.id)?'In list':'My list','i-plus2',false,function(){ Store.toggleFav('series',s.id,{id:s.id,title:s.title,genre:s.genre,year:s.year,rating:s.rating,gi:s.gi,seasons:s.seasons,plot:s.plot,order:s.order,epCount:s.epCount}); setToast(Store.isFav('series',s.id)?'Added to My List.':'Removed.'); })); }
@@ -11902,7 +12056,7 @@ var Pin=(function(){
 
     /* ---- Data & storage ---- */
     function bytesOf(obj){ try{ return new Blob([JSON.stringify(obj)]).size; }catch(e){ try{ return JSON.stringify(obj).length; }catch(e2){ return 0; } } }
-    function fmtBytes(b){ if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(2)+' MB'; }
+    function fmtBytes(b){ if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; if(b<1073741824) return (b/1048576).toFixed(2)+' MB'; return (b/1073741824).toFixed(2)+' GB'; }
     function renderStorage(){
         var box=$('storage-box');
         var items=[
@@ -12594,6 +12748,13 @@ var Pin=(function(){
         }, total);
     }
     function init(){ Nav.init(); wire();
+        // Downloads survive the app closing, so find out where they got to, and keep the
+        // menu entry off builds that cannot download at all.
+        try{
+            Dl.refresh();
+            if(!Dl.supported()){ var dnav=document.querySelector('.nav-dd-item[data-view="downloads"]'); if(dnav) dnav.classList.add('hidden'); }
+            else Dl.tick();
+        }catch(_dl){}
         Player.init({ onBuffering:function(){ if(S.playerExiting) return; $('player-spinner').classList.remove('hidden'); $('player-state').innerHTML='Buffering...'; },
             onPlaying:function(){ if(S.playerExiting) return; $('player-spinner').classList.add('hidden');
                 try{ if(!S._liveGotVideo&&isLiveContent()&&S.playOpts&&S.playOpts.channelId){ S._liveGotVideo=true; ChanHealth.played(chanById(S.playOpts.channelId)); } }catch(_h){}

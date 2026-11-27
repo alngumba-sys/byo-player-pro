@@ -39,6 +39,10 @@
         android:hardwareAccelerated="true"
         android:largeHeap="true">
 
+        <!-- Offline downloads. Set to false for a Google Play / Samsung / LG submission: those
+             stores reject IPTV players that can save copies. The sideloaded build keeps it on. -->
+        <meta-data android:name="byo_downloads" android:value="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -424,6 +424,148 @@ public class MainActivity extends Activity {
                 } }).start();
             }
 
+            /* ---------- Offline downloads: movies and series episodes ----------
+               Android's own DownloadManager does the work. It resumes after the connection
+               drops, keeps going while the app is closed, and survives a reboot, none of
+               which a fetch inside the WebView can do. Files land in the app's external
+               files dir: no storage permission is needed and they go on uninstall.
+               The page tracks items by its own id, so id -> DownloadManager id is kept in
+               prefs; after a restart a download already in flight is still found. */
+            private final String DL_PREFS = "byo_downloads";
+
+            private android.app.DownloadManager dm() {
+                return (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            }
+            private java.io.File dlDir() {
+                java.io.File d = getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES);
+                return d == null ? getFilesDir() : d;
+            }
+            private org.json.JSONObject dlBook() {
+                try { return new org.json.JSONObject(getSharedPreferences(DL_PREFS, MODE_PRIVATE).getString("items", "{}")); }
+                catch (Exception e) { return new org.json.JSONObject(); }
+            }
+            private void dlBookSave(org.json.JSONObject o) {
+                getSharedPreferences(DL_PREFS, MODE_PRIVATE).edit().putString("items", o.toString()).apply();
+            }
+
+            // The page checks this before showing any download control. Google Play, Samsung and
+            // LG all look hard at IPTV players and a built-in downloader is one of the things that
+            // gets them rejected, so a store build sets byo_downloads to false in the manifest and
+            // the whole feature disappears from the UI without a second copy of the web app.
+            @JavascriptInterface
+            public boolean dlSupported() {
+                try {
+                    android.os.Bundle md = getPackageManager()
+                        .getApplicationInfo(getPackageName(), android.content.pm.PackageManager.GET_META_DATA).metaData;
+                    if (md != null && !md.getBoolean("byo_downloads", true)) return false;
+                } catch (Throwable ignored) {}
+                return true;
+            }
+
+            @JavascriptInterface
+            public String dlStart(final String id, final String url, final String title) {
+                try {
+                    org.json.JSONObject book = dlBook();
+                    if (book.has(id)) return "already";
+                    String safe = id.replaceAll("[^A-Za-z0-9_-]", "");
+                    if (safe.length() == 0) return "err";
+                    String ext = "mp4";
+                    try {
+                        String last = android.net.Uri.parse(url).getLastPathSegment();
+                        if (last != null && last.lastIndexOf('.') > 0) {
+                            String e = last.substring(last.lastIndexOf('.') + 1).toLowerCase(java.util.Locale.ROOT);
+                            if (e.matches("[a-z0-9]{2,5}")) ext = e;
+                        }
+                    } catch (Exception ignored) {}
+                    String file = "byo_" + safe + "." + ext;
+                    android.app.DownloadManager.Request req = new android.app.DownloadManager.Request(android.net.Uri.parse(url));
+                    req.setTitle(title == null || title.length() == 0 ? "BYO Player" : title);
+                    req.setDescription("Downloading to watch offline");
+                    req.addRequestHeader("User-Agent", "VLC/3.0.20 LibVLC/3.0.20");
+                    req.setAllowedOverRoaming(false);
+                    req.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE);
+                    req.setDestinationInExternalFilesDir(MainActivity.this, android.os.Environment.DIRECTORY_MOVIES, file);
+                    long dmId = dm().enqueue(req);
+                    org.json.JSONObject rec = new org.json.JSONObject();
+                    rec.put("dmId", dmId); rec.put("title", title == null ? "" : title);
+                    rec.put("file", file); rec.put("at", System.currentTimeMillis());
+                    book.put(id, rec); dlBookSave(book);
+                    return "ok";
+                } catch (Throwable t) { return "err"; }
+            }
+
+            // Everything the page needs to draw the Downloads screen, in one call.
+            @JavascriptInterface
+            public String dlList() {
+                org.json.JSONArray out = new org.json.JSONArray();
+                try {
+                    org.json.JSONObject book = dlBook();
+                    java.util.Iterator<String> it = book.keys();
+                    while (it.hasNext()) {
+                        String id = it.next();
+                        org.json.JSONObject rec = book.optJSONObject(id);
+                        if (rec == null) continue;
+                        org.json.JSONObject row = new org.json.JSONObject();
+                        row.put("id", id);
+                        row.put("title", rec.optString("title", ""));
+                        row.put("at", rec.optLong("at", 0));
+                        java.io.File f = new java.io.File(dlDir(), rec.optString("file", ""));
+                        String status = "missing"; long bytes = 0, total = 0;
+                        android.database.Cursor c = null;
+                        try {
+                            c = dm().query(new android.app.DownloadManager.Query().setFilterById(rec.optLong("dmId", -1)));
+                            if (c != null && c.moveToFirst()) {
+                                int st = c.getInt(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS));
+                                bytes = c.getLong(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+                                total = c.getLong(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+                                if (st == android.app.DownloadManager.STATUS_SUCCESSFUL) status = "done";
+                                else if (st == android.app.DownloadManager.STATUS_FAILED) status = "failed";
+                                else if (st == android.app.DownloadManager.STATUS_PAUSED) status = "paused";
+                                else status = "running";
+                            }
+                        } catch (Exception ignored) {
+                        } finally { if (c != null) try { c.close(); } catch (Exception ignored2) {} }
+                        // The system prunes old DownloadManager rows. A file on disk is the real answer.
+                        if ("missing".equals(status) && f.exists() && f.length() > 0) status = "done";
+                        if ("done".equals(status)) {
+                            if (!f.exists() || f.length() == 0) status = "missing";
+                            else { bytes = f.length(); if (total <= 0) total = bytes; row.put("uri", "file://" + f.getAbsolutePath()); }
+                        }
+                        row.put("status", status); row.put("bytes", bytes); row.put("total", total);
+                        out.put(row);
+                    }
+                } catch (Throwable ignored) {}
+                return out.toString();
+            }
+
+            @JavascriptInterface
+            public String dlCancel(final String id) { return dlDrop(id); }
+
+            @JavascriptInterface
+            public String dlDelete(final String id) { return dlDrop(id); }
+
+            private String dlDrop(String id) {
+                try {
+                    org.json.JSONObject book = dlBook();
+                    org.json.JSONObject rec = book.optJSONObject(id);
+                    if (rec != null) {
+                        try { dm().remove(rec.optLong("dmId", -1)); } catch (Exception ignored) {}
+                        try { new java.io.File(dlDir(), rec.optString("file", "")).delete(); } catch (Exception ignored) {}
+                        book.remove(id); dlBookSave(book);
+                    }
+                    return "ok";
+                } catch (Throwable t) { return "err"; }
+            }
+
+            // Free space where downloads are written, in MB. -1 when it cannot be read.
+            @JavascriptInterface
+            public double dlFreeMb() {
+                try {
+                    android.os.StatFs st = new android.os.StatFs(dlDir().getAbsolutePath());
+                    return (st.getAvailableBlocksLong() * st.getBlockSizeLong()) / (1024.0 * 1024.0);
+                } catch (Throwable t) { return -1; }
+            }
+
             // How big a playlist file (MB) this device can safely read into the page. TVs and boxes have little memory.
             @JavascriptInterface
             public int m3uLimitMb() {
