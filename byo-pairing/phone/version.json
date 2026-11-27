@@ -1,6 +1,6 @@
 {
-  "versionCode": 265,
-  "versionName": "3.37.80",
+  "versionCode": 266,
+  "versionName": "3.37.81",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Download films and series episodes and watch them with the internet off."
+  "notes": "MKV handling on iPhone and iPad, plus offline downloads."
 }

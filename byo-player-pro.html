@@ -4552,15 +4552,18 @@ function embyApi(server,user,pass){
         // maxBitrate caps the negotiated quality (used for the Quality presets). cb(result):
         //   { url, mode:'directplay'|'directstream'|'transcode', playSessionId, mediaSourceId }
         resolvePlayback:function(id, maxBitrate, cb){
-            // A Samsung Tizen-friendly device profile: advertise the containers/codecs AVPlay handles
-            // directly so the server prefers DirectPlay/DirectStream; HLS+H.264/AAC as the transcode target.
+            // The profile has to describe the device actually playing, or the server hands back a
+            // DirectPlay url the player cannot open and the user gets a black screen. A TV running
+            // AVPlay or ExoPlayer takes almost anything; Safari on an iPhone or iPad takes MP4 and
+            // MOV only, and no Matroska at all, so there we claim less and the server remuxes to HLS.
+            var wide={Container:'mp4,m4v,mkv,mov,ts,webm', Type:'Video',
+                      VideoCodec:'h264,hevc,h265,mpeg4,vp9,av1', AudioCodec:'aac,ac3,eac3,mp3,opus,flac,vorbis'};
+            var apple={Container:'mp4,m4v,mov', Type:'Video',
+                       VideoCodec:'h264,hevc,h265', AudioCodec:'aac,mp3'};
             var profile={
                 MaxStreamingBitrate: maxBitrate||40000000,
                 MaxStaticBitrate: maxBitrate||40000000,
-                DirectPlayProfiles:[
-                    {Container:'mp4,m4v,mkv,mov,ts,webm', Type:'Video',
-                     VideoCodec:'h264,hevc,h265,mpeg4,vp9,av1', AudioCodec:'aac,ac3,eac3,mp3,opus,flac,vorbis'}
-                ],
+                DirectPlayProfiles:[ APPLE_WEB ? apple : wide ],
                 TranscodingProfiles:[
                     {Container:'ts', Type:'Video', Protocol:'hls', VideoCodec:'h264', AudioCodec:'aac,mp3',
                      Context:'Streaming', MaxAudioChannels:'2', MinSegments:'1', BreakOnNonKeyFrames:true}
@@ -9190,6 +9193,8 @@ var Pin=(function(){
             if(!supported()) return false;
             if(!url){ setToast('No file to download for this one.'); return false; }
             if(/\.m3u8(\?|$)/i.test(url)){ setToast('This one is a live stream and cannot be downloaded.'); return false; }
+            // No point filling the phone with a file it will not open afterwards.
+            if(containerBlocked(url)){ setToast(extOf(url).toUpperCase()+' will not play on this device, so there is nothing to gain by downloading it.'); return false; }
             var dlid=idFor(kind,item.id), r='err', b=br();
             if(b){ try{ r=b.dlStart(dlid,url,title||''); }catch(_e){} }
             else r=WebDl.start(dlid,url,title||'');
@@ -10968,6 +10973,15 @@ var Pin=(function(){
             });
             return;
         }
+        // A container this device cannot open: try the provider's mp4 of the same title once,
+        // since some Xtream panels remux on demand, then stop and offer a player that can.
+        if(containerBlocked(url) && !opts._extSwapped){
+            var alt=mp4Variant(url);
+            if(alt){ var o3={}; for(var _k in opts){ o3[_k]=opts[_k]; } o3._extSwapped=true; o3._origUrl=url;
+                return playContent(alt,title,sub,o3); }
+            S.lastPlay={url:url,title:title,sub:sub,opts:opts}; S.lastPlayUrl=url;
+            showView('player'); showContainerMsg(url, title); return;
+        }
         S.lastPlay={url:url,title:title,sub:sub,opts:opts}; S.lastPlayUrl=url; hidePlayerMsg();
         // Track Emby/Jellyfin VOD context so the Quality menu can re-request the stream at a
         // chosen cap (native AVPlay exposes no ABR ladder, so quality is picked server-side).
@@ -11154,6 +11168,37 @@ var Pin=(function(){
 
     /* graceful player messages */
     function hidePlayerMsg(){ var m=$('player-msg'); m.classList.add('hidden'); if(S.msgTimer){ clearInterval(S.msgTimer); S.msgTimer=null; } }
+    /* ---- Containers this device will not play ----
+       Safari on iPhone and iPad has never supported Matroska, and no player setting changes
+       that: the video element simply reports an error and shows black. Several other old
+       containers are in the same position. The Android build hands playback to ExoPlayer,
+       which handles all of them, so this only applies in the browser on an Apple device. */
+    var APPLE_WEB=(function(){ try{
+        if(window.ByoAndroid) return false;                      // native player, no limits here
+        var ua=navigator.userAgent||'', p=navigator.platform||'';
+        return /iPad|iPhone|iPod/.test(p) || /iPad|iPhone|iPod/.test(ua)
+            || (p==='MacIntel' && navigator.maxTouchPoints>1)     // iPadOS reports as a Mac
+            || (/Safari/.test(ua) && !/Chrome|Chromium|Android|Edg/.test(ua));
+    }catch(_e){ return false; } })();
+    var NO_PLAY_EXT=/\.(mkv|avi|flv|wmv|divx|vob|m2ts|mts|ogm|rmvb|asf)(\?|$)/i;
+    function containerBlocked(url){ return !!(APPLE_WEB && url && NO_PLAY_EXT.test(String(url))); }
+    function extOf(url){ var m=/\.([a-z0-9]{2,5})(\?|$)/i.exec(String(url||'')); return m?m[1].toLowerCase():''; }
+    // Xtream serves VOD as /movie/user/pass/ID.<ext>. Some panels remux on demand when asked
+    // for a different extension, so this is worth one try before giving up.
+    function mp4Variant(url){
+        var u=String(url||'');
+        if(!/\/(movie|series)\//i.test(u) || !NO_PLAY_EXT.test(u)) return null;
+        return u.replace(/\.[a-z0-9]{2,5}(\?|$)/i,'.mp4$1');
+    }
+    // Hand the stream to a player that does read these containers. VLC registers an
+    // x-callback URL whose "stream" path skips its own download-or-play prompt.
+    function openExternal(app,url){
+        var u=encodeURIComponent(String(url||''));
+        var dest = app==='infuse' ? ('infuse://x-callback-url/play?url='+u)
+                 : ('vlc-x-callback://x-callback-url/stream?url='+u);
+        try{ window.location.href=dest; }catch(_e){}
+        setToast('If nothing opened, that player is not installed.');
+    }
     function ghostBtn(id,label,iconId,fn){ var b=document.createElement('button'); b.className='ghost-btn'; b.id=id; b.setAttribute('data-focusable','true'); b.tabIndex=0; b.innerHTML=(iconId?icon(iconId):'')+label; b.addEventListener('click',fn); return b; }
     function primBtn(id,label,iconId,fn){ var b=ghostBtn(id,label,iconId,fn); b.className='play-btn'; b.style.height='66px'; b.style.fontSize='23px'; return b; }
     // Terminal "action required" screen — shown ONLY after Smart Recovery has tried reconnecting
@@ -11183,6 +11228,8 @@ var Pin=(function(){
             return; }
         $('player-spinner').classList.add('hidden'); $('player-state').textContent='';
         var box=$('player-msg'), actions=$('pm-actions'); actions.innerHTML=''; $('pm-count').textContent='';
+        // The swap to .mp4 did not help either, so this is the container, not the connection.
+        if(S.playOpts && S.playOpts._origUrl){ showContainerMsg(S.playOpts._origUrl, ''); return; }
         $('pm-title').textContent=isLiveContent()?'Stream unavailable':'Unable to play this stream';
         $('pm-sub').textContent=info.message||'We couldn\'t restore this stream. It may be offline, geo-blocked, or need a different network.';
         actions.appendChild(primBtn('pm-retry','Try again','i-reload',function(){ hidePlayerMsg(); retryPlay(); }));
@@ -11195,6 +11242,25 @@ var Pin=(function(){
         setTimeout(function(){ Nav.setFocus($('pm-retry')); },30);
     }
     function retryPlay(){ if(!S.lastPlay) return; var p=S.lastPlay; playContent(p.url,p.title,p.sub,p.opts); }
+    // Shown instead of a black screen when the file is in a container this device cannot open.
+    function showContainerMsg(url, title){
+        var ext=(extOf(url)||'this').toUpperCase();
+        $('player-spinner').classList.add('hidden'); $('player-state').textContent='';
+        var box=$('player-msg'), actions=$('pm-actions'); actions.innerHTML=''; $('pm-count').textContent='';
+        $('pm-title').textContent=ext+' files will not play on this device';
+        $('pm-sub').textContent='Safari on iPhone and iPad cannot open '+ext+' at all, whatever is inside it. '
+            +'Open it in a player that can, or watch this one in the Android app, which plays it directly.';
+        actions.appendChild(primBtn('pm-vlc','Open in VLC','i-play',function(){ openExternal('vlc', S.lastPlayUrl||url); }));
+        actions.appendChild(ghostBtn('pm-infuse','Open in Infuse','i-play',function(){ openExternal('infuse', S.lastPlayUrl||url); }));
+        actions.appendChild(ghostBtn('pm-anyway','Try it anyway','i-reload',function(){
+            hidePlayerMsg(); var p=S.lastPlay||{}; var o={}; for(var k in (p.opts||{})) o[k]=p.opts[k];
+            o._extSwapped=true; o._force=true; playContentForce(S.lastPlayUrl||url, p.title||title, p.sub||'', o); }));
+        actions.appendChild(ghostBtn('pm-back2','Back','i-chev-l',function(){ hidePlayerMsg(); exitPlayer(); }));
+        box.classList.remove('hidden');
+        setTimeout(function(){ Nav.setFocus($('pm-vlc')); },30);
+    }
+    // "Try it anyway": skip the container check and let the player have a go.
+    function playContentForce(url,title,sub,opts){ opts=opts||{}; opts._extSwapped=true; playContent(url,title,sub,opts); }
 
     /* ---- Smart Stream Recovery wiring (app side) ---- */
     // Replay the CURRENT content at a specific source URL + position, without resetting recovery state.
