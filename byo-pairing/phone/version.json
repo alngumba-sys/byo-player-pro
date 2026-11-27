@@ -1,6 +1,6 @@
 {
-  "versionCode": 267,
-  "versionName": "3.37.82",
+  "versionCode": 268,
+  "versionName": "3.37.83",
   "apk": "https://byoplayer-pair.netlify.app/tv3247.apk",
-  "notes": "Movies screen says how many titles this device cannot play."
+  "notes": "Ask each provider once whether it can send a container Safari plays, then remember."
 }
