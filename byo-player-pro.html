@@ -2400,6 +2400,7 @@ body { margin:0; background:var(--page-bg); color:var(--chrome-fg); font-family:
                             <p class="sec-sub" style="margin:22px 0 14px">Buffer size:</p>
                             <div class="chip-picker" id="stream-buffer"></div>
                             <div class="toggle-row" style="margin-top:24px"><button class="toggle" id="stream-hw" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Hardware decoding (recommended)</span></div>
+                            <div class="toggle-row hidden" id="stream-unplayable-row"><button class="toggle" id="stream-unplayable" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Hide titles this device cannot play (MKV, AVI)</span></div>
                             <h3 style="margin-top:34px"><span class="ic"><svg><use href="#i-reload"/></svg></span>Smart stream recovery</h3>
                             <p class="sec-sub">If a stream drops, BYO Player tries to reconnect and switch to a backup source for the same channel automatically, before asking you to do anything.</p>
                             <div class="toggle-row" style="margin-top:14px"><button class="toggle on" id="rec-auto" data-focusable="true" tabindex="0"><i></i></button><span class="t-label">Automatic stream recovery</span></div>
@@ -5307,7 +5308,14 @@ var Pin=(function(){
     function genreVisible(genre){ if(activeIsKids()) return !!KIDS_SAFE_GENRES[genre]; return !isLockedGenre(genre)||true; /* adults see all; lock is at open-time */ }
     // Filter a content list for the current profile (kids-safe) and hidden categories.
     function itemKind(x){ if(x.seasons!==undefined) return 'series'; if(x.gi!==undefined&&x.year!==undefined) return 'movie'; return 'live'; }
-    function profFilter(list){ var out=list;
+    /* Hide what this device simply cannot open. On a provider whose catalogue is mostly MKV,
+       showing 148,000 films of which 4,000 play is worse than showing the 4,000: every other
+       poster is a dead end. Off by default everywhere except Safari, where the limit is real,
+       and switchable in Settings for anyone who wants the rest so they can hand them to VLC. */
+    function hideUnplayable(){ var s=Store.settings||{}; return APPLE_WEB && s.hideUnplayable!==false; }
+    function playableHere(x){ return !(x && x.url && NO_PLAY_EXT.test(String(x.url))); }
+    function playFilter(list){ return hideUnplayable() ? list.filter(playableHere) : list; }
+    function profFilter(list){ var out=playFilter(list);
         if(activeIsKids()) out=out.filter(function(x){ return !!KIDS_SAFE_GENRES[x.genre]; });
         var hc=(Store.settings&&Store.settings.hiddenCats)||{};
         if(Object.keys(hc).length){ out=out.filter(function(x){ var k=itemKind(x); var key=(k==='movie'?'movies':(k==='series'?'series':'live'))+'::'+x.genre; return !hc[key]; }); }
@@ -5316,7 +5324,7 @@ var Pin=(function(){
         return out; }
     // Like profFilter but WITHOUT the optional language filter — used when the user is explicitly
     // searching, so an active search can surface channels of any language (kids safety still applies).
-    function profFilterSafe(list){ var out=list;
+    function profFilterSafe(list){ var out=playFilter(list);
         if(activeIsKids()) out=out.filter(function(x){ return !!KIDS_SAFE_GENRES[x.genre]; });
         return out; }
     function avatarColor(p){ return p.color||'#5b9dff'; }
@@ -9384,10 +9392,12 @@ var Pin=(function(){
         var n=0; for(var i=0;i<list.length;i++){ var u=list[i]&&list[i].url; if(u&&NO_PLAY_EXT.test(u)) n++; }
         return n;
     }
-    function countWithBlocked(total, list, word){
-        var b=blockedCount(list);
+    function countWithBlocked(total, source, word){
+        var b=blockedCount(source);
         if(!b) return total+' '+word;
-        return total+' '+word+' · '+b+' will not play on this device';
+        return hideUnplayable()
+            ? total+' '+word+' · '+b+' hidden, this device cannot play them'
+            : total+' '+word+' · '+b+' will not play on this device';
     }
     function dlPct(r){ return (r&&r.total>0)?Math.min(99,Math.floor((r.bytes/r.total)*100)):0; }
     // A download in a browser fails for reasons the user can act on, so name them.
@@ -9844,7 +9854,7 @@ var Pin=(function(){
         // honour the chosen sort.
         if(S.moviesFav){ var fsm=favSet('movies'); list=list.filter(function(m){ return fsm.has(m); }); }
         vodSortInit(); list=sortList(list,S.moviesSort,S.moviesDir);   // the chosen sort applies everywhere, "All" included
-        var grid=$('movies-grid'); grid.innerHTML=''; var total=list.length; $('movies-count').textContent=countWithBlocked(total,list,'movies'); $('movies-empty').classList.toggle('hidden',total>0); $('movies-empty').textContent=S.moviesFav?'No favourite movies yet. Open one and choose Add to favorites.':'No movies matched.';
+        var grid=$('movies-grid'); grid.innerHTML=''; var total=list.length; $('movies-count').textContent=countWithBlocked(total,S.movies||list,'movies'); $('movies-empty').classList.toggle('hidden',total>0); $('movies-empty').textContent=S.moviesFav?'No favourite movies yet. Open one and choose Add to favorites.':'No movies matched.';
         progressiveGrid(grid, list, moviePoster); }
 
     /* ---- SERIES ---- */
@@ -10008,8 +10018,10 @@ var Pin=(function(){
     function seriesNextUp(s){ if(!s||!s.seasons||!s.seasons.length) return null;
         var r=latestSeriesResume(s); var out=null;
         s.seasons.forEach(function(se,si){ (se.episodes||[]).forEach(function(ep,ei){ if(out) return; if(r&&r._ep&&ep.id===r._ep.id) out={seasonIdx:si,epIdx:ei,ep:ep,se:se,resume:r}; }); });
-        if(!out){ s.seasons.forEach(function(se,si){ (se.episodes||[]).forEach(function(ep,ei){ if(out) return; if(!Store.isWatched('ep:'+ep.id)) out={seasonIdx:si,epIdx:ei,ep:ep,se:se,resume:null}; }); }); }
-        if(!out){ var se0=s.seasons[0]; if(se0&&se0.episodes&&se0.episodes.length) out={seasonIdx:0,epIdx:0,ep:se0.episodes[0],se:se0,resume:null}; }
+        var okEp=function(ep){ return !hideUnplayable() || playableHere(ep); };
+        if(!out){ s.seasons.forEach(function(se,si){ (se.episodes||[]).forEach(function(ep,ei){ if(out||!okEp(ep)) return; if(!Store.isWatched('ep:'+ep.id)) out={seasonIdx:si,epIdx:ei,ep:ep,se:se,resume:null}; }); }); }
+        // Nothing unwatched that plays here: fall back to the first episode that does.
+        if(!out){ s.seasons.forEach(function(se,si){ (se.episodes||[]).forEach(function(ep,ei){ if(out) return; if(okEp(ep)) out={seasonIdx:si,epIdx:ei,ep:ep,se:se,resume:null}; }); }); }
         return out; }
     // people: [{name, character?, photo?}] — real TMDB credits (with photos) or the provider's own
     // "cast" field (names only). Shows the first three; the rest reveal on request. Hides itself
@@ -10150,7 +10162,12 @@ var Pin=(function(){
             t.addEventListener('click',function(){ S.currentSeason=idx; renderSeasons(s); }); tabs.appendChild(t); });
         body.appendChild(tabs); var lw=document.createElement('div'); lw.className='episode-list';
         if(!s.seasons.length||!s.seasons[S.currentSeason]){ var em=document.createElement('div'); em.className='section-empty'; em.innerHTML=icon('i-info')+'Your provider didn\u2019t send any episodes for this series.'; body.appendChild(em); return; }
-        s.seasons[S.currentSeason].episodes.forEach(function(ep,epIdx){
+        var _eps=s.seasons[S.currentSeason].episodes, _shown=hideUnplayable()?_eps.filter(playableHere):_eps;
+        if(!_shown.length && _eps.length){ var hm=document.createElement('div'); hm.className='section-empty';
+            hm.innerHTML=icon('i-info')+'None of this season\u2019s '+_eps.length+' episodes are in a format this device can play. The Android app plays them.';
+            lw.appendChild(hm); }
+        _eps.forEach(function(ep,epIdx){
+            if(hideUnplayable() && !playableHere(ep)) return;
             var key='ep:'+ep.id; var r=Store.getResume(key); var watched=Store.isWatched(key);
             var pct=r?Math.round((r.pct||0)*100):0;
             var row=document.createElement('div'); row.className='episode'+(watched?' is-watched':''); row.setAttribute('data-focusable','true'); row.tabIndex=0;
@@ -12310,6 +12327,9 @@ var Pin=(function(){
         fillChoice('stream-format',STREAM_FORMATS,s.streamFormat||'auto',function(id){ s.streamFormat=id; });
         fillChoice('stream-buffer',STREAM_BUFFERS,s.streamBuffer||'medium',function(id){ s.streamBuffer=id; });
         $('stream-hw').classList.toggle('on', s.hwDecode!==false);
+        // Only worth offering where the limit is real: Safari cannot open these containers at all.
+        var ur=$('stream-unplayable-row'); if(ur){ ur.classList.toggle('hidden', !APPLE_WEB);
+            $('stream-unplayable').classList.toggle('on', s.hideUnplayable!==false); }
         $('rec-auto').classList.toggle('on', s.autoRecover!==false);
         $('rec-failover').classList.toggle('on', s.autoFailover!==false);
         renderDiagnostics(Recovery.diagnostics());
@@ -12735,6 +12755,7 @@ var Pin=(function(){
         $('skip-intro').addEventListener('click',function(){ skipIntro(); });
         wireParental(); wireAppearance(); wireStartup(); wireMetadata(); wireSettingsNav(); wireVpn(); wireLiveLazyLoad(); Pay.wire();
         $('stream-hw').addEventListener('click',function(){ Store.settings.hwDecode=!(Store.settings.hwDecode!==false); Store.save(); renderStream(); });
+        $('stream-unplayable').addEventListener('click',function(){ Store.settings.hideUnplayable=!(Store.settings.hideUnplayable!==false); Store.save(); renderStream(); try{ renderAll(); }catch(_r){} });
         $('taste-save').addEventListener('click',saveTastePicker); $('taste-skip').addEventListener('click',closeTastePicker); wirePersonalise();
         var cmc=$('cm-cancel'); if(cmc) cmc.addEventListener('click',cancelConnect);
         $('rec-auto').addEventListener('click',function(){ Store.settings.autoRecover=!(Store.settings.autoRecover!==false); Store.save(); renderStream(); });
